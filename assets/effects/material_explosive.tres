@@ -1,6 +1,6 @@
-[gd_resource type="ShaderMaterial" load_steps=2 format=3 uid="uid://bfb1w220iqapr"]
+[gd_resource type="ShaderMaterial" format=3 uid="uid://bfb1w220iqapr"]
 
-[ext_resource type="Shader" uid="uid://bgw4kuftspumc" path="res://Shader Textures/effects_explosions.tres" id="1_0mliu"]
+[ext_resource type="Shader" uid="uid://bgw4kuftspumc" path="res://shader_textures/effects_explosions.tres" id="1_0mliu"]
 
 [resource]
 render_priority = 0

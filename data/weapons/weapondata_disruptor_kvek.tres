@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="BeamWeaponData" format=3 uid="uid://cgqcf6cytlaai"]
+
+[ext_resource type="Script" uid="uid://uadlkt5xdjn0" path="res://resources/data/weapon_data_beam.gd" id="1_2mj5w"]
+
+[resource]
+script = ExtResource("1_2mj5w")
+weapon_name = "Disruptor"
+damage_type = "disruptor"
+metadata/_custom_type_script = "uid://uadlkt5xdjn0"

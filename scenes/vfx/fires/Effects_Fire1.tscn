@@ -1,0 +1,35 @@
+[gd_scene format=3 uid="uid://xv7n7wr4rbqd"]
+
+[ext_resource type="Shader" uid="uid://klv0q33p6ph1" path="res://shader_textures/effects_fire.tres" id="1_1ui1a"]
+[ext_resource type="Texture2D" uid="uid://2l8yahfowdm0" path="res://assets/effects/noise.png" id="2_b48xq"]
+[ext_resource type="Texture2D" uid="uid://d15sx4pw475ny" path="res://assets/effects/kenny/spark_04.png" id="3_npd1d"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_vncn6"]
+render_priority = 0
+shader = ExtResource("1_1ui1a")
+shader_parameter/MainTex = ExtResource("3_npd1d")
+shader_parameter/DissolveTiling = Vector2(0.25, 1)
+shader_parameter/DissolveSpeed = Vector2(0, 0.5)
+shader_parameter/DissolveTex = ExtResource("2_b48xq")
+shader_parameter/DissolveAmount = 0.450000021375
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_1nif6"]
+lifetime_randomness = 0.12
+emission_shape = 1
+emission_sphere_radius = 0.01
+gravity = Vector3(0, 0, 0)
+scale_min = 0.5
+color = Color(5.912981, 1.6578984, 0, 1)
+
+[sub_resource type="QuadMesh" id="QuadMesh_t1wfh"]
+
+[node name="Fire" type="Node3D"]
+
+[node name="VFX_Fire_1" type="GPUParticles3D" parent="."]
+material_override = SubResource("ShaderMaterial_vncn6")
+amount = 10
+lifetime = 1.1
+speed_scale = 5.0
+local_coords = true
+process_material = SubResource("ParticleProcessMaterial_1nif6")
+draw_pass_1 = SubResource("QuadMesh_t1wfh")

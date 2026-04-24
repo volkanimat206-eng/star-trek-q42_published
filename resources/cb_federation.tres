@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="CombatBehavior" load_steps=2 format=3 uid="uid://b2bygbhomalgh"]
+[gd_resource type="Resource" script_class="CombatBehavior" format=3 uid="uid://b2bygbhomalgh"]
 
-[ext_resource type="Script" uid="uid://ca7j55ka3gneq" path="res://scripts/combat_behavior.gd" id="1_o1a8g"]
+[ext_resource type="Script" uid="uid://ca7j55ka3gneq" path="res://scripts/combat/combat_behavior.gd" id="1_o1a8g"]
 
 [resource]
 script = ExtResource("1_o1a8g")

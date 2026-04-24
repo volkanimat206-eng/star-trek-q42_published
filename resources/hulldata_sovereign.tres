@@ -1,9 +1,0 @@
-[gd_resource type="Resource" script_class="HullData" load_steps=2 format=3 uid="uid://b4ki8ka56fe2m"]
-
-[ext_resource type="Script" uid="uid://cfo8lhue31v3u" path="res://scripts/hull_data.gd" id="1_1xqkf"]
-
-[resource]
-script = ExtResource("1_1xqkf")
-max_hp = 50000.0
-current_hp = 50000.0
-metadata/_custom_type_script = "uid://cfo8lhue31v3u"

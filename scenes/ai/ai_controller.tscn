@@ -1,0 +1,34 @@
+[gd_scene format=3 uid="uid://cfix7c1145p7n"]
+
+[ext_resource type="Script" uid="uid://bgjma7fepdvud" path="res://scripts/ships/ai_controller.gd" id="1_xdfxt"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_rx8b1"]
+custom_solver_bias = 1.0
+radius = 300.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_xdfxt"]
+transparency = 1
+shading_mode = 0
+albedo_color = Color(0, 1, 0.5449209, 0.3)
+
+[sub_resource type="TorusMesh" id="TorusMesh_rx8b1"]
+material = SubResource("StandardMaterial3D_xdfxt")
+inner_radius = 0.95
+
+[node name="AiController" type="CharacterBody3D"]
+collision_layer = 32
+collision_mask = 7
+script = ExtResource("1_xdfxt")
+show_debug = true
+
+[node name="Radar" type="Area3D" parent="."]
+collision_layer = 0
+collision_mask = 32
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Radar"]
+shape = SubResource("SphereShape3D_rx8b1")
+
+[node name="ScanTimer" type="Timer" parent="."]
+
+[node name="RadarVisualizer" type="MeshInstance3D" parent="."]
+mesh = SubResource("TorusMesh_rx8b1")
