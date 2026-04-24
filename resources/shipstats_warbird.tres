@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ShipStats" load_steps=2 format=3 uid="uid://kf11q0d5ch3g"]
+
+[ext_resource type="Script" uid="uid://58o82yj1pb0x" path="res://scripts/ship_stats.gd" id="1_brsyg"]
+
+[resource]
+script = ExtResource("1_brsyg")
+max_speed = 400.0
+acceleration = 20.0
+friction = 50.0
+rotation_speed_base = 1.5
+rotation_speed_min = 0.2
+tilt_amount = 0.6
+tilt_speed = 2.0
+metadata/_custom_type_script = "uid://58o82yj1pb0x"

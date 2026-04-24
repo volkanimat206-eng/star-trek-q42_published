@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://dx2w1dkjx8kd5"]
+
+[ext_resource type="Script" uid="uid://bholugv683at0" path="res://scripts/AUTO_phaser_audio_pool.gd" id="1_48nts"]
+
+[node name="PhaserAudioPool" type="Node"]
+script = ExtResource("1_48nts")

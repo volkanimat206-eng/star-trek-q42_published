@@ -1,0 +1,88 @@
+[gd_scene load_steps=16 format=3 uid="uid://dwhueejuj0whx"]
+
+[ext_resource type="Texture2D" uid="uid://bk1dkhn16g1qs" path="res://assets/HDR/HDR_blue_nebulae-1.hdr" id="1_0uv0p"]
+[ext_resource type="Script" uid="uid://j8dxstplu54b" path="res://scripts/top_view_camera.gd" id="1_32lhk"]
+[ext_resource type="Script" uid="uid://kiyh7lj5wwnd" path="res://scripts/world.gd" id="1_c0d7e"]
+[ext_resource type="Shader" uid="uid://by5evp7b84d2d" path="res://shader/space_enviroment.gdshader" id="1_nrtoj"]
+[ext_resource type="Script" uid="uid://1l6a001obdvi" path="res://scripts/player_controller.gd" id="3_7g83o"]
+[ext_resource type="PackedScene" uid="uid://bh1op26b8o831" path="res://scenes/Debug_Overlay.tscn" id="4_d1c63"]
+[ext_resource type="Resource" uid="uid://mc742s2iprng" path="res://resources/shipdata_sovereign.tres" id="4_ygioq"]
+[ext_resource type="PackedScene" uid="uid://dn5amvigmvgvf" path="res://scenes/Parallax.tscn" id="6_nrtoj"]
+[ext_resource type="Script" uid="uid://o1ayuafep8yd" path="res://scripts/input_component.gd" id="6_ygioq"]
+[ext_resource type="PackedScene" uid="uid://j3ukrq2w1n7y" path="res://scenes/DebugControlPanel.tscn" id="11_7c4bj"]
+[ext_resource type="Script" uid="uid://cbgkuv51tvlq1" path="res://scripts/physics_layer_watcher.gd" id="13_i4b1j"]
+[ext_resource type="AudioStream" uid="uid://bp2sd4wtk3joe" path="res://assets/audio/Star Trek The Next Generation Ambient Music.mp3" id="13_nrtoj"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_i4b1j"]
+shader = ExtResource("1_nrtoj")
+shader_parameter/sky_texture = ExtResource("1_0uv0p")
+shader_parameter/uv_offset = Vector2(0, 0)
+shader_parameter/exposure = 1.0
+
+[sub_resource type="Sky" id="Sky_c0d7e"]
+sky_material = SubResource("ShaderMaterial_i4b1j")
+
+[sub_resource type="Environment" id="Environment_2dftf"]
+background_mode = 2
+background_energy_multiplier = 0.5
+sky = SubResource("Sky_c0d7e")
+tonemap_mode = 2
+glow_enabled = true
+glow_levels/1 = 1.0
+glow_levels/2 = 1.0
+glow_levels/3 = 1.5
+glow_levels/4 = 1.5
+glow_levels/5 = 0.0
+glow_levels/7 = 0.39
+glow_intensity = 1.2
+glow_bloom = 0.2
+glow_blend_mode = 0
+
+[node name="World" type="Node3D" node_paths=PackedStringArray("music_player_node")]
+script = ExtResource("1_c0d7e")
+music_player_node = NodePath("Background Audio/AudioStreamPlayer")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_2dftf")
+
+[node name="TopViewCamera" type="Camera3D" parent="WorldEnvironment"]
+transform = Transform3D(1, 0, 0, 0, 0.86844987, 0.495777, 0, -0.495777, 0.86844987, 0, 4.787285, 12.704609)
+script = ExtResource("1_32lhk")
+target_path = NodePath("../../Player")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1000, 0)
+sky_mode = 1
+
+[node name="Player" type="CharacterBody3D" parent="." groups=["faction_FEDERATION", "player", "ships"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50.264, 0, 76.182)
+collision_layer = 32
+collision_mask = 7
+script = ExtResource("3_7g83o")
+ship_data = ExtResource("4_ygioq")
+show_debug = false
+
+[node name="ShipAnchor" type="Node3D" parent="Player"]
+
+[node name="InputComponent" type="Node" parent="Player"]
+script = ExtResource("6_ygioq")
+
+[node name="Parallax" parent="Player" instance=ExtResource("6_nrtoj")]
+
+[node name="ShaderDiag" type="Node3D" parent="."]
+
+[node name="Background Audio" type="Node" parent="."]
+
+[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="Background Audio"]
+stream = ExtResource("13_nrtoj")
+volume_db = -20.0
+bus = &"Music"
+playback_type = 1
+
+[node name="DebugControlPanel" parent="." instance=ExtResource("11_7c4bj")]
+
+[node name="DebugOverlay" parent="." instance=ExtResource("4_d1c63")]
+player_path = NodePath("../Player")
+
+[node name="Node" type="Node" parent="."]
+script = ExtResource("13_i4b1j")

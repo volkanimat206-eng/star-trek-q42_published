@@ -1,0 +1,100 @@
+[gd_scene load_steps=13 format=3 uid="uid://d1wp1vvpilt35"]
+
+[ext_resource type="Script" uid="uid://bhrgp28dkuhg1" path="res://scripts/ship_controller.gd" id="1_4xcdl"]
+[ext_resource type="Script" uid="uid://drfo5i81fkhuc" path="res://scripts/shield_system.gd" id="1_i1224"]
+[ext_resource type="Shader" uid="uid://du5dkyik5wt31" path="res://shader/shield.gdshader" id="2_capxm"]
+[ext_resource type="Script" uid="uid://dsl76tjsngj6" path="res://scripts/movement_component.gd" id="4_3qxy5"]
+[ext_resource type="Script" uid="uid://bphq1pbix7nib" path="res://scripts/targeting_system.gd" id="5_capxm"]
+[ext_resource type="Script" uid="uid://bs4uq2531fjap" path="res://scripts/hull_impact_receiver.gd" id="7_capxm"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_bomxq"]
+radius = 20.0
+height = 40.0
+
+[sub_resource type="SphereMesh" id="SphereMesh_dhmw8"]
+radius = 1.0
+height = 2.0
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_3qxy5"]
+noise_type = 2
+seed = -2029316916
+frequency = 0.08
+fractal_octaves = 3
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_capxm"]
+width = 256
+height = 256
+noise = SubResource("FastNoiseLite_3qxy5")
+seamless = true
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_fllgm"]
+render_priority = 0
+shader = ExtResource("2_capxm")
+shader_parameter/shield_color = Color(0.13816993, 0.41551143, 1, 0.5)
+shader_parameter/integrity = 1.0
+shader_parameter/rim_power = 3.0
+shader_parameter/hit_glow_duration = 2.0
+shader_parameter/impact_radius = 0.7
+shader_parameter/impact_slot_count = 6
+shader_parameter/impact_points = Array[Vector3]([Vector3(0, -9999, 0), Vector3(0, -9999, 0), Vector3(0, -9999, 0), Vector3(0, -9999, 0), Vector3(0, -9999, 0), Vector3(0, -9999, 0), Vector3(0, -9999, 0), Vector3(0, -9999, 0)])
+shader_parameter/impact_ages = Array[float]([100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0])
+shader_parameter/impact_colors = Array[Color]([Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1)])
+shader_parameter/dissolve_progress = 0.0
+shader_parameter/dissolve_noise = SubResource("NoiseTexture2D_capxm")
+shader_parameter/pattern_type = 1
+shader_parameter/pattern_scale = 60.0
+shader_parameter/pattern_line_width = 0.05
+shader_parameter/pattern_intensity = 1.5
+shader_parameter/debug_mode = 0
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_4xcdl"]
+radius = 20.0
+
+[node name="Sphere" type="CharacterBody3D"]
+script = ExtResource("1_4xcdl")
+
+[node name="Model" type="Node3D" parent="."]
+
+[node name="MeshModel" type="Node3D" parent="Model"]
+
+[node name="SphereModel" type="MeshInstance3D" parent="Model/MeshModel"]
+mesh = SubResource("SphereMesh_bomxq")
+skeleton = NodePath("../../..")
+
+[node name="ShieldMesh" type="MeshInstance3D" parent="Model"]
+transform = Transform3D(30, 0, 0, 0, 30, 0, 0, 0, 30, 0, 0, 0)
+cast_shadow = 0
+mesh = SubResource("SphereMesh_dhmw8")
+skeleton = NodePath("../..")
+surface_material_override/0 = SubResource("ShaderMaterial_fllgm")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="Model"]
+collision_mask = 4
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Model/StaticBody3D"]
+shape = SubResource("SphereShape3D_4xcdl")
+
+[node name="ShieldSystem" type="Node3D" parent="."]
+script = ExtResource("1_i1224")
+shield_radius_x = 30.0
+shield_radius_y = 30.0
+shield_radius_z = 30.0
+shield_mesh_path = NodePath("../Model/ShieldMesh")
+
+[node name="ShipController" type="Node3D" parent="."]
+
+[node name="MovementComponent" type="Node" parent="ShipController"]
+script = ExtResource("4_3qxy5")
+
+[node name="TargetingSystem" type="Node3D" parent="ShipController"]
+script = ExtResource("5_capxm")
+target_layer = 3
+max_lock_range = 2000.0
+
+[node name="HullImpactReceiver" type="Node" parent="ShipController"]
+script = ExtResource("7_capxm")
+impact_radius = 2.0
+scorch_radius = 6.0
+scorch_edge_softness = 0.0
+scorch_color = Color(0.025840001, 0.99026644, 0, 1)
+debug_impacts = true

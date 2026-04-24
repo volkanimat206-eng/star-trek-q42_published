@@ -1,0 +1,26 @@
+# Godot-spezifisch
+.godot/
+.import/
+*.tmp
+*.import
+export.cfg
+export_presets.cfg
+
+# Godot 4 Cache (regeneriert sich automatisch)
+.godot/imported/
+.godot/editor/
+.godot/shader_cache/
+
+# System
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Editor
+*.swp
+*~
+.vscode/
+
+# Eigene
+liste.txt
+list.bat

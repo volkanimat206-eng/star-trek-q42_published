@@ -1,0 +1,102 @@
+[gd_scene load_steps=5 format=3 uid="uid://bh1op26b8o831"]
+
+[ext_resource type="Script" uid="uid://bik7diblw3sib" path="res://scripts/debug_overlay.gd" id="1_siqhs"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jjor3"]
+bg_color = Color(0.078431375, 0.09803922, 0.14117648, 0.9490196)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btjce"]
+bg_color = Color(0.11764706, 0.18039216, 0.2784314, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5w5ig"]
+bg_color = Color(0.5519806, 0.8445674, 0.9989905, 1)
+
+[node name="DebugOverlay" type="CanvasLayer" node_paths=PackedStringArray("player_widget_anchor", "target_widget_anchor")]
+script = ExtResource("1_siqhs")
+player_widget_anchor = NodePath("UIContainer/VBoxContainer/MarginContainer_Player")
+target_widget_anchor = NodePath("UIContainer/VBoxContainer/MarginContainer_Target")
+
+[node name="UIContainer" type="Panel" parent="."]
+custom_minimum_size = Vector2(420, 500)
+offset_right = 420.0
+offset_bottom = 1240.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_jjor3")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="UIContainer"]
+layout_mode = 0
+offset_right = 420.0
+offset_bottom = 1240.0
+theme_override_constants/separation = 0
+
+[node name="TitleBar" type="PanelContainer" parent="UIContainer/VBoxContainer"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_btjce")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="UIContainer/VBoxContainer/TitleBar"]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="UIContainer/VBoxContainer/TitleBar/HBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2509804, 0.5529412, 1, 1)
+theme_override_font_sizes/font_size = 13
+text = " 🗓️ DEBUG OVERLAY"
+
+[node name="CloseBtn" type="Button" parent="UIContainer/VBoxContainer/TitleBar/HBoxContainer"]
+layout_mode = 2
+text = "  ✕  "
+flat = true
+
+[node name="PlayerBar" type="PanelContainer" parent="UIContainer/VBoxContainer"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_5w5ig")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="UIContainer/VBoxContainer/PlayerBar"]
+layout_mode = 2
+
+[node name="PlayerLabel" type="Label" parent="UIContainer/VBoxContainer/PlayerBar/HBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12898806, 6.305128e-05, 0.4395525, 1)
+theme_override_font_sizes/font_size = 13
+text = "  💀 PLAYER"
+
+[node name="MarginContainer_Player" type="MarginContainer" parent="UIContainer/VBoxContainer"]
+layout_mode = 2
+accessibility_name = "⚡ Spawner"
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="PanelContainer_Player" type="PanelContainer" parent="UIContainer/VBoxContainer/MarginContainer_Player"]
+layout_mode = 2
+
+[node name="TargetBar" type="PanelContainer" parent="UIContainer/VBoxContainer"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_5w5ig")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="UIContainer/VBoxContainer/TargetBar"]
+layout_mode = 2
+
+[node name="TargetLabel" type="Label" parent="UIContainer/VBoxContainer/TargetBar/HBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.12898806, 6.305128e-05, 0.4395525, 1)
+theme_override_font_sizes/font_size = 13
+text = " 😡 Target"
+
+[node name="MarginContainer_Target" type="MarginContainer" parent="UIContainer/VBoxContainer"]
+layout_mode = 2
+accessibility_name = "⚡ Spawner"
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="PanelContainer_Target" type="PanelContainer" parent="UIContainer/VBoxContainer/MarginContainer_Target"]
+layout_mode = 2

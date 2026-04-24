@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="TorpedoData" load_steps=2 format=3 uid="uid://c3ti85xqvtkb4"]
+
+[ext_resource type="Script" uid="uid://e5d104onkic3" path="res://scripts/weapon_data_torpedo.gd" id="1_gquoj"]
+
+[resource]
+script = ExtResource("1_gquoj")
+torpedo_name = "Quantum Torpedo"
+damage = 200.0
+blast_radius = 10.0
+shield_damage_multiplier = 1.5
+hull_damage_multiplier = 1.0
+torpedo_color = Color(0.8197684, 0.8505141, 1, 1)
+trail_color = Color(0.666919, 0.61298937, 0.99603015, 1)
+glow_energy = 8.0
+collision_mask = 3
+metadata/_custom_type_script = "uid://e5d104onkic3"

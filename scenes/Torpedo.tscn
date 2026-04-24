@@ -1,0 +1,146 @@
+[gd_scene load_steps=17 format=3 uid="uid://os1qneg6o6ma"]
+
+[ext_resource type="Script" uid="uid://bs7kgrep61tf6" path="res://scripts/weapon_torpedo.gd" id="1_an5pm"]
+[ext_resource type="Shader" uid="uid://ca3ee6pv24c5x" path="res://shader/sphere_pulse.gdshader" id="2_l2d0s"]
+[ext_resource type="Texture2D" uid="uid://de4e7g7t3fpfj" path="res://assets/effects/brackeys/trace_07_a.png" id="3_218fl"]
+[ext_resource type="Shader" uid="uid://fhledknx7l5a" path="res://shader/torpedo_spikes.gdshader" id="3_l2d0s"]
+[ext_resource type="Texture2D" uid="uid://xo6fw3fh0yi0" path="res://assets/effects/brackeys/trace_01_a.png" id="4_s756j"]
+[ext_resource type="Texture2D" uid="uid://pl2bhieywpuc" path="res://assets/effects/brackeys/twirl_03_a.png" id="6_o64tc"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_218fl"]
+render_priority = 0
+shader = ExtResource("2_l2d0s")
+shader_parameter/base_color = Color(0.73668224, 0.8754384, 1, 1)
+shader_parameter/pulse_color = Color(0.25204793, 3.8889648e-05, 0.94241196, 1)
+shader_parameter/rim_color = Color(0, 1, 1, 1)
+shader_parameter/pulse_speed = 5.00000023424012
+shader_parameter/pulse_strength = 0.394000018715
+shader_parameter/noise_scale = 3.0
+shader_parameter/noise_strength = 0.47200002242
+shader_parameter/scale_amplitude = 0.15
+shader_parameter/emission_strength = 8.00000038
+shader_parameter/rim_power = 3.0
+shader_parameter/rim_strength = 5.0
+shader_parameter/shockwave_width = 0.35700001625898004
+shader_parameter/shockwave_strength = 3.0
+shader_parameter/use_scaling = true
+shader_parameter/use_noise = true
+shader_parameter/use_rim = true
+shader_parameter/use_shockwave = true
+
+[sub_resource type="SphereMesh" id="SphereMesh_o64tc"]
+radius = 1.0
+height = 2.0
+radial_segments = 16
+rings = 8
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_nsyta"]
+render_priority = 0
+shader = ExtResource("3_l2d0s")
+shader_parameter/use_texture = true
+shader_parameter/albedo_texture = ExtResource("3_218fl")
+shader_parameter/color = Color(1, 1, 0, 1)
+shader_parameter/rotation_speed = 1.0
+shader_parameter/scale_start = 0.3
+shader_parameter/scale_end = 0.75
+shader_parameter/fade_in = 0.1
+shader_parameter/fade_out = 0.3
+shader_parameter/edge_softness = 0.5
+shader_parameter/randomness = 2.0
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_s756j"]
+gravity = Vector3(0, 0, 0)
+
+[sub_resource type="QuadMesh" id="QuadMesh_xciyw"]
+size = Vector2(10, 20)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_o64tc"]
+render_priority = 0
+shader = ExtResource("3_l2d0s")
+shader_parameter/use_texture = true
+shader_parameter/albedo_texture = ExtResource("4_s756j")
+shader_parameter/color = Color(0, 1, 0, 1)
+shader_parameter/rotation_speed = 3.0
+shader_parameter/scale_start = 0.3
+shader_parameter/scale_end = 1.0
+shader_parameter/fade_in = 0.1
+shader_parameter/fade_out = 0.3
+shader_parameter/edge_softness = 0.5
+shader_parameter/randomness = 1.0
+
+[sub_resource type="QuadMesh" id="QuadMesh_nsyta"]
+size = Vector2(4, 20)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_xciyw"]
+render_priority = 0
+shader = ExtResource("3_l2d0s")
+shader_parameter/use_texture = true
+shader_parameter/albedo_texture = ExtResource("6_o64tc")
+shader_parameter/color = Color(0.98265713, 0, 0.17184411, 1)
+shader_parameter/rotation_speed = 1.2
+shader_parameter/scale_start = 0.3
+shader_parameter/scale_end = 0.7
+shader_parameter/fade_in = 0.1
+shader_parameter/fade_out = 0.3
+shader_parameter/edge_softness = 0.5
+shader_parameter/randomness = 2.0
+
+[sub_resource type="QuadMesh" id="QuadMesh_0qrun"]
+size = Vector2(4, 20)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_yt5oi"]
+render_priority = 0
+shader = ExtResource("3_l2d0s")
+shader_parameter/use_texture = true
+shader_parameter/albedo_texture = ExtResource("6_o64tc")
+shader_parameter/color = Color(0.96535945, 0.3749751, 1, 1)
+shader_parameter/rotation_speed = 0.9
+shader_parameter/scale_start = 0.3
+shader_parameter/scale_end = 0.9
+shader_parameter/fade_in = 0.1
+shader_parameter/fade_out = 0.3
+shader_parameter/edge_softness = 0.5
+shader_parameter/randomness = 2.0
+
+[node name="Torpedo" type="Node3D"]
+script = ExtResource("1_an5pm")
+debug_explosion = true
+
+[node name="CoreMesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0)
+material_override = SubResource("ShaderMaterial_218fl")
+mesh = SubResource("SphereMesh_o64tc")
+
+[node name="CoreLight" type="OmniLight3D" parent="."]
+light_energy = 18.0
+light_bake_mode = 0
+omni_range = 300.0
+omni_attenuation = 1.5
+
+[node name="GPUParticles3D" type="GPUParticles3D" parent="."]
+material_override = SubResource("ShaderMaterial_nsyta")
+amount = 1
+local_coords = true
+process_material = SubResource("ParticleProcessMaterial_s756j")
+draw_pass_1 = SubResource("QuadMesh_xciyw")
+
+[node name="GPUParticles3D2" type="GPUParticles3D" parent="."]
+material_override = SubResource("ShaderMaterial_o64tc")
+amount = 1
+local_coords = true
+process_material = SubResource("ParticleProcessMaterial_s756j")
+draw_pass_1 = SubResource("QuadMesh_nsyta")
+
+[node name="GPUParticles3D3" type="GPUParticles3D" parent="."]
+material_override = SubResource("ShaderMaterial_xciyw")
+amount = 1
+local_coords = true
+process_material = SubResource("ParticleProcessMaterial_s756j")
+draw_pass_1 = SubResource("QuadMesh_0qrun")
+
+[node name="GPUParticles3D4" type="GPUParticles3D" parent="."]
+material_override = SubResource("ShaderMaterial_yt5oi")
+amount = 1
+local_coords = true
+process_material = SubResource("ParticleProcessMaterial_s756j")
+draw_pass_1 = SubResource("QuadMesh_0qrun")

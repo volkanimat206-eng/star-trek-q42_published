@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ShieldData" load_steps=2 format=3 uid="uid://c5khhte4n1xop"]
+
+[ext_resource type="Script" uid="uid://2vfb0rbcifux" path="res://scripts/shield_data.gd" id="1_hax2v"]
+
+[resource]
+script = ExtResource("1_hax2v")
+recharge_rate = 10.0
+shield_color = Color(0, 0.9390932, 0.33361515, 0.68600005)
+impact_color = Color(0, 0, 0.95234615, 1)
+rim_power = 5.0
+impact_radius = 0.5
+impact_ring_width = 10.0
+metadata/_custom_type_script = "uid://2vfb0rbcifux"

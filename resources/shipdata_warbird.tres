@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ShipData" load_steps=9 format=3 uid="uid://2wv7algyk0vd"]
+
+[ext_resource type="Script" uid="uid://bfs0pr5hru0du" path="res://scripts/ship_data.gd" id="1_1gvea"]
+[ext_resource type="Resource" uid="uid://b6n04wg0u8ed0" path="res://resources/cb_romulan.tres" id="1_tc3tj"]
+[ext_resource type="Resource" uid="uid://b21bcmdemxfrd" path="res://resources/weapondata_disruptor_warbird.tres" id="1_vhxj6"]
+[ext_resource type="Resource" uid="uid://c6tnwl2jj7gba" path="res://resources/hulldata_warbird.tres" id="2_tc3tj"]
+[ext_resource type="Resource" uid="uid://c5khhte4n1xop" path="res://resources/shielddata_warbird.tres" id="3_io4k8"]
+[ext_resource type="Resource" uid="uid://kf11q0d5ch3g" path="res://resources/shipstats_warbird.tres" id="4_vhxj6"]
+[ext_resource type="Resource" uid="uid://bq0g06oxhacs" path="res://resources/shockwavedata_warbird.tres" id="6_b4gfp"]
+[ext_resource type="Resource" uid="uid://dbu7ib38l602p" path="res://resources/weapondata_plasma_torpedo.tres" id="7_b4gfp"]
+
+[resource]
+script = ExtResource("1_1gvea")
+ship_name = "Warbird"
+faction = 2
+weapon_target_mask = 35
+stats = ExtResource("4_vhxj6")
+shockwave_data = ExtResource("6_b4gfp")
+shield = ExtResource("3_io4k8")
+hull = ExtResource("2_tc3tj")
+combat_behavior = ExtResource("1_tc3tj")
+beam_weapon_data = ExtResource("1_vhxj6")
+torpedo_data = ExtResource("7_b4gfp")
+ship_scene_path = "uid://bbp54awc821bn"
+metadata/_custom_type_script = "uid://bfs0pr5hru0du"

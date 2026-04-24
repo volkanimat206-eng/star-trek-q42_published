@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="ShockwaveData" load_steps=2 format=3 uid="uid://bxkh3m2yf8p3i"]
+
+[ext_resource type="Script" uid="uid://bouhgwo0on3nc" path="res://scripts/shockwave_data.gd" id="1_p6g6i"]
+
+[resource]
+script = ExtResource("1_p6g6i")
+shockwave_radius = 300.0
+shockwave_force = 175.0
+metadata/_custom_type_script = "uid://bouhgwo0on3nc"

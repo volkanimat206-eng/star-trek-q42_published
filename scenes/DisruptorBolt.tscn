@@ -1,0 +1,35 @@
+[gd_scene load_steps=4 format=3 uid="uid://celow4qg0pxxa"]
+
+[ext_resource type="Script" uid="uid://jxymbwvowrpe" path="res://scripts/weapon_disruptor_bolt.gd" id="1_ofw2i"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_6kx2q"]
+blend_mode = 1
+cull_mode = 2
+shading_mode = 0
+diffuse_mode = 2
+vertex_color_use_as_albedo = true
+albedo_color = Color(0.22715122, 0.99999994, 0.18924385, 1)
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_ofw2i"]
+radius = 0.3
+height = 6.0
+radial_segments = 8
+rings = 4
+
+[node name="DisruptorBolt" type="Node3D"]
+script = ExtResource("1_ofw2i")
+pulse_speed = 20.0
+pulse_min = 0.1
+pulse_max = 3.0
+collision_mask = 3
+
+[node name="BoltMesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0)
+material_override = SubResource("StandardMaterial3D_6kx2q")
+mesh = SubResource("CapsuleMesh_ofw2i")
+
+[node name="BoltLight" type="OmniLight3D" parent="."]
+light_color = Color(0, 0.9727889, 0.33402207, 1)
+light_energy = 3.0
+omni_range = 3.0
+omni_attenuation = 2.0

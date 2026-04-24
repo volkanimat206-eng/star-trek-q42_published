@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ShipData" load_steps=5 format=3 uid="uid://c7yeiowg0cgey"]
+
+[ext_resource type="Script" uid="uid://bfs0pr5hru0du" path="res://scripts/ship_data.gd" id="1_j7g6e"]
+[ext_resource type="Resource" uid="uid://dj52fe2b1v8i4" path="res://resources/cb_klingon.tres" id="1_nagfd"]
+[ext_resource type="Resource" uid="uid://cvuvetvegcohu" path="res://resources/shielddata_kvek.tres" id="3_crdrc"]
+[ext_resource type="Resource" uid="uid://bd6ypm5w527ic" path="res://resources/shipstats_kvek.tres" id="4_ffhrf"]
+
+[resource]
+script = ExtResource("1_j7g6e")
+ship_name = "Kvek"
+faction = 1
+stats = ExtResource("4_ffhrf")
+shield = ExtResource("3_crdrc")
+combat_behavior = ExtResource("1_nagfd")
+ship_scene_path = "uid://dedqlnhcxprge"
+metadata/_custom_type_script = "uid://bfs0pr5hru0du"
