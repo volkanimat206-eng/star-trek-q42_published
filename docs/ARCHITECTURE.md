@@ -27,40 +27,40 @@ PhaserAudioPool       → Polyphone Audio-Wiedergabe für Beam-Waffen
 ## Domänen-Architektur
 
 ```
-                                 Player Input
-                                      │
-                                      ▼
-                              PlayerController ─────► InputComponent
-                                      │
-                                      ▼
-                          ╔═══════════════════════╗
-                          ║   ShipController      ║◄─── ShipData (.tres)
-                          ║                       ║
-                          ║  movement_comp ──────►║──► MovementComponent
-                          ║  shield_system ──────►║──► ShieldSystem ──► ShieldData
-                          ║  weapon_mounts[] ────►║──► WeaponMount[] ─► BeamWeapon3D
-                          ║  targeting_system ───►║──► TargetingSystem
-                          ║  hull_data           ║
-                          ╚═══════════════════════╝
-                                      ▲
-                                      │
-                              AIController (für NPCs)
-                                      │
-                                      ▼
-                         RelationshipResolver.are_hostile()
-                                      │
-                            ┌─────────┴─────────┐
-                            ▼                   ▼
-                    Aggro-Layer (30s)    FactionSystem.is_faction_pair_hostile()
-                    + Ally-Propagation
-                            ▲
-                            │
-                ShipController._fire_weapons_of_type()
-                  │  notify_attack(self, victim)
-                  ▼
-              Resolver setzt Aggro:
-                victim → attacker
-                allies(victim) → attacker
+								 Player Input
+									  │
+									  ▼
+							  PlayerController ─────► InputComponent
+									  │
+									  ▼
+						  ╔═══════════════════════╗
+						  ║   ShipController      ║◄─── ShipData (.tres)
+						  ║                       ║
+						  ║  movement_comp ──────►║──► MovementComponent
+						  ║  shield_system ──────►║──► ShieldSystem ──► ShieldData
+						  ║  weapon_mounts[] ────►║──► WeaponMount[] ─► BeamWeapon3D
+						  ║  targeting_system ───►║──► TargetingSystem
+						  ║  hull_data           ║
+						  ╚═══════════════════════╝
+									  ▲
+									  │
+							  AIController (für NPCs)
+									  │
+									  ▼
+						 RelationshipResolver.are_hostile()
+									  │
+							┌─────────┴─────────┐
+							▼                   ▼
+					Aggro-Layer (30s)    FactionSystem.is_faction_pair_hostile()
+					+ Ally-Propagation
+							▲
+							│
+				ShipController._fire_weapons_of_type()
+				  │  notify_attack(self, victim)
+				  ▼
+			  Resolver setzt Aggro:
+				victim → attacker
+				allies(victim) → attacker
 ```
 
 ## Schiff-Architektur
@@ -72,17 +72,17 @@ Ein Schiff ist eine Komposition aus austauschbaren Subsystemen. Der `ShipControl
 ```
 CharacterBody3D (Player oder AIController)
 └── ShipController          # Coordinator, hält ship_data + Subsystem-Refs
-    ├── Model               # Visueller Mesh-Tree
-    │   ├── Hull-Meshes
-    │   ├── ShieldMesh      # Eigenes Mesh, eigener Shader
-    │   └── Bones / Bones-Anim
-    ├── HullCollision       # StaticBody3D auf Layer 1
-    ├── HullImpactReceiver  # Decal-Pool für Impact-Effekte
-    ├── MovementComponent   # Speed/Acceleration/Drift-Logik
-    ├── ShieldSystem        # Vier-Zonen, Regen, Shader-Steuerung
-    ├── TargetingSystem     # Lock/Multi-Lock, Mode-Switching
-    ├── WeaponMount[]       # Pro Mount-Position ein Node
-    └── DamageVisualizer    # Hüllen-Schadens-Decals
+	├── Model               # Visueller Mesh-Tree
+	│   ├── Hull-Meshes
+	│   ├── ShieldMesh      # Eigenes Mesh, eigener Shader
+	│   └── Bones / Bones-Anim
+	├── HullCollision       # StaticBody3D auf Layer 1
+	├── HullImpactReceiver  # Decal-Pool für Impact-Effekte
+	├── MovementComponent   # Speed/Acceleration/Drift-Logik
+	├── ShieldSystem        # Vier-Zonen, Regen, Shader-Steuerung
+	├── TargetingSystem     # Lock/Multi-Lock, Mode-Switching
+	├── WeaponMount[]       # Pro Mount-Position ein Node
+	└── DamageVisualizer    # Hüllen-Schadens-Decals
 ```
 
 Bei NPCs wird zusätzlich oben ein `AIController` als Wrapper drüber gesetzt, der das gleiche `CharacterBody3D` ist und einen `Radar`-Area3D-Child hat.
@@ -140,17 +140,17 @@ WeaponMount.fire_at(target_pos, target_node)
    │     └── BeamWeapon3D.is_target_in_arc()  ← Shape-aware Arc-Check
    │
    └── BeamWeapon3D fire / Raycast
-          │
-          ├── Hit Shield → ShieldSystem.receive_hit_ex()
-          │      └── Zone-Routing + Bleed
-          └── Hit Hull → HullImpactReceiver.add_decal()
-                    └── DamageVisualizer (Feuer/Rauch ab Hull-%)
+		  │
+		  ├── Hit Shield → ShieldSystem.receive_hit_ex()
+		  │      └── Zone-Routing + Bleed
+		  └── Hit Hull → HullImpactReceiver.add_decal()
+					└── DamageVisualizer (Feuer/Rauch ab Hull-%)
 
 ShipController._fire_weapons_of_type() (parallel):
    └── RelationshipResolver.notify_attack(self, victim)
-          ├── add_aggro(victim → attacker)         (30s)
-          └── Ally-Scan (gleiche Fraktion, 500m)
-                └── add_aggro(ally → attacker) für jeden gefundenen
+		  ├── add_aggro(victim → attacker)         (30s)
+		  └── Ally-Scan (gleiche Fraktion, 500m)
+				└── add_aggro(ally → attacker) für jeden gefundenen
 ```
 
 ## Reputation/Faction-Resolver-Logik

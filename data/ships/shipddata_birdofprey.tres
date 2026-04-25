@@ -2,14 +2,19 @@
 
 [ext_resource type="Resource" uid="uid://dj52fe2b1v8i4" path="res://resources/cb_klingon.tres" id="1_1o8v7"]
 [ext_resource type="Script" uid="uid://bfs0pr5hru0du" path="res://resources/data/ship_data.gd" id="1_7sek7"]
+[ext_resource type="Script" uid="uid://dq5py42u2ije5" path="res://resources/data/cloak_data.gd" id="1_olxir"]
 [ext_resource type="Resource" uid="uid://j7kdjw4gagys" path="res://data/hulls/hulldata_birdofprey.tres" id="2_d4kd8"]
 [ext_resource type="Resource" uid="uid://s5no21vj7a1" path="res://data/shields/shielddata_birdofprey.tres" id="3_d4kd8"]
 [ext_resource type="Resource" uid="uid://nsgk2qqpppmc" path="res://resources/shipstats_birdofprey.tres" id="4_yfkko"]
 [ext_resource type="Resource" uid="uid://bxkh3m2yf8p3i" path="res://resources/shockwavedata_birdofprey.tres" id="5_yfkko"]
 
+[sub_resource type="Resource" id="Resource_qte1b"]
+script = ExtResource("1_olxir")
+metadata/_custom_type_script = "uid://dq5py42u2ije5"
+
 [resource]
 script = ExtResource("1_7sek7")
-ship_name = "Bak Ktar"
+ship_name = "BirdOfPrey"
 registry = "1"
 faction = 1
 weapon_target_mask = 35
@@ -19,4 +24,6 @@ shield = ExtResource("3_d4kd8")
 hull = ExtResource("2_d4kd8")
 combat_behavior = ExtResource("1_1o8v7")
 ship_scene_path = "uid://ba2kgx0xuybdg"
+can_cloak = true
+cloak_data = SubResource("Resource_qte1b")
 metadata/_custom_type_script = "uid://bfs0pr5hru0du"

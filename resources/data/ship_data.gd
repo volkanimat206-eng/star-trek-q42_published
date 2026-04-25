@@ -74,3 +74,10 @@ enum Faction {
 @export_group("Visuell")
 ## Das eigentliche 3D-Scene-File des Schiffs (wird vom PlayerController instanziiert).
 @export_file("*.tscn") var ship_scene_path: String = ""
+
+# ── Cloaking ──────────────────────────────────────────────────────────────────
+@export_group("Cloaking")
+## Wenn true, kann dieses Schiff sich tarnen (CloakComponent wird angelegt).
+@export var can_cloak: bool = false
+## Optionale Tuning-Resource. Wenn null, werden CloakData-Defaults genutzt.
+@export var cloak_data: CloakData = null

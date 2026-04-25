@@ -57,6 +57,9 @@ var model:            Node3D
 var targeting_system: TargetingSystem
 var shield_system:    ShieldSystem
 var movement_comp:    MovementComponent
+## Optional: CloakComponent als Subsystem. NULL wenn das Schiff nicht
+## tarnen kann (siehe ship_data.can_cloak).
+var cloak_component:  CloakComponent = null
 var _is_alive:        bool     = true
 ## Pro-Instanz-Kopie der HullData – verhindert shared-Resource-Bug
 ## wenn mehrere Schiffe desselben Typs in der Szene sind.
@@ -121,6 +124,7 @@ func _ready() -> void:
 
 func _setup_shield_deferred() -> void:
 	_setup_shield()
+	_setup_cloak()
 
 	print("═══════════════════════════════════")
 	print("  SHIP : %s | %s [%s]" % [ship_name, registry, ship_data.faction])
@@ -975,3 +979,118 @@ func _register_faction_group() -> void:
 func _dbg(msg: String) -> void:
 	if show_debug:
 		print("[ShipController|%s] %s" % [ship_name, msg])
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CLOAK-SYSTEM API
+# ─────────────────────────────────────────────────────────────────────────────
+
+## Setzt den CloakComponent auf, wenn ship_data.can_cloak gesetzt ist.
+## Wird aus _setup_shield_deferred() aufgerufen, also nach allen anderen
+## Subsystemen damit der Cloak auf Schilde/Waffen zugreifen kann.
+func _setup_cloak() -> void:
+	if not ship_data:
+		return
+	if not ship_data.get("can_cloak"):
+		_dbg("ℹ Cloak deaktiviert (ship_data.can_cloak=false)")
+		return
+
+	# CloakComponent dynamisch anlegen – kein Scene-Tree-Eintrag nötig
+	cloak_component = CloakComponent.new()
+	cloak_component.name = "CloakComponent"
+
+	# CloakData aus ship_data übernehmen, falls vorhanden
+	var cd: CloakData = ship_data.get("cloak_data") as CloakData
+	if cd:
+		cloak_component.data = cd
+	# else: CloakComponent.new() erzeugt selbst Defaults
+
+	cloak_component.show_debug = show_debug
+	add_child(cloak_component)
+
+	# Signal-Verbindungen für Logging und potenzielle UI-Hooks
+	cloak_component.cloaking_started.connect(func(): _dbg("🌀 Cloak: tarnt sich..."))
+	cloak_component.cloaked.connect(func(): _dbg("✅ Cloak: voll getarnt"))
+	cloak_component.decloaked.connect(func(): _dbg("✅ Cloak: enttarnt"))
+	cloak_component.cloak_broken.connect(func(reason: String):
+		_dbg("💥 Cloak gebrochen: %s" % reason))
+
+	_dbg("✅ CloakComponent bereit (detection_range=%.0fm)" % cloak_component.data.detection_range)
+
+
+## Toggle-Trigger für Player-Input und externe Quellen.
+## Returns false wenn das Schiff nicht tarnen kann oder Toggle ignoriert wurde.
+func toggle_cloak() -> bool:
+	if not cloak_component:
+		_dbg("⚠ toggle_cloak: kein CloakComponent vorhanden")
+		return false
+	return cloak_component.toggle_cloak()
+
+
+## Sichtbarkeit des Schiffs für einen externen Beobachter.
+## 0.0 = unsichtbar, 1.0 = voll sichtbar. Wird von TargetingSystem,
+## AIController und allen anderen Visibility-Konsumenten genutzt.
+##
+## Schiffe ohne CloakComponent sind immer voll sichtbar (1.0).
+func visibility_to(observer: Node3D) -> float:
+	if not cloak_component:
+		return 1.0
+	return cloak_component.visibility_to(observer)
+
+
+## Convenience: true wenn das Schiff für den Beobachter nutzbar/sichtbar
+## genug ist um es als Target zu locken oder mit AI-Scan zu erkennen.
+##
+## Threshold: 0.1 — alles unter 10% Sichtbarkeit gilt als "unsichtbar".
+## Damit nutzen wir die Shimmer-Zone (innerhalb detection_range) als
+## "der Spieler kann das Schiff erahnen aber noch nicht voll tracken".
+func is_visible_to(observer: Node3D) -> bool:
+	return visibility_to(observer) >= 0.1
+
+
+## true wenn das Schiff aktuell getarnt oder im Übergang ist.
+## Quick-Check für UI/Debug ohne Detection-Range zu beachten.
+func is_cloaked() -> bool:
+	if not cloak_component:
+		return false
+	return cloak_component.is_cloaked() or cloak_component.is_transitioning()
+
+
+## Wird vom CloakComponent aufgerufen um Waffen während Cloak zu sperren.
+## Iteriert über alle Mounts und setzt deren is_cloak_locked-Flag.
+func set_weapons_cloak_locked(locked: bool) -> void:
+	for mount in weapon_mounts:
+		if mount and mount.has_method("set_cloak_locked"):
+			mount.set_cloak_locked(locked)
+		elif mount:
+			# Fallback: direkter Property-Set für Mounts ohne Methode
+			if "is_cloak_locked" in mount:
+				mount.is_cloak_locked = locked
+
+
+## Wird vom CloakComponent aufgerufen um Schilde während Cloak offline zu nehmen.
+## Beim Re-Aktivieren werden die Schilde mit Standard-Recharge-Delay neu starten.
+func set_shields_cloak_offline(offline: bool) -> void:
+	if not shield_system or not shield_system.data:
+		return
+
+	if offline:
+		# Schilde sofort auf 0 bringen ohne den Destroy-Effect zu triggern
+		# (das würde Dissolve-Tween starten was wir nicht wollen)
+		for i in range(ShieldZone.COUNT):
+			shield_system.data.zone_strengths[i] = 0.0
+		shield_system.data._recompute_current_from_zones()
+		shield_system._is_recharging = false
+		shield_system._recharge_timer = 0.0
+		# Mesh ausblenden
+		if shield_system._mesh_instance:
+			shield_system._mesh_instance.visible = false
+		_dbg("🛡️ Schilde offline (Cloak)")
+	else:
+		# Schilde dürfen wieder regenerieren – starten bei 0 mit recharge_delay
+		shield_system._recharge_timer = shield_system.data.recharge_delay
+		shield_system._is_destroyed   = false
+		shield_system._is_dissolved   = false
+		if shield_system._mesh_instance:
+			shield_system._mesh_instance.visible = true
+		_dbg("🛡️ Schilde online (Cloak Ende, Regen-Delay aktiv)")

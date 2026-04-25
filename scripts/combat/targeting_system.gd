@@ -281,6 +281,16 @@ func _validate_lock() -> void:
 		_release_lock()
 		return
 
+	# CLOAK-VALIDATE: Wenn sich das Target getarnt hat und außer Detection-
+	# Range ist, brechen wir den Lock. Innerhalb der Schimmer-Range bleibt
+	# der Lock bestehen — der Spieler kann Cloakede Schiffe noch tracken
+	# solange sie nah genug sind.
+	if sc and sc.has_method("is_visible_to"):
+		if not sc.is_visible_to(_own_ship):
+			_dbg("LOCK VALIDATE: Ziel getarnt + außer Detection-Range → release")
+			_release_lock()
+			return
+
 	var dist: float = global_position.distance_to(locked_target.global_position)
 	if dist > max_lock_range:
 		_dbg("LOCK VALIDATE: Außer Reichweite (%.0f > %.0f) → release" % [dist, max_lock_range])
@@ -379,6 +389,10 @@ func _prune_invalid_multi_targets() -> void:
 			var sc := _find_ship_controller_of(t)
 			if sc and sc.get_hull_integrity() <= 0.0:
 				remove = true
+			elif sc and sc.has_method("is_visible_to") and not sc.is_visible_to(_own_ship):
+				# Cloak: Target ist getarnt UND außer Detection-Range → raus
+				remove = true
+				_dbg("MULTI: '%s' getarnt → raus" % t.name)
 			elif not _is_hostile(t):
 				# Disposition-Wechsel → raus aus Multi-Lock
 				remove = true
@@ -462,6 +476,15 @@ func _get_all_targets_sorted() -> Array[Node3D]:
 			if show_debug:
 				print("[TargetingSystem]   → SKIP (zerstört): '%s'" % n3d.name)
 			continue
+
+		# CLOAK-FILTER: Cloakede Ships sind nicht targetbar.
+		# Im Detection-Schimmer (<100m default) bleibt is_visible_to true,
+		# also kann der Player auch dann targeten wenn er nah genug ist.
+		if sc and sc.has_method("is_visible_to"):
+			if not sc.is_visible_to(_own_ship):
+				if show_debug:
+					print("[TargetingSystem]   → SKIP (cloaked): '%s'" % n3d.name)
+				continue
 
 		var dist: float = global_position.distance_to(n3d.global_position)
 		if dist <= max_lock_range:

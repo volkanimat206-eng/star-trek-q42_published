@@ -4,6 +4,7 @@
 [ext_resource type="Script" uid="uid://bfs0pr5hru0du" path="res://resources/data/ship_data.gd" id="1_3ju8f"]
 [ext_resource type="Resource" uid="uid://cxj1fnk6rck4q" path="res://data/weapons/weapondata_phaser_sovereign.tres" id="1_8ddec"]
 [ext_resource type="Resource" uid="uid://b4ki8ka56fe2m" path="res://data/hulls/hulldata_sovereign.tres" id="2_gsgdk"]
+[ext_resource type="Resource" uid="uid://ccy6vwvn8tgg0" path="res://resources/cloak_data_sovereign.tres" id="2_xloj1"]
 [ext_resource type="Resource" uid="uid://xcg3chji10d0" path="res://data/shields/shielddata_sovereign.tres" id="3_gsgdk"]
 [ext_resource type="Resource" uid="uid://b1sl0pidh6b7t" path="res://resources/shipstats_sovereign.tres" id="4_vhcdi"]
 [ext_resource type="Resource" uid="uid://cw5ex24ispc0" path="res://resources/shockwavedata_sovereign.tres" id="6_wk48e"]
@@ -21,4 +22,6 @@ combat_behavior = ExtResource("1_1bj00")
 beam_weapon_data = ExtResource("1_8ddec")
 torpedo_data = ExtResource("7_wk48e")
 ship_scene_path = "uid://dnj4ytivaaskd"
+can_cloak = true
+cloak_data = ExtResource("2_xloj1")
 metadata/_custom_type_script = "uid://bfs0pr5hru0du"

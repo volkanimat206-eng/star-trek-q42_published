@@ -501,6 +501,17 @@ func _is_hostile_to_me(node: Node) -> bool:
 	if not node or not ship_data:
 		return false
 
+	# ── CLOAK-VISIBILITY ─────────────────────────────────────────────────
+	# Cloakede Schiffe sind nicht hostile, weil wir sie schlicht nicht sehen.
+	# Erst wenn sie sich enttarnen oder in Detection-Range sind, können wir
+	# auf sie reagieren.
+	var target_sc: Node = _find_ship_controller_in(node)
+	if target_sc and target_sc.has_method("is_visible_to"):
+		if not target_sc.is_visible_to(self):
+			if show_debug:
+				_dbg("    → Cloaked: '%s' nicht sichtbar (skip)" % node.name)
+			return false
+
 	# ── PRIMÄR: RelationshipResolver ──────────────────────────────────────
 	var resolver: Node = get_tree().root.get_node_or_null("RelationshipResolver")
 	if resolver and resolver.has_method("are_hostile"):
@@ -794,4 +805,4 @@ func _enter_combat(target: Node3D) -> void:
 
 	_set_radar_pulsing(false)
 	_update_radar_color()
-	_dbg("→ COMBAT | Ziel: %s | Radar rot + statisch" % target.name) 
+	_dbg("→ COMBAT | Ziel: %s | Radar rot + statisch" % target.name)

@@ -149,6 +149,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("fire_torpedo"):
 		print("[PlayerController] fire_torpedo Input erkannt!")
 		_on_torpedo_pressed()
+		
+	# Cloak toggeln mit Taste C (Action: "toggle_cloak" in Project Settings anlegen)
+	if event.is_action_pressed("toggle_cloak"):
+		if ship_controller and ship_controller.has_method("toggle_cloak"):
+			ship_controller.toggle_cloak()
 
 
 # ─────────────────────────────────────────────────────────────────────────────

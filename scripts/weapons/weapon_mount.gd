@@ -75,6 +75,9 @@ enum WeaponType    { PHASER, DISRUPTOR, TORPEDO, PULSE_PHASER }
 var weapon_instance: Node3D
 var gizmo_node:      MeshInstance3D
 var is_weapon_ready: bool = false
+## Wenn true, blockt fire_at() silent — gesetzt vom CloakComponent während
+## Tarnung. Standard-Verhalten: Schiff feuert nicht während getarnt.
+var is_cloak_locked: bool = false
 
 # ===== CORE =====
 func _ready():
@@ -430,6 +433,10 @@ func _draw_arc_sector(st: SurfaceTool, color: Color):
 func fire_at(target_pos: Vector3, weapon_range: float = INF, freeze_beam: bool = false, tracking_node: Node3D = null) -> bool:
 	if not is_weapon_ready:
 		return false
+	if is_cloak_locked:
+		# Silent skip – Schiff ist getarnt, Waffen offline.
+		# Kein Log um nicht jeden Frame zu spammen.
+		return false
 	if not weapon_instance or not is_instance_valid(weapon_instance):
 		return false
 
@@ -618,3 +625,13 @@ func _dbg(msg: String):
 	# Nur ausgeben wenn debug_arc aktiv
 	if debug_arc:
 		print("[WeaponMount:%s] %s" % [name, msg])
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CLOAK-INTEGRATION
+# ─────────────────────────────────────────────────────────────────────────────
+
+## Wird vom CloakComponent über ShipController.set_weapons_cloak_locked()
+## aufgerufen. Sperrt fire_at() solange das Schiff getarnt ist.
+func set_cloak_locked(locked: bool) -> void:
+	is_cloak_locked = locked
