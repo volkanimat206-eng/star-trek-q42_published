@@ -73,8 +73,20 @@ signal debug_log_generated(ship_name: String, message: String)
 # INTERN
 # ─────────────────────────────────────────────────────────────────────────────
 
+@export_group("Komponenten")
+## CloakComponent dieses NPC-Schiffs. Im Inspector zuweisen.
+## Nicht zugewiesen = NPC tarnt nie (kein Fehler).
+@export var cloak_component: CloakComponent
+
 var ship_controller: ShipController
 var _initialized: bool = false
+
+@export_group("Tarnung")
+## NPC taucht kurz nach dem Spawnen in den Cloak-Modus ein.
+@export var cloak_on_spawn: bool = false
+## Verzögerung in Sekunden nach dem Spawn, bevor der Cloak aktiviert wird.
+## Gibt dem Schiff Zeit, sauber zu initialisieren und sichtbar zu spawnen.
+@export_range(0.5, 10.0, 0.5) var cloak_spawn_delay: float = 2.0
 var _state: State = State.PATROL
 var _target: Node3D = null
 var _pulse_tween: Tween
@@ -127,8 +139,16 @@ func _ready() -> void:
 
 	_instantiate_ship()
 
+	# Spawn-Cloak: NPC taucht kurz nach dem Erscheinen in die Tarnung ein.
+	# cloak_component ist per @export im Inspector zugewiesen — kein Suchen nötig.
+	if cloak_on_spawn:
+		if is_instance_valid(cloak_component):
+			_trigger_spawn_cloak()
+		else:
+			_dbg_cloak("⚠ cloak_on_spawn=true aber keine CloakComponent im Inspector zugewiesen!")
+
 	_initialized = true
-	_dbg("AIController fully initialized (3 physics frames)")
+	_dbg("AIController fully initialized")
 
 ## Radar-Radius auf detection_radius synchronisieren.
 ## So passt sich die Area3D automatisch an den Inspector-Wert an.
@@ -194,6 +214,22 @@ func _update_radar_color() -> void:
 		mat.albedo_color = Color(1.0, 0.15, 0.15, 0.4)
 	else:
 		mat.albedo_color = Color(0.1, 1.0, 0.2, 0.3)
+
+## Spawn-Cloak: Wartet cloak_spawn_delay Sekunden, dann aktiviert Tarnung.
+## Delay gibt dem Schiff Zeit zum sichtbaren Spawnen (cineastischer Effekt)
+## und stellt sicher dass alle Child-Nodes (CloakComponent, ShieldSystem, etc.)
+## vollständig initialisiert sind.
+func _trigger_spawn_cloak() -> void:
+	_dbg("🕐 Spawn-Cloak in %.1fs..." % cloak_spawn_delay)
+	await get_tree().create_timer(cloak_spawn_delay).timeout
+	if not is_instance_valid(cloak_component):
+		_dbg("⚠ Spawn-Cloak: CloakComponent nicht mehr gültig (NPC zerstört?)")
+		return
+	if cloak_component.toggle_cloak():
+		_dbg("🫥 Spawn-Cloak aktiviert")
+	else:
+		_dbg("⚠ Spawn-Cloak: toggle_cloak() wurde ignoriert (State: %s)" % cloak_component._state)
+
 
 func _instantiate_ship() -> void:
 	if ship_data.ship_scene_path.is_empty(): return
@@ -262,12 +298,17 @@ func _physics_process(delta: float) -> void:
 	if not is_inside_tree():
 		return
 
-	# DebugManager-Zugriff defensiv: Autoload-Reihenfolge beim Free kann
-	# je nach Godot-Version variieren.
-	if is_instance_valid(DebugManager):
-		var global_debug = DebugManager.get_flag("ai.debug")
-		if global_debug != show_debug:
-			show_debug = global_debug
+	# Absoluter Schutz gegen Placeholder-Fehler in Godot 4.6:
+	# Wir prüfen zuerst, ob wir uns im Editor befinden. Autoloads wie der 
+	# DebugManager sind im Editor-Modus für Tool-Skripte oft nicht verfügbar.
+	if not Engine.is_editor_hint():
+		if is_instance_valid(DebugManager):
+			# Nutze get(), um den Wert sicher abzufragen, falls get_flag 
+			# als Methode immer noch Probleme macht, oder bleib bei call().
+			var global_debug = DebugManager.call("get_flag", "ai.debug")
+			
+			if global_debug is bool and global_debug != show_debug:
+				show_debug = global_debug
 
 	if not _initialized or not is_instance_valid(ship_controller): return
 
@@ -695,6 +736,15 @@ func _dbg(msg: String) -> void:
 		debug_log_generated.emit(name, msg)
 
 
+func _dbg_cloak(msg: String) -> void:
+	var dm: Node = get_tree().root.get_node_or_null("DebugManager")
+	var flag_active: bool = false
+	if dm and dm.has_method("get_flag"):
+		flag_active = dm.get_flag("cloak.setup")
+	if show_debug or flag_active:
+		print("[AI:Cloak:%s] %s" % [name, msg])
+
+
 func _move_approach(to_target: Vector3, _dist: float, stats: ShipStats, delta: float) -> void:
 	_apply_steering(to_target.normalized(), stats.max_speed, stats, delta, to_target.y * 0.5)
 
@@ -795,6 +845,12 @@ func _enter_combat(target: Node3D) -> void:
 
 	_state = State.COMBAT
 	_target = target
+
+	# Cloak brechen wenn der NPC in den Kampf geht — getarnte Schiffe kämpfen nicht
+	if is_instance_valid(cloak_component) and \
+		(cloak_component.is_cloaked() or cloak_component.is_transitioning()):
+		cloak_component.break_cloak("combat_entry")
+		_dbg("💥 Cloak gebrochen wegen COMBAT-Eintritt")
 	_torpedo_fire_timer = randf_range(2.0, 4.0)
 	_combat_phase = CombatPhase.APPROACH
 	_orbit_dir = 1.0 if randf() > 0.5 else -1.0

@@ -51,6 +51,11 @@ signal ship_destroyed()
 @export_group("Debug")
 @export var show_debug: bool = true
 
+@export_group("Systeme")
+## CloakComponent für dieses Schiff. Im Inspector zuweisen — Node unter ShipController.
+## Nicht zugewiesen = Schiff kann nicht tarnen (kein Fehler, nur kein Cloak).
+@export var cloak_component: CloakComponent
+
 # ===== INTERN =====
 var weapon_mounts: Array = [] # WeaponMount + WingDisruptorMount
 var model:            Node3D
@@ -58,8 +63,8 @@ var targeting_system: TargetingSystem
 var shield_system:    ShieldSystem
 var movement_comp:    MovementComponent
 ## Optional: CloakComponent als Subsystem. NULL wenn das Schiff nicht
-## tarnen kann (siehe ship_data.can_cloak).
-var cloak_component:  CloakComponent = null
+## tarnen kann (kein Node im Inspector zugewiesen).
+# cloak_component ist jetzt @export — siehe oben unter "Systeme"
 var _is_alive:        bool     = true
 ## Pro-Instanz-Kopie der HullData – verhindert shared-Resource-Bug
 ## wenn mehrere Schiffe desselben Typs in der Szene sind.
@@ -256,6 +261,11 @@ func receive_damage_ex(damage: float, impact_point: Vector3,
 		return [0.0, -1]
 
 	_dbg("📥 receive_damage: %.0f [%s]" % [damage, damage_type])
+
+	# Cloak-Break: Treffer enttarnt das Schiff sofort (kanonisch + fair)
+	if cloak_component and (cloak_component.is_cloaked() or cloak_component.is_transitioning()):
+		_dbg("💥 Cloak durch Treffer gebrochen!")
+		cloak_component.break_cloak("hit_received")
 
 	var hull_damage: float = damage
 	var slot_index:  int   = -1
@@ -989,33 +999,32 @@ func _dbg(msg: String) -> void:
 ## Wird aus _setup_shield_deferred() aufgerufen, also nach allen anderen
 ## Subsystemen damit der Cloak auf Schilde/Waffen zugreifen kann.
 func _setup_cloak() -> void:
-	if not ship_data:
+	# cloak_component ist per @export im Inspector zugewiesen — keine Suche nötig.
+	if not is_instance_valid(cloak_component):
+		_dbg_cloak("ℹ Kein CloakComponent zugewiesen → Schiff tarnt nicht")
 		return
-	if not ship_data.get("can_cloak"):
-		_dbg("ℹ Cloak deaktiviert (ship_data.can_cloak=false)")
-		return
-
-	# CloakComponent dynamisch anlegen – kein Scene-Tree-Eintrag nötig
-	cloak_component = CloakComponent.new()
-	cloak_component.name = "CloakComponent"
-
-	# CloakData aus ship_data übernehmen, falls vorhanden
-	var cd: CloakData = ship_data.get("cloak_data") as CloakData
-	if cd:
-		cloak_component.data = cd
-	# else: CloakComponent.new() erzeugt selbst Defaults
 
 	cloak_component.show_debug = show_debug
-	add_child(cloak_component)
 
-	# Signal-Verbindungen für Logging und potenzielle UI-Hooks
-	cloak_component.cloaking_started.connect(func(): _dbg("🌀 Cloak: tarnt sich..."))
-	cloak_component.cloaked.connect(func(): _dbg("✅ Cloak: voll getarnt"))
-	cloak_component.decloaked.connect(func(): _dbg("✅ Cloak: enttarnt"))
+	cloak_component.cloaking_started.connect(func(): _dbg_cloak("🌀 Cloak: tarnt sich..."))
+	cloak_component.cloaked.connect(func(): _dbg_cloak("✅ Cloak: voll getarnt"))
+	cloak_component.decloaked.connect(func(): _dbg_cloak("✅ Cloak: enttarnt"))
 	cloak_component.cloak_broken.connect(func(reason: String):
-		_dbg("💥 Cloak gebrochen: %s" % reason))
+		_dbg_cloak("💥 Cloak gebrochen: %s" % reason))
 
-	_dbg("✅ CloakComponent bereit (detection_range=%.0fm)" % cloak_component.data.detection_range)
+	_dbg_cloak("✅ CloakComponent '%s' bereit (detection_range=%.0fm | fade_in=%.1fs)" % [
+		cloak_component.name, cloak_component.detection_range, cloak_component.fade_in_duration
+	])
+
+
+## Debug-Log speziell für Cloak-Events — über DebugManager-Flag "cloak.setup" steuerbar.
+func _dbg_cloak(msg: String) -> void:
+	var dm: Node = get_tree().root.get_node_or_null("DebugManager")
+	var flag_active: bool = false
+	if dm and dm.has_method("get_flag"):
+		flag_active = dm.get_flag("cloak.setup")
+	if show_debug or flag_active:
+		print("[ShipController|Cloak|%s] %s" % [ship_name, msg])
 
 
 ## Toggle-Trigger für Player-Input und externe Quellen.

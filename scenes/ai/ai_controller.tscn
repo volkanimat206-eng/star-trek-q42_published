@@ -15,20 +15,21 @@ albedo_color = Color(0, 1, 0.5449209, 0.3)
 material = SubResource("StandardMaterial3D_xdfxt")
 inner_radius = 0.95
 
-[node name="AiController" type="CharacterBody3D"]
+[node name="AiController" type="CharacterBody3D" unique_id=1726807868]
 collision_layer = 32
 collision_mask = 7
 script = ExtResource("1_xdfxt")
 show_debug = true
+cloak_on_spawn = true
 
-[node name="Radar" type="Area3D" parent="."]
+[node name="Radar" type="Area3D" parent="." unique_id=1626447805]
 collision_layer = 0
 collision_mask = 32
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Radar"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Radar" unique_id=709025079]
 shape = SubResource("SphereShape3D_rx8b1")
 
-[node name="ScanTimer" type="Timer" parent="."]
+[node name="ScanTimer" type="Timer" parent="." unique_id=1458872702]
 
-[node name="RadarVisualizer" type="MeshInstance3D" parent="."]
+[node name="RadarVisualizer" type="MeshInstance3D" parent="." unique_id=1247240524]
 mesh = SubResource("TorusMesh_rx8b1")

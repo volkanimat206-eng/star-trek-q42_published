@@ -29,6 +29,8 @@ extends CharacterBody3D
 var ship_controller: ShipController
 var current_model:   Node3D
 var auto_fire:       bool = false
+## Direkter Verweis auf CloakComponent des Spielerschiffs (unter ShipController).
+var _cloak_component: CloakComponent = null
 
 ## Debounce für Auto-Fire-Hinweis (verhindert Log-Flut wenn Ziel nicht feindlich).
 var _last_auto_fire_block_log: float = 0.0
@@ -64,6 +66,16 @@ func _ready() -> void:
 		push_warning("[PlayerController] ship_data.stats ist NULL – Bewegung funktioniert nicht!")
 
 	_instantiate_ship()
+
+	# CloakComponent direkt aus Scene-Tree cachen (liegt als Child unter ShipController)
+	if is_instance_valid(ship_controller):
+		_cloak_component = ship_controller.get_node_or_null("CloakComponent") as CloakComponent
+		if _cloak_component:
+			_dbg("  CloakComponent ✅ '%s' (detection_range=%.0fm)" % [
+				_cloak_component.name, _cloak_component.detection_range
+			])
+		else:
+			_dbg("  CloakComponent ℹ nicht vorhanden (kein Cloak für dieses Schiff)")
 
 	if input_comp:
 		input_comp.phaser_pressed.connect(_on_phaser_pressed)
@@ -152,8 +164,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		
 	# Cloak toggeln mit Taste C (Action: "toggle_cloak" in Project Settings anlegen)
 	if event.is_action_pressed("toggle_cloak"):
-		if ship_controller and ship_controller.has_method("toggle_cloak"):
+		if is_instance_valid(_cloak_component):
+			_cloak_component.toggle_cloak()
+		elif ship_controller and ship_controller.has_method("toggle_cloak"):
+			# Fallback: ShipController-Delegation (Rückwärtskompatibilität)
 			ship_controller.toggle_cloak()
+		else:
+			_dbg("⚠ toggle_cloak: kein CloakComponent gefunden (Schiff hat keine Tarnung)")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

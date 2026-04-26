@@ -30,7 +30,7 @@ bg_color = Color(0.078431375, 0.09803922, 0.14117648, 0.9490196)
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kfvwx"]
 bg_color = Color(0.5529412, 0.84313726, 1, 1)
 
-[node name="DebugControlPanel" type="CanvasLayer" node_paths=PackedStringArray("panel", "title_bar", "close_button", "ship_list_container", "spawn_button", "despawn_button", "spawn_count_label", "faction_list_container", "rep_reset_button", "reputation_label", "reputation_list", "reputation_reset_button", "ki_patrol_button", "ki_attack_button", "ki_list_container", "flags_list", "reset_flags_button", "spawn_bar", "spawn_content", "npc_bar", "npc_content", "faction_bar", "faction_content", "reputation_bar", "reputation_content", "sound_bar", "sound_content")]
+[node name="DebugControlPanel" type="CanvasLayer" unique_id=1651575783 node_paths=PackedStringArray("panel", "title_bar", "close_button", "ship_list_container", "spawn_button", "despawn_button", "spawn_count_label", "faction_list_container", "rep_reset_button", "reputation_label", "reputation_list", "reputation_reset_button", "ki_patrol_button", "ki_attack_button", "ki_list_container", "flags_list", "reset_flags_button", "spawn_bar", "spawn_content", "npc_bar", "npc_content", "faction_bar", "faction_content", "reputation_bar", "reputation_content", "sound_bar", "sound_content")]
 layer = 100
 script = ExtResource("1_kvtvj")
 spawn_ship_datas = Array[ExtResource("2_8jptv")]([ExtResource("3_8gwfh"), ExtResource("4_1nfr7"), ExtResource("5_t24vc")])
@@ -63,9 +63,9 @@ reputation_bar = NodePath("Debug_Control/VBoxContainer/ReputationBar")
 reputation_content = NodePath("Debug_Control/VBoxContainer/MarginContainer_Reputation")
 sound_bar = NodePath("Debug_Control/VBoxContainer/SoundBar")
 sound_content = NodePath("Debug_Control/VBoxContainer/MarginContainer_Sound")
-debug_flag_names = Array[String](["vfx.hull_impact", "vfx.torpedo_explosion", "vfx.fire", "ai.faction_lookup", "weapons.projectile_path", "ai.faction_hostile", "ai.debug", "ai.faction_hostile", "ai.resolver", "weapons.arc_check"])
+debug_flag_names = Array[String](["vfx.hull_impact", "vfx.torpedo_explosion", "vfx.fire", "ai.faction_lookup", "weapons.projectile_path", "ai.faction_hostile", "ai.debug", "ai.faction_hostile", "ai.resolver", "weapons.arc_check", "cloak.setup", "ai.hostile_diag"])
 
-[node name="Debug_Control" type="Panel" parent="."]
+[node name="Debug_Control" type="Panel" parent="." unique_id=423755254]
 custom_minimum_size = Vector2(420, 500)
 anchors_preset = 1
 anchor_left = 1.0
@@ -76,47 +76,47 @@ grow_horizontal = 0
 mouse_filter = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_8jptv")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="Debug_Control"]
+[node name="VBoxContainer" type="VBoxContainer" parent="Debug_Control" unique_id=1660326346]
 custom_minimum_size = Vector2(420, 0)
 layout_mode = 0
 offset_right = 460.0
 offset_bottom = 1240.0
 theme_override_constants/separation = 0
 
-[node name="TitleBar" type="PanelContainer" parent="Debug_Control/VBoxContainer"]
+[node name="TitleBar" type="PanelContainer" parent="Debug_Control/VBoxContainer" unique_id=1731156358]
 custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_8gwfh")
 
-[node name="HBoxContainer" type="HBoxContainer" parent="Debug_Control/VBoxContainer/TitleBar"]
+[node name="HBoxContainer" type="HBoxContainer" parent="Debug_Control/VBoxContainer/TitleBar" unique_id=1185235837]
 layout_mode = 2
 
-[node name="TitleLabel" type="Label" parent="Debug_Control/VBoxContainer/TitleBar/HBoxContainer"]
+[node name="TitleLabel" type="Label" parent="Debug_Control/VBoxContainer/TitleBar/HBoxContainer" unique_id=2072148325]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.2509804, 0.5529412, 1, 1)
 theme_override_font_sizes/font_size = 13
 text = "  🛸 DEBUG CONTROL"
 
-[node name="CloseBtn" type="Button" parent="Debug_Control/VBoxContainer/TitleBar/HBoxContainer"]
+[node name="CloseBtn" type="Button" parent="Debug_Control/VBoxContainer/TitleBar/HBoxContainer" unique_id=244260176]
 layout_mode = 2
 text = "  ✕  "
 flat = true
 
-[node name="SpawnBar" type="PanelContainer" parent="Debug_Control/VBoxContainer"]
+[node name="SpawnBar" type="PanelContainer" parent="Debug_Control/VBoxContainer" unique_id=404445354]
 custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_1nfr7")
 
-[node name="HBoxContainer" type="HBoxContainer" parent="Debug_Control/VBoxContainer/SpawnBar"]
+[node name="HBoxContainer" type="HBoxContainer" parent="Debug_Control/VBoxContainer/SpawnBar" unique_id=924795366]
 layout_mode = 2
 
-[node name="SpawnLabel" type="Label" parent="Debug_Control/VBoxContainer/SpawnBar/HBoxContainer"]
+[node name="SpawnLabel" type="Label" parent="Debug_Control/VBoxContainer/SpawnBar/HBoxContainer" unique_id=1777228673]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.12898806, 6.305128e-05, 0.4395525, 1)
 theme_override_font_sizes/font_size = 13
 text = "  🚀 SPAWN CONTROL"
 
-[node name="MarginContainer_Spawn" type="MarginContainer" parent="Debug_Control/VBoxContainer"]
+[node name="MarginContainer_Spawn" type="MarginContainer" parent="Debug_Control/VBoxContainer" unique_id=320417995]
 layout_mode = 2
 accessibility_name = "⚡ Spawner"
 theme_override_constants/margin_left = 10
@@ -124,48 +124,48 @@ theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 10
 theme_override_constants/margin_bottom = 8
 
-[node name="VBoxContainer" type="VBoxContainer" parent="Debug_Control/VBoxContainer/MarginContainer_Spawn"]
+[node name="VBoxContainer" type="VBoxContainer" parent="Debug_Control/VBoxContainer/MarginContainer_Spawn" unique_id=529675391]
 layout_mode = 2
 
-[node name="HBoxContainer" type="HBoxContainer" parent="Debug_Control/VBoxContainer/MarginContainer_Spawn/VBoxContainer"]
+[node name="HBoxContainer" type="HBoxContainer" parent="Debug_Control/VBoxContainer/MarginContainer_Spawn/VBoxContainer" unique_id=1288851240]
 layout_mode = 2
 
-[node name="SpawnBtn" type="Button" parent="Debug_Control/VBoxContainer/MarginContainer_Spawn/VBoxContainer/HBoxContainer"]
+[node name="SpawnBtn" type="Button" parent="Debug_Control/VBoxContainer/MarginContainer_Spawn/VBoxContainer/HBoxContainer" unique_id=118996905]
 layout_mode = 2
 theme_override_font_sizes/font_size = 13
 text = "Spawnen"
 
-[node name="DespawnBtn" type="Button" parent="Debug_Control/VBoxContainer/MarginContainer_Spawn/VBoxContainer/HBoxContainer"]
+[node name="DespawnBtn" type="Button" parent="Debug_Control/VBoxContainer/MarginContainer_Spawn/VBoxContainer/HBoxContainer" unique_id=1071341400]
 layout_mode = 2
 theme_override_font_sizes/font_size = 13
 text = "Alle NPC"
 
-[node name="ScrollContainer" type="ScrollContainer" parent="Debug_Control/VBoxContainer/MarginContainer_Spawn/VBoxContainer"]
+[node name="ScrollContainer" type="ScrollContainer" parent="Debug_Control/VBoxContainer/MarginContainer_Spawn/VBoxContainer" unique_id=724935774]
 custom_minimum_size = Vector2(0, 180)
 layout_mode = 2
 
-[node name="ShipList" type="VBoxContainer" parent="Debug_Control/VBoxContainer/MarginContainer_Spawn/VBoxContainer/ScrollContainer"]
+[node name="ShipList" type="VBoxContainer" parent="Debug_Control/VBoxContainer/MarginContainer_Spawn/VBoxContainer/ScrollContainer" unique_id=1018140730]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="SpawnCount" type="Label" parent="Debug_Control/VBoxContainer/MarginContainer_Spawn/VBoxContainer"]
+[node name="SpawnCount" type="Label" parent="Debug_Control/VBoxContainer/MarginContainer_Spawn/VBoxContainer" unique_id=424888766]
 layout_mode = 2
 
-[node name="NPCBar" type="PanelContainer" parent="Debug_Control/VBoxContainer"]
+[node name="NPCBar" type="PanelContainer" parent="Debug_Control/VBoxContainer" unique_id=1494586026]
 custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_1nfr7")
 
-[node name="HBoxContainer" type="HBoxContainer" parent="Debug_Control/VBoxContainer/NPCBar"]
+[node name="HBoxContainer" type="HBoxContainer" parent="Debug_Control/VBoxContainer/NPCBar" unique_id=409595458]
 layout_mode = 2
 
-[node name="NPCLabel" type="Label" parent="Debug_Control/VBoxContainer/NPCBar/HBoxContainer"]
+[node name="NPCLabel" type="Label" parent="Debug_Control/VBoxContainer/NPCBar/HBoxContainer" unique_id=595471875]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.12898806, 6.305128e-05, 0.4395525, 1)
 theme_override_font_sizes/font_size = 13
 text = "  🚗 NPC CONTROL"
 
-[node name="MarginContainer_NPC" type="MarginContainer" parent="Debug_Control/VBoxContainer"]
+[node name="MarginContainer_NPC" type="MarginContainer" parent="Debug_Control/VBoxContainer" unique_id=91271494]
 layout_mode = 2
 accessibility_name = "🤖 KI-Control"
 theme_override_constants/margin_left = 10
@@ -173,43 +173,43 @@ theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 10
 theme_override_constants/margin_bottom = 8
 
-[node name="VBoxContainer" type="VBoxContainer" parent="Debug_Control/VBoxContainer/MarginContainer_NPC"]
+[node name="VBoxContainer" type="VBoxContainer" parent="Debug_Control/VBoxContainer/MarginContainer_NPC" unique_id=1848460506]
 layout_mode = 2
 
-[node name="HBoxContainer" type="HBoxContainer" parent="Debug_Control/VBoxContainer/MarginContainer_NPC/VBoxContainer"]
+[node name="HBoxContainer" type="HBoxContainer" parent="Debug_Control/VBoxContainer/MarginContainer_NPC/VBoxContainer" unique_id=801621588]
 layout_mode = 2
 
-[node name="PatrolBtn" type="Button" parent="Debug_Control/VBoxContainer/MarginContainer_NPC/VBoxContainer/HBoxContainer"]
+[node name="PatrolBtn" type="Button" parent="Debug_Control/VBoxContainer/MarginContainer_NPC/VBoxContainer/HBoxContainer" unique_id=1178377263]
 layout_mode = 2
 text = "🔄  Alle → PATROL"
 
-[node name="AttackBtn" type="Button" parent="Debug_Control/VBoxContainer/MarginContainer_NPC/VBoxContainer/HBoxContainer"]
+[node name="AttackBtn" type="Button" parent="Debug_Control/VBoxContainer/MarginContainer_NPC/VBoxContainer/HBoxContainer" unique_id=2068123621]
 layout_mode = 2
 text = "⚔  Alle → Player"
 
-[node name="ScrollContainer" type="ScrollContainer" parent="Debug_Control/VBoxContainer/MarginContainer_NPC/VBoxContainer"]
+[node name="ScrollContainer" type="ScrollContainer" parent="Debug_Control/VBoxContainer/MarginContainer_NPC/VBoxContainer" unique_id=1861848652]
 custom_minimum_size = Vector2(0, 180)
 layout_mode = 2
 
-[node name="NPCList" type="VBoxContainer" parent="Debug_Control/VBoxContainer/MarginContainer_NPC/VBoxContainer/ScrollContainer"]
+[node name="NPCList" type="VBoxContainer" parent="Debug_Control/VBoxContainer/MarginContainer_NPC/VBoxContainer/ScrollContainer" unique_id=251068014]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="FactionBar" type="PanelContainer" parent="Debug_Control/VBoxContainer"]
+[node name="FactionBar" type="PanelContainer" parent="Debug_Control/VBoxContainer" unique_id=661635241]
 custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_1nfr7")
 
-[node name="HBoxContainer" type="HBoxContainer" parent="Debug_Control/VBoxContainer/FactionBar"]
+[node name="HBoxContainer" type="HBoxContainer" parent="Debug_Control/VBoxContainer/FactionBar" unique_id=1132285995]
 layout_mode = 2
 
-[node name="FactionLabel" type="Label" parent="Debug_Control/VBoxContainer/FactionBar/HBoxContainer"]
+[node name="FactionLabel" type="Label" parent="Debug_Control/VBoxContainer/FactionBar/HBoxContainer" unique_id=287580510]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.12898806, 6.305128e-05, 0.4395525, 1)
 theme_override_font_sizes/font_size = 13
 text = " 🤙 FACTION CONTROL"
 
-[node name="MarginContainer_Faction" type="MarginContainer" parent="Debug_Control/VBoxContainer"]
+[node name="MarginContainer_Faction" type="MarginContainer" parent="Debug_Control/VBoxContainer" unique_id=1223782613]
 layout_mode = 2
 accessibility_name = "⭐ Ruf"
 theme_override_constants/margin_left = 10
@@ -217,37 +217,37 @@ theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 10
 theme_override_constants/margin_bottom = 8
 
-[node name="VBoxContainer" type="VBoxContainer" parent="Debug_Control/VBoxContainer/MarginContainer_Faction"]
+[node name="VBoxContainer" type="VBoxContainer" parent="Debug_Control/VBoxContainer/MarginContainer_Faction" unique_id=176858080]
 layout_mode = 2
 
-[node name="ScrollContainer" type="ScrollContainer" parent="Debug_Control/VBoxContainer/MarginContainer_Faction/VBoxContainer"]
+[node name="ScrollContainer" type="ScrollContainer" parent="Debug_Control/VBoxContainer/MarginContainer_Faction/VBoxContainer" unique_id=1951104056]
 custom_minimum_size = Vector2(0, 180)
 layout_mode = 2
 
-[node name="FactionList" type="VBoxContainer" parent="Debug_Control/VBoxContainer/MarginContainer_Faction/VBoxContainer/ScrollContainer"]
+[node name="FactionList" type="VBoxContainer" parent="Debug_Control/VBoxContainer/MarginContainer_Faction/VBoxContainer/ScrollContainer" unique_id=504484277]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="RepResetBtn" type="Button" parent="Debug_Control/VBoxContainer/MarginContainer_Faction/VBoxContainer"]
+[node name="RepResetBtn" type="Button" parent="Debug_Control/VBoxContainer/MarginContainer_Faction/VBoxContainer" unique_id=449495166]
 layout_mode = 2
 theme_override_font_sizes/font_size = 13
 text = "↺  Zurücksetzen"
 
-[node name="ReputationBar" type="PanelContainer" parent="Debug_Control/VBoxContainer"]
+[node name="ReputationBar" type="PanelContainer" parent="Debug_Control/VBoxContainer" unique_id=288584610]
 custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_1nfr7")
 
-[node name="HBoxContainer" type="HBoxContainer" parent="Debug_Control/VBoxContainer/ReputationBar"]
+[node name="HBoxContainer" type="HBoxContainer" parent="Debug_Control/VBoxContainer/ReputationBar" unique_id=933967614]
 layout_mode = 2
 
-[node name="ReputationLabel" type="Label" parent="Debug_Control/VBoxContainer/ReputationBar/HBoxContainer"]
+[node name="ReputationLabel" type="Label" parent="Debug_Control/VBoxContainer/ReputationBar/HBoxContainer" unique_id=227148037]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.12898806, 6.305128e-05, 0.4395525, 1)
 theme_override_font_sizes/font_size = 13
 text = "✏️ REPUTATION  CONTROL"
 
-[node name="MarginContainer_Reputation" type="MarginContainer" parent="Debug_Control/VBoxContainer"]
+[node name="MarginContainer_Reputation" type="MarginContainer" parent="Debug_Control/VBoxContainer" unique_id=1815800663]
 layout_mode = 2
 accessibility_name = "⭐ Ruf"
 theme_override_constants/margin_left = 10
@@ -255,37 +255,37 @@ theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 10
 theme_override_constants/margin_bottom = 8
 
-[node name="VBoxContainer" type="VBoxContainer" parent="Debug_Control/VBoxContainer/MarginContainer_Reputation"]
+[node name="VBoxContainer" type="VBoxContainer" parent="Debug_Control/VBoxContainer/MarginContainer_Reputation" unique_id=1810449875]
 layout_mode = 2
 
-[node name="ScrollContainer" type="ScrollContainer" parent="Debug_Control/VBoxContainer/MarginContainer_Reputation/VBoxContainer"]
+[node name="ScrollContainer" type="ScrollContainer" parent="Debug_Control/VBoxContainer/MarginContainer_Reputation/VBoxContainer" unique_id=554750891]
 custom_minimum_size = Vector2(0, 180)
 layout_mode = 2
 
-[node name="ReputationList" type="VBoxContainer" parent="Debug_Control/VBoxContainer/MarginContainer_Reputation/VBoxContainer/ScrollContainer"]
+[node name="ReputationList" type="VBoxContainer" parent="Debug_Control/VBoxContainer/MarginContainer_Reputation/VBoxContainer/ScrollContainer" unique_id=405133863]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="RepResetBtn" type="Button" parent="Debug_Control/VBoxContainer/MarginContainer_Reputation/VBoxContainer"]
+[node name="RepResetBtn" type="Button" parent="Debug_Control/VBoxContainer/MarginContainer_Reputation/VBoxContainer" unique_id=90875373]
 layout_mode = 2
 theme_override_font_sizes/font_size = 13
 text = "↺  Zurücksetzen"
 
-[node name="SoundBar" type="PanelContainer" parent="Debug_Control/VBoxContainer"]
+[node name="SoundBar" type="PanelContainer" parent="Debug_Control/VBoxContainer" unique_id=430896463]
 custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_1nfr7")
 
-[node name="HBoxContainer" type="HBoxContainer" parent="Debug_Control/VBoxContainer/SoundBar"]
+[node name="HBoxContainer" type="HBoxContainer" parent="Debug_Control/VBoxContainer/SoundBar" unique_id=957559760]
 layout_mode = 2
 
-[node name="SoundLabel" type="Label" parent="Debug_Control/VBoxContainer/SoundBar/HBoxContainer"]
+[node name="SoundLabel" type="Label" parent="Debug_Control/VBoxContainer/SoundBar/HBoxContainer" unique_id=956796258]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.12941177, 0, 0.4392157, 1)
 theme_override_font_sizes/font_size = 13
 text = "  🔊 SOUND CONTROL"
 
-[node name="MarginContainer_Sound" type="MarginContainer" parent="Debug_Control/VBoxContainer"]
+[node name="MarginContainer_Sound" type="MarginContainer" parent="Debug_Control/VBoxContainer" unique_id=1685432081]
 layout_mode = 2
 accessibility_name = "⭐ Ruf"
 theme_override_constants/margin_left = 10
@@ -293,16 +293,16 @@ theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 10
 theme_override_constants/margin_bottom = 8
 
-[node name="VBoxContainer" type="VBoxContainer" parent="Debug_Control/VBoxContainer/MarginContainer_Sound"]
+[node name="VBoxContainer" type="VBoxContainer" parent="Debug_Control/VBoxContainer/MarginContainer_Sound" unique_id=1681433789]
 layout_mode = 2
 
-[node name="SoundLabel_music" type="Label" parent="Debug_Control/VBoxContainer/MarginContainer_Sound/VBoxContainer"]
+[node name="SoundLabel_music" type="Label" parent="Debug_Control/VBoxContainer/MarginContainer_Sound/VBoxContainer" unique_id=1442317183]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.5529412, 0.84313726, 1, 1)
 theme_override_font_sizes/font_size = 13
 text = "MUSIC"
 
-[node name="Slider_EnviromentMusic" type="HSlider" parent="Debug_Control/VBoxContainer/MarginContainer_Sound/VBoxContainer"]
+[node name="Slider_EnviromentMusic" type="HSlider" parent="Debug_Control/VBoxContainer/MarginContainer_Sound/VBoxContainer" unique_id=357160264]
 modulate = Color(0.5529412, 0.84313726, 1, 1)
 custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
@@ -310,13 +310,13 @@ max_value = 1.0
 step = 0.01
 script = ExtResource("6_1nfr7")
 
-[node name="SoundLabel_sfx" type="Label" parent="Debug_Control/VBoxContainer/MarginContainer_Sound/VBoxContainer"]
+[node name="SoundLabel_sfx" type="Label" parent="Debug_Control/VBoxContainer/MarginContainer_Sound/VBoxContainer" unique_id=1043188017]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.5529412, 0.84313726, 1, 1)
 theme_override_font_sizes/font_size = 13
 text = "SFX"
 
-[node name="Slider_SFX" type="HSlider" parent="Debug_Control/VBoxContainer/MarginContainer_Sound/VBoxContainer"]
+[node name="Slider_SFX" type="HSlider" parent="Debug_Control/VBoxContainer/MarginContainer_Sound/VBoxContainer" unique_id=1717975668]
 modulate = Color(0.18631536, 0.90683234, 1, 1)
 custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
@@ -325,7 +325,7 @@ max_value = 1.0
 step = 0.01
 script = ExtResource("7_t24vc")
 
-[node name="Debug_Flags" type="Panel" parent="."]
+[node name="Debug_Flags" type="Panel" parent="." unique_id=305383708]
 custom_minimum_size = Vector2(600, 200)
 anchors_preset = 7
 anchor_left = 0.5
@@ -340,32 +340,32 @@ grow_vertical = 0
 mouse_filter = 1
 theme_override_styles/panel = SubResource("StyleBoxFlat_t24vc")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="Debug_Flags"]
+[node name="VBoxContainer" type="VBoxContainer" parent="Debug_Flags" unique_id=466777561]
 custom_minimum_size = Vector2(600, 200)
 layout_mode = 1
 offset_right = 40.0
 offset_bottom = 40.0
 theme_override_constants/separation = 0
 
-[node name="TitleFlags" type="PanelContainer" parent="Debug_Flags/VBoxContainer"]
+[node name="TitleFlags" type="PanelContainer" parent="Debug_Flags/VBoxContainer" unique_id=2069666876]
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_kfvwx")
 
-[node name="HBoxContainer" type="HBoxContainer" parent="Debug_Flags/VBoxContainer/TitleFlags"]
+[node name="HBoxContainer" type="HBoxContainer" parent="Debug_Flags/VBoxContainer/TitleFlags" unique_id=65361903]
 custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
 
-[node name="TitleFlag" type="Label" parent="Debug_Flags/VBoxContainer/TitleFlags/HBoxContainer"]
+[node name="TitleFlag" type="Label" parent="Debug_Flags/VBoxContainer/TitleFlags/HBoxContainer" unique_id=1063946100]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.12941177, 0, 0.4392157, 1)
 theme_override_font_sizes/font_size = 13
 text = " 📌 DEBUG CONTROL"
 
-[node name="ResetFlagsBtn" type="Button" parent="Debug_Flags/VBoxContainer/TitleFlags/HBoxContainer"]
+[node name="ResetFlagsBtn" type="Button" parent="Debug_Flags/VBoxContainer/TitleFlags/HBoxContainer" unique_id=544987017]
 layout_mode = 2
 text = "# Reset all"
 
-[node name="MarginContainer_Flags" type="MarginContainer" parent="Debug_Flags/VBoxContainer"]
+[node name="MarginContainer_Flags" type="MarginContainer" parent="Debug_Flags/VBoxContainer" unique_id=1695022931]
 custom_minimum_size = Vector2(0, 160)
 layout_mode = 2
 theme_override_constants/margin_left = 10
@@ -373,8 +373,8 @@ theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 10
 theme_override_constants/margin_bottom = 8
 
-[node name="ScrollContainer" type="ScrollContainer" parent="Debug_Flags/VBoxContainer/MarginContainer_Flags"]
+[node name="ScrollContainer" type="ScrollContainer" parent="Debug_Flags/VBoxContainer/MarginContainer_Flags" unique_id=1270270897]
 layout_mode = 2
 
-[node name="FlagsList" type="VBoxContainer" parent="Debug_Flags/VBoxContainer/MarginContainer_Flags/ScrollContainer"]
+[node name="FlagsList" type="VBoxContainer" parent="Debug_Flags/VBoxContainer/MarginContainer_Flags/ScrollContainer" unique_id=1631928056]
 layout_mode = 2

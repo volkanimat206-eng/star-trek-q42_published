@@ -10,6 +10,7 @@
 
 [sub_resource type="Resource" id="Resource_qte1b"]
 script = ExtResource("1_olxir")
+shimmer_tint = Color(0, 0.8001019, 0.35253903, 1)
 metadata/_custom_type_script = "uid://dq5py42u2ije5"
 
 [resource]

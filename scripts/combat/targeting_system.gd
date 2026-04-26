@@ -285,8 +285,13 @@ func _validate_lock() -> void:
 	# Range ist, brechen wir den Lock. Innerhalb der Schimmer-Range bleibt
 	# der Lock bestehen — der Spieler kann Cloakede Schiffe noch tracken
 	# solange sie nah genug sind.
+	# AUSNAHME: Schiffe im DECLOAKING-Übergang behalten den Lock immer —
+	# sie tauchen gerade auf, der Lock soll nicht wegen temporär niedrigem
+	# Alpha verloren gehen.
 	if sc and sc.has_method("is_visible_to"):
-		if not sc.is_visible_to(_own_ship):
+		var cloak_comp: CloakComponent = sc.get_node_or_null("CloakComponent") as CloakComponent
+		var is_decloaking: bool = cloak_comp != null and cloak_comp._state == CloakComponent.State.DECLOAKING
+		if not is_decloaking and not sc.is_visible_to(_own_ship):
 			_dbg("LOCK VALIDATE: Ziel getarnt + außer Detection-Range → release")
 			_release_lock()
 			return
@@ -391,8 +396,12 @@ func _prune_invalid_multi_targets() -> void:
 				remove = true
 			elif sc and sc.has_method("is_visible_to") and not sc.is_visible_to(_own_ship):
 				# Cloak: Target ist getarnt UND außer Detection-Range → raus
-				remove = true
-				_dbg("MULTI: '%s' getarnt → raus" % t.name)
+				# AUSNAHME: DECLOAKING-Phase → behalten
+				var cloak_comp: CloakComponent = sc.get_node_or_null("CloakComponent") as CloakComponent
+				var is_decloaking: bool = cloak_comp != null and cloak_comp._state == CloakComponent.State.DECLOAKING
+				if not is_decloaking:
+					remove = true
+					_dbg("MULTI: '%s' getarnt → raus" % t.name)
 			elif not _is_hostile(t):
 				# Disposition-Wechsel → raus aus Multi-Lock
 				remove = true
@@ -478,10 +487,14 @@ func _get_all_targets_sorted() -> Array[Node3D]:
 			continue
 
 		# CLOAK-FILTER: Cloakede Ships sind nicht targetbar.
-		# Im Detection-Schimmer (<100m default) bleibt is_visible_to true,
-		# also kann der Player auch dann targeten wenn er nah genug ist.
+		# AUSNAHME: Schiffe im DECLOAKING-Übergang sind immer targetbar —
+		# sie haben den Cloak schon gebrochen und tauchen gerade auf.
+		# Ohne diese Ausnahme würde der Lock sofort released wenn der NPC
+		# aus dem Cloak heraus angreift (Alpha noch nahe 0 am Anfang des Fades).
 		if sc and sc.has_method("is_visible_to"):
-			if not sc.is_visible_to(_own_ship):
+			var cloak_comp: CloakComponent = sc.get_node_or_null("CloakComponent") as CloakComponent
+			var is_decloaking: bool = cloak_comp != null and cloak_comp._state == CloakComponent.State.DECLOAKING
+			if not is_decloaking and not sc.is_visible_to(_own_ship):
 				if show_debug:
 					print("[TargetingSystem]   → SKIP (cloaked): '%s'" % n3d.name)
 				continue
