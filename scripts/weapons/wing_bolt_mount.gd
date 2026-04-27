@@ -25,10 +25,26 @@ class_name WingDisruptorMount
 @export_flags_3d_physics var collision_mask_override: int = 0
 
 @export_group("Audio")
-@export var fire_sound: AudioStream
-@export_range(-20.0, 20.0) var fire_volume_db: float = 0.0
-@export_range(0.0, 1.0) var player_panning_strength: float = 0.0
-@export_range(1.0, 500.0) var npc_unit_size: float = 80.0
+## Feuer-Sound für die Wing-Disruptoren.
+@export var fire_sound: AudioStream = null
+
+## Lautstärke-Offset in dB (+ = lauter, - = leiser).
+@export_range(-30.0, 30.0, 0.1) var fire_volume_offset_db: float = 0.0
+
+## Wie stark die Distanz-/Zoom-Abschwächung wirkt (0.0 = fast keine Abschwächung).
+@export_range(0.0, 2.0, 0.05) var distance_attenuation_strength: float = 0.30
+
+## Maximale Distanz, bis zu der der Sound gut hörbar bleibt.
+@export_range(100.0, 2000.0, 50.0) var max_distance: float = 900.0
+
+## Wenn true: Attenuation komplett deaktivieren → Sound immer gleich laut (ideal für Player).
+@export var no_distance_attenuation: bool = false
+
+## Low-pass Filter Cutoff (höher = weniger dumpf bei Zoom/Distanz).
+@export_range(1000.0, 20500.0, 100.0) var attenuation_filter_cutoff_hz: float = 11500.0
+
+## Fade-out Dauer nach dem Abspielen (0.0 = kein Fade).
+@export_range(0.0, 2.0, 0.1) var sound_fade_out_time: float = 0.4
 
 @export_group("Arc Settings")
 @export_range(10.0, 90.0) var arc_half_angle: float = 45.0:
@@ -245,12 +261,15 @@ func _get_salvo_count() -> int:
 func _get_salvo_interval() -> float:
 	return bolt_weapon_data.salvo_interval if bolt_weapon_data else 0.15
 
-
 # ─────────────────────────────────────────────────────────────────────────────
-# AUDIO
+# AUDIO (konsistent mit CloakComponent & WeaponMount)
 # ─────────────────────────────────────────────────────────────────────────────
 
 func _setup_audio() -> void:
+	if not fire_sound:
+		return
+
+	# Player vs NPC erkennen
 	var node: Node = get_parent()
 	_is_player_ship = true
 	while node:
@@ -259,38 +278,55 @@ func _setup_audio() -> void:
 			break
 		node = node.get_parent()
 
-	print("[WingDisruptorMount|%s] 🔊 Audio-Setup:" % name)
-	print("  fire_sound     : %s" % ("✅ " + fire_sound.resource_path if fire_sound else "❌ nicht gesetzt"))
-	print("  is_player_ship : %s" % _is_player_ship)
+	# AudioPlayer nur einmal erstellen
+	if not _audio_player or not is_instance_valid(_audio_player):
+		_audio_player = AudioStreamPlayer3D.new()
+		_audio_player.name = "WingDisruptorAudio"
+		_audio_player.stream = fire_sound
+		_audio_player.bus = "Weapons"
+		add_child(_audio_player)
 
-	if not fire_sound:
-		return
-
-	var polyphony: int          = _get_salvo_count()
-	_audio_player               = AudioStreamPlayer3D.new()
-	_audio_player.name          = "DisruptorAudio"
-	_audio_player.stream        = fire_sound
-	_audio_player.bus           = "Weapons"
-	_audio_player.max_distance  = 800.0
-	_audio_player.max_polyphony = polyphony
-
-	if _is_player_ship:
-		_audio_player.panning_strength = player_panning_strength
-		_audio_player.unit_size        = 10000.0
-	else:
-		_audio_player.panning_strength = 1.0
-		_audio_player.unit_size        = npc_unit_size
-
-	add_child(_audio_player)
-	print("  AudioPlayer3D  : ✅ erstellt | polyphony=%d | player=%s" % [polyphony, _is_player_ship])
+	print("[WingDisruptorMount|%s] 🔊 Audio-Setup: fire_sound=%s | player=%s" % [
+		name, fire_sound.resource_path if fire_sound else "null", _is_player_ship
+	])
 
 
 func _play_fire_sound() -> void:
 	if not _audio_player or not fire_sound:
 		return
-	_audio_player.volume_db = -6.0 + fire_volume_db
+
+	# Position bei jedem Schuss aktualisieren
+	if is_instance_valid(_ship_controller) and _ship_controller is Node3D:
+		_audio_player.global_position = _ship_controller.global_position
+	elif is_instance_valid(get_parent()) and get_parent() is Node3D:
+		_audio_player.global_position = get_parent().global_position
+
+	# Lautstärke setzen
+	_audio_player.volume_db = fire_volume_offset_db
+
+	# Zoom- / Distanz-Steuerung
+	if no_distance_attenuation or _is_player_ship:
+		_audio_player.attenuation_model = AudioStreamPlayer3D.ATTENUATION_DISABLED
+		_audio_player.max_distance = 2000.0
+		_audio_player.unit_size = 10000.0
+	else:
+		_audio_player.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
+		_audio_player.max_distance = max_distance
+		_audio_player.unit_size = 1.0 / max(0.1, distance_attenuation_strength)
+
+	_audio_player.attenuation_filter_cutoff_hz = attenuation_filter_cutoff_hz
+
 	_audio_player.play()
 
+	# Optional: kurzer Fade-Out (bei Salven meist nicht nötig, aber möglich)
+	if sound_fade_out_time > 0.0:
+		var tween := create_tween()
+		tween.tween_property(_audio_player, "volume_db", -80.0, sound_fade_out_time)\
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		tween.tween_callback(func():
+			if is_instance_valid(_audio_player):
+				_audio_player.volume_db = fire_volume_offset_db  # für nächsten Schuss zurücksetzen
+		)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # GIZMO

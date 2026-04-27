@@ -82,21 +82,49 @@ var _state: State = State.IDLE
 ## Leer lassen = automatische Suche vom Root-Node (Fallback, weniger sicher).
 @export var target_meshes: Array[MeshInstance3D] = []
 
+## Minimaler Alpha-Wert wenn das Schiff voll getarnt ist.
+## 0.0 = komplett unsichtbar, 0.15 = leicht sichtbar (empfohlen für Player),
+## 0.05 = kaum sichtbar (empfohlen für NPC).
+## Dieser Wert ist die "Untergrenze" des Fade — das Schiff wird nie transparenter.
+@export_range(0.0, 1.0, 0.01) var cloaked_min_alpha: float = 0.0
+
 @export_group("Cloak – Audio")
-## AudioStreamPlayer3D für den Cloak-Aktivierungs-Sound. Im Inspector zuweisen.
-@export var audio_player: AudioStreamPlayer3D = null
-## Sound beim Aktivieren der Tarnung.
-@export var sound_cloak:   AudioStream = null
-## Sound beim Deaktivieren der Tarnung.
+## Sound beim Aktivieren der Tarnung (Cloak).
+@export var sound_cloak: AudioStream = null
+## Sound beim Deaktivieren der Tarnung (Decloak).
 @export var sound_decloak: AudioStream = null
 
+## Lautstärke-Offset für Cloak-Sound in dB (+ = lauter, - = leiser)
+@export_range(-30.0, 200.0, 0.1) var cloak_volume_offset_db: float = 0.0
+## Lautstärke-Offset für Decloak-Sound in dB
+@export_range(-30.0, 200.0, 0.1) var decloak_volume_offset_db: float = 0.0
+
+## Wie stark die Distanz-/Zoom-Abschwächung wirkt (0.0 = fast keine Abschwächung, 1.0 = normal)
+@export_range(0.0, 2.0, 0.05) var distance_attenuation_strength: float = 0.25
+
+## Maximale Distanz, bis zu der der Sound gut hörbar bleibt (höher = weniger Zoom-Einfluss)
+@export_range(100.0, 2000.0, 50.0) var max_distance: float = 800.0
+
+## Wenn true: Sound wird komplett unabhängig von Distanz/Zoom abgespielt (ideal für Player)
+@export var no_distance_attenuation: bool = false
+
+## Low-pass Filter (höher = weniger dumpf bei großer Distanz/Zoom)
+@export_range(1000.0, 20500.0, 100.0) var attenuation_filter_cutoff_hz: float = 12000.0
+
+## Fade-out Dauer des Sounds nach dem Abspielen (in Sekunden). 0.0 = kein Fade
+@export_range(0.0, 3.0, 0.1) var sound_fade_out_time: float = 0.8
+
 @export_group("Cloak – Distortion Shader")
+## Distortion aktivieren: Original-Meshes bekommen den Refraktions-Shader
+## als material_overlay. Außerhalb Scanner-Range unsichtbar, innerhalb Verzerrung.
+## Für NPC: true. Für Player mit min_alpha-Effekt: false.
+@export var use_distortion: bool = false
 ## Pfad zum Distortion-Shader im Projekt.
 @export_file("*.gdshader") var distortion_shader_path: String = "res://shaders/cloak_distortion.gdshader"
-## Maximale Pixel-Verschiebung des Refraktionseffekts bei minimaler Distanz.
-@export_range(4.0, 64.0, 1.0) var distortion_max_pixels: float = 18.0
+## Maximale Brechungsstärke. 0.01 = subtil, 0.1 = stark.
+@export_range(0.001, 0.2, 0.001) var refraction_scale: float = 0.05
 ## Stärke des bläulichen Rim-Leuchtens an Silhouettenkanten. 0 = aus.
-@export_range(0.0, 1.0, 0.05) var distortion_rim_strength: float = 0.25
+@export_range(0.0, 1.0, 0.05) var distortion_rim_strength: float = 0.3
 ## Geschwindigkeit des Noise-Flows im Distortion-Shader.
 @export_range(0.0, 3.0, 0.1) var distortion_flow_speed: float = 0.4
 ## Skalierung des Noise-Musters (kleiner = gröbere Wellen).
@@ -110,23 +138,21 @@ var _state: State = State.IDLE
 # INTERNE VARIABLEN
 # ─────────────────────────────────────────────────────────────────────────────
 
-var _ship_controller: Node = null  ## ShipController-Parent (direkte Eltern-Node)
-var _ship_root: Node3D = null      ## Root-Node des Schiffes (Parent von ShipController) — hier hängen die Meshes
-var _cloak_alpha: float    = 1.0   ## 0.0 = voll getarnt, 1.0 = voll sichtbar
+var _ship_controller: Node = null
+var _ship_root: Node3D     = null
+var _cloak_alpha: float    = 1.0
 var _cooldown_timer: float = 0.0
 var _active_tween: Tween   = null
 
-## Distortion-System: ein separater MeshInstance3D-Klon mit dem Refraktions-Shader
-## der die Raumverzerrung erzeugt. Völlig unabhängig von den Schiff-Materialien.
-var _distortion_meshes: Array[MeshInstance3D] = []
+## Distortion-System: ShaderMaterial das als material_overlay auf die
+## Original-Meshes gesetzt wird. Kein Klon — kein Z-Fighting.
 var _distortion_material: ShaderMaterial = null
+var _distortion_meshes: Array[MeshInstance3D] = []  ## Meshes die den Overlay tragen
 var _distortion_initialized: bool = false
 
-## Materials die wir im Cloak modifizieren. Werden beim Setup gefunden und
-## gecached. Pro Mesh-Surface eine Override-Material-Kopie damit andere
-## Instanzen desselben Schiffstyps nicht mit-cloaken.
+## Standard-Materials gecacht für Alpha-Fade.
 var _cached_materials: Array[StandardMaterial3D] = []
-var _original_colors: Array[Color] = []   ## Originale albedo_color vor dem ersten Cloak
+var _original_colors:  Array[Color]              = []
 var _materials_initialized: bool = false
 
 
@@ -252,14 +278,15 @@ func _begin_cloak() -> bool:
 	_state = State.CLOAKING
 	cloaking_started.emit()
 
-	_play_sound(sound_cloak)
+	_play_sound(sound_cloak, cloak_volume_offset_db)
 
 	# Schilde und Waffen offline schalten
 	_set_weapons_locked(true)
 	_set_shields_offline(true)
 
-	# Mesh-Fade auf 0
-	_fade_to(0.0, fade_in_duration, _on_cloak_complete)
+	# Mesh-Fade auf cloaked_min_alpha (0.0 = komplett unsichtbar, >0 = leicht sichtbar)
+	_fade_to(cloaked_min_alpha, fade_in_duration, _on_cloak_complete)
+	_dbg("  → Ziel-Alpha: %.2f" % cloaked_min_alpha)
 	return true
 
 
@@ -275,7 +302,7 @@ func _begin_decloak(emergency: bool = false) -> bool:
 	_state = State.DECLOAKING
 	decloaking_started.emit()
 
-	_play_sound(sound_decloak)
+	_play_sound(sound_decloak, decloak_volume_offset_db)
 
 	# Mesh-Fade zurück auf 1.0
 	_fade_to(1.0, duration, _on_decloak_complete.bind(emergency))
@@ -286,28 +313,25 @@ func _on_cloak_complete() -> void:
 	_state = State.CLOAKED
 	_set_collision_active(false)
 
-	# Distortion: nur aktivieren wenn Shader gefunden wurde UND Klone existieren.
-	# Wenn _distortion_initialized false ist (Shader fehlt etc.), einfach
-	# die Original-Meshes komplett verstecken statt grau zu werden.
-	if _distortion_initialized and _distortion_meshes.size() > 0:
-		_set_distortion_meshes_visible(true)
-		_dbg("✅ CLOAKED (Distortion aktiv, %d Klon-Meshes)" % _distortion_meshes.size())
-	else:
-		# Fallback: Meshes komplett unsichtbar schalten (kein Distortion-Effekt,
-		# aber auch kein Grau-Bug). Sicherer als ein fehlerhafter Shader.
+	if use_distortion:
+		# DISTORTION-MODUS (NPC): Alpha-Fade hat Meshes auf 0 gebracht.
+		# Jetzt material_overlay mit Distortion-Shader setzen —
+		# rendert Refraktion + Rim ohne Original-Materials zu ersetzen.
+		_initialize_distortion()
+		_dbg("✅ CLOAKED (Distortion-Modus | %d Meshes)" % _distortion_meshes.size())
+	elif cloaked_min_alpha <= 0.0:
 		_set_original_meshes_visible(false)
-		_dbg("✅ CLOAKED (kein Distortion-Shader → Meshes versteckt)")
+		_dbg("✅ CLOAKED (komplett unsichtbar)")
+	else:
+		_dbg("✅ CLOAKED (leicht sichtbar, alpha=%.2f)" % cloaked_min_alpha)
 
 	cloaked.emit()
 
 
 func _on_decloak_complete(emergency: bool) -> void:
-	# Meshes wieder sichtbar — egal welcher Modus aktiv war
-	if _distortion_initialized and _distortion_meshes.size() > 0:
-		_set_distortion_meshes_visible(false)
-		if _distortion_material:
-			_distortion_material.set_shader_parameter("distortion_strength", 0.0)
-	else:
+	if use_distortion:
+		_set_distortion_overlay(false)
+	elif cloaked_min_alpha <= 0.0:
 		_set_original_meshes_visible(true)
 
 	_set_collision_active(true)
@@ -317,10 +341,10 @@ func _on_decloak_complete(emergency: bool) -> void:
 	if emergency:
 		_state = State.COOLDOWN
 		_cooldown_timer = emergency_cooldown
-		_dbg("⏰ COOLDOWN aktiv (%.1fs bis IDLE)" % _cooldown_timer)
+		_dbg("⏰ COOLDOWN aktiv (%.1fs)" % _cooldown_timer)
 	else:
 		_state = State.IDLE
-		_dbg("✅ DECLOAKED (Schiff sichtbar)")
+		_dbg("✅ DECLOAKED (voll sichtbar)")
 
 	decloaked.emit()
 
@@ -424,7 +448,9 @@ func _fade_to(target_alpha: float, duration: float, on_complete: Callable) -> vo
 	)
 	_active_tween.tween_callback(func() -> void:
 		_cloak_alpha = target_alpha
-		# Decloak fertig: transparency zurücksetzen + Originalfarbe exakt restaurieren
+		# Transparency nur zurücksetzen wenn voll sichtbar (Decloak fertig).
+		# Beim Cloak-Ziel (cloaked_min_alpha) bleibt TRANSPARENCY_ALPHA aktiv
+		# damit das Schiff weiterhin transparent gerendert wird.
 		if target_alpha >= 1.0:
 			for i in range(_cached_materials.size()):
 				var mat: StandardMaterial3D = _cached_materials[i]
@@ -454,15 +480,56 @@ func _apply_alpha_to_materials(alpha: float) -> void:
 		elif alpha >= 0.99:
 			_dbg("🎨 Alpha=1.0 erreicht | %d Materials" % _cached_materials.size())
 
+# ─────────────────────────────────────────────────────────────────────────────
+# INTERN – Audio (nach dem Vorbild von WeaponMount)
+# ─────────────────────────────────────────────────────────────────────────────
 
-## Sound über den zugewiesenen AudioStreamPlayer3D abspielen.
-## Macht nichts wenn audio_player oder der Stream nicht gesetzt sind.
-func _play_sound(stream: AudioStream) -> void:
-	if not is_instance_valid(audio_player) or not stream:
+func _play_sound(stream: AudioStream, volume_offset_db: float = 0.0) -> void:
+	if not stream:
 		return
-	audio_player.stream = stream
-	audio_player.play()
 
+	var player := AudioStreamPlayer3D.new()
+	player.stream = stream
+
+	# Position
+	if is_instance_valid(_ship_root):
+		player.global_position = _ship_root.global_position
+	elif is_instance_valid(_ship_controller) and _ship_controller is Node3D:
+		player.global_position = _ship_controller.global_position
+
+	# Basis-Lautstärke
+	player.volume_db = volume_offset_db
+
+	# ── Zoom/Distanz-Steuerung ─────────────────────────────────────
+	if no_distance_attenuation:
+		player.attenuation_model = AudioStreamPlayer3D.ATTENUATION_DISABLED
+		player.max_distance = 2000.0
+	else:
+		player.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE   # oder LOGARITHMIC für natürlicheres Verhalten
+		player.max_distance = max_distance
+		
+		# Wichtiger Trick: Die Stärke der Abschwächung reduzieren
+		# Godot hat keinen direkten "attenuation_strength", aber wir können über Unit Size + Filter simulieren
+		# Hier nutzen wir eine Kombination aus max_distance und Filter
+		player.unit_size = 1.0 / max(0.1, distance_attenuation_strength)   # niedriger distance_attenuation_strength → höherer unit_size → weniger Abschwächung
+
+	player.attenuation_filter_cutoff_hz = attenuation_filter_cutoff_hz
+
+	add_child(player)
+	player.play()
+
+	# Fade-Out + Aufräumen (wie vorher)
+	if sound_fade_out_time > 0.0:
+		var tween := create_tween()
+		tween.tween_property(player, "volume_db", -80.0, sound_fade_out_time)\
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		tween.tween_callback(func():
+			if is_instance_valid(player): player.queue_free()
+		)
+	else:
+		player.finished.connect(func():
+			if is_instance_valid(player): player.queue_free()
+		)
 
 func _find_all_mesh_instances(node: Node) -> Array[MeshInstance3D]:
 	var result: Array[MeshInstance3D] = []
@@ -515,35 +582,41 @@ func _set_collision_active(active: bool) -> void:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# INTERN – Distortion-System (Screen-Space Refraktion)
+# INTERN – Distortion-System (Screen-Space Refraktion via material_overlay)
 # ─────────────────────────────────────────────────────────────────────────────
+# ANSATZ: Kein Klon-Mesh! Stattdessen bekommt jedes Original-Mesh einen
+# material_overlay mit dem Distortion-Shader. Das Overlay rendert über den
+# normalen Materials und erzeugt Refraktion + Rim ohne Z-Fighting.
+# Der Alpha-Fade (cloaked_min_alpha=0) hat die Meshes bereits unsichtbar
+# gemacht — der Overlay-Shader macht nur den Verzerrungseffekt sichtbar.
 
-## Erstellt für jedes Schiff-Mesh einen transparenten Klon mit dem Distortion-
-## Shader. Die Klone werden als Siblings des Meshes unter dem Model-Node gehängt.
-## Alle Klone teilen dasselbe ShaderMaterial → ein set_shader_parameter reicht.
+## Initialisiert den Distortion-Shader und setzt ihn als material_overlay
+## auf alle relevanten Meshes. Idempotent — kann mehrfach aufgerufen werden.
 func _initialize_distortion() -> void:
 	if _distortion_initialized:
-		return
-	if not _ship_root:
-		_dbg("⚠ _initialize_distortion: kein _ship_root!")
+		# Overlay nur reaktivieren (Strength auf aktuellen Wert setzen)
+		_set_distortion_overlay(true)
 		return
 
 	var shader_res: Shader = load(distortion_shader_path) as Shader
 	if not shader_res:
-		_dbg("⚠ Distortion-Shader nicht gefunden: '%s' — Fallback: Meshes werden komplett versteckt" % distortion_shader_path)
-		_distortion_initialized = false
+		_dbg("⚠ Distortion-Shader nicht gefunden: '%s'" % distortion_shader_path)
+		# Fallback: Meshes bleiben alpha=0 (unsichtbar), kein Effekt
 		return
 
+	# Shared ShaderMaterial — alle Meshes teilen dasselbe Material,
+	# ein set_shader_parameter reicht für alle gleichzeitig.
 	_distortion_material = ShaderMaterial.new()
 	_distortion_material.shader = shader_res
-	_distortion_material.set_shader_parameter("distortion_strength",  0.0)
-	_distortion_material.set_shader_parameter("max_pixel_offset",     distortion_max_pixels)
-	_distortion_material.set_shader_parameter("rim_strength",         distortion_rim_strength)
-	_distortion_material.set_shader_parameter("flow_speed",           distortion_flow_speed)
-	_distortion_material.set_shader_parameter("noise_scale",          distortion_noise_scale)
+	_distortion_material.set_shader_parameter("distortion_strength", 0.0)
+	_distortion_material.set_shader_parameter("refraction_scale",    refraction_scale)
+	_distortion_material.set_shader_parameter("rim_strength",        distortion_rim_strength)
+	_distortion_material.set_shader_parameter("flow_speed",          distortion_flow_speed)
+	_distortion_material.set_shader_parameter("noise_scale",         distortion_noise_scale)
 
-	var noise_tex: NoiseTexture2D = NoiseTexture2D.new()
-	var fn: FastNoiseLite = FastNoiseLite.new()
+	# Noise-Textur procedural erzeugen
+	var noise_tex := NoiseTexture2D.new()
+	var fn        := FastNoiseLite.new()
 	fn.noise_type      = FastNoiseLite.TYPE_PERLIN
 	fn.frequency       = 0.025
 	fn.fractal_octaves = 4
@@ -552,86 +625,38 @@ func _initialize_distortion() -> void:
 	noise_tex.noise    = fn
 	_distortion_material.set_shader_parameter("noise_texture", noise_tex)
 
-	var source_meshes: Array[MeshInstance3D] = []
-	if target_meshes.size() > 0:
-		for m in target_meshes:
-			if is_instance_valid(m) and m.name != "ShieldMesh":
-				source_meshes.append(m)
-		_dbg("🌊 Distortion: nutze %d Inspector-Meshes als Basis" % source_meshes.size())
-	elif _ship_root:
-		source_meshes = _find_all_mesh_instances(_ship_root)
-		_dbg("🌊 Distortion: %d Meshes per Auto-Suche" % source_meshes.size())
-
-	var created: int = 0
-	for src in source_meshes:
-		if not src.mesh:
-			_dbg("  ⚠ Übersprungen '%s': kein mesh" % src.name)
-			continue
-
-		var clone := MeshInstance3D.new()
-		clone.name         = src.name + "_Distortion"
-		clone.mesh         = src.mesh
-		clone.visible      = false
-		clone.cast_shadow  = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		clone.material_override = _distortion_material
-
-		# KRITISCH: Transform des Klons muss im globalen Raum stimmen.
-		# src.transform ist LOKAL zum Parent — den Klon unter denselben Parent
-		# hängen und denselben lokalen Transform geben ist korrekt.
-		# ABER: wir nutzen global_transform → in World-Space umrechnen damit
-		# der Klon auch nach Rotations/Scale-Änderungen am richtigen Ort sitzt.
-		var parent_node: Node3D = src.get_parent() as Node3D
-		if parent_node:
-			src.get_parent().add_child(clone)
-			# Globalen Transform übernehmen NACHDEM der Clone im Tree ist
-			clone.global_transform = src.global_transform
-			_dbg("  ✅ Klon '%s' unter '%s' | global_pos=%s" % [
-				clone.name, parent_node.name,
-				str(clone.global_position.snapped(Vector3.ONE))
-			])
-		else:
-			_dbg("  ⚠ Kein Node3D-Parent für '%s' — Klon übersprungen" % src.name)
-			clone.queue_free()
-			continue
-
-		_distortion_meshes.append(clone)
-		created += 1
+	# Meshes sammeln
+	var meshes: Array[MeshInstance3D] = _get_target_meshes()
+	for mesh in meshes:
+		# material_overlay setzt einen Shader ÜBER den normalen Materials —
+		# keine Änderung an surface_override_material nötig.
+		mesh.material_overlay = _distortion_material
+		_distortion_meshes.append(mesh)
+		_dbg("  🌊 Overlay auf '%s' gesetzt" % mesh.name)
 
 	_distortion_initialized = true
-	_dbg("🌊 Distortion-System: %d Klon-Meshes erstellt (von %d Quell-Meshes)" % [
-		created, source_meshes.size()
+	_dbg("🌊 Distortion bereit | %d Meshes | refraction_scale=%.3f" % [
+		_distortion_meshes.size(), refraction_scale
 	])
+	# Overlay sofort aktivieren
+	_set_distortion_overlay(true)
 
 
-func _set_distortion_meshes_visible(visible: bool) -> void:
-	if not _distortion_initialized:
-		_initialize_distortion()
-	for mesh in _distortion_meshes:
-		if is_instance_valid(mesh):
-			mesh.visible = visible
+## Aktiviert/deaktiviert den Distortion-Overlay-Effekt.
+## true = Shader aktiv (distortion_strength per _update_distortion_strength gesteuert)
+## false = Shader unsichtbar (strength=0), material_overlay bleibt gesetzt für späteren Aufruf
+func _set_distortion_overlay(active: bool) -> void:
+	if not _distortion_material:
+		return
+	if not active:
+		_distortion_material.set_shader_parameter("distortion_strength", 0.0)
+		_dbg("🌊 Distortion-Overlay deaktiviert")
+		# material_overlay nicht entfernen — beim nächsten Cloak einfach wieder aktivieren
 
 
-## Fallback wenn kein Distortion-Shader verfügbar: Original-Meshes direkt
-## ein-/ausblenden. Kein visueller Effekt, aber auch kein Grau-Bug.
-func _set_original_meshes_visible(visible: bool) -> void:
-	var meshes: Array[MeshInstance3D] = []
-	if target_meshes.size() > 0:
-		for m in target_meshes:
-			if is_instance_valid(m):
-				meshes.append(m)
-	elif _ship_root:
-		meshes = _find_all_mesh_instances(_ship_root)
-
-	for mesh in meshes:
-		if mesh.name == "ShieldMesh":
-			continue
-		mesh.visible = visible
-	_dbg("👁 Original-Meshes visible=%s (%d Meshes)" % [visible, meshes.size()])
-
-
-## Berechnet die Distortion-Stärke basierend auf dem nächsten Observer-Schiff.
-## Außerhalb detection_range → 0.0 (unsichtbar).
-## Innerhalb → linear von 0.0 bis 1.0 (bei Distanz 0).
+## Berechnet die Distortion-Stärke basierend auf dem nächsten Observer.
+## Außerhalb detection_range → 0.0 (unsichtbar, kein Effekt).
+## Innerhalb → steigt von 0.0 bis 1.0 je näher der Observer ist.
 func _update_distortion_strength() -> void:
 	if not _distortion_material:
 		return
@@ -651,14 +676,32 @@ func _update_distortion_strength() -> void:
 	var strength: float = 0.0
 	if nearest_dist < detection_range:
 		strength = 1.0 - (nearest_dist / detection_range)
-		strength = pow(strength, 0.6)
+		strength = pow(strength, 0.6)  # Kurve: am Rand subtil, in Mitte stark
 
 	_distortion_material.set_shader_parameter("distortion_strength", strength)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# DEBUG
-# ─────────────────────────────────────────────────────────────────────────────
+## Liefert die relevanten Meshes — aus Inspector oder Auto-Suche.
+func _get_target_meshes() -> Array[MeshInstance3D]:
+	var result: Array[MeshInstance3D] = []
+	if target_meshes.size() > 0:
+		for m in target_meshes:
+			if is_instance_valid(m) and m.name != "ShieldMesh":
+				result.append(m)
+		_dbg("🎯 %d Meshes aus Inspector" % result.size())
+	elif _ship_root:
+		for m in _find_all_mesh_instances(_ship_root):
+			if m.name != "ShieldMesh":
+				result.append(m)
+		_dbg("🔍 %d Meshes per Auto-Suche" % result.size())
+	return result
+
+
+## Blendet Original-Meshes komplett aus/ein (Fallback ohne Distortion).
+func _set_original_meshes_visible(visible: bool) -> void:
+	for mesh in _get_target_meshes():
+		mesh.visible = visible
+	_dbg("👁 Meshes visible=%s" % visible)
 
 func _dbg(msg: String) -> void:
 	if not show_debug:

@@ -139,13 +139,23 @@ func _ready() -> void:
 
 	_instantiate_ship()
 
-	# Spawn-Cloak: NPC taucht kurz nach dem Erscheinen in die Tarnung ein.
-	# cloak_component ist per @export im Inspector zugewiesen — kein Suchen nötig.
+	# WICHTIG: cloak_component vom Runtime-ShipController holen, NICHT vom
+	# @export-Feld des AIControllers. Der @export zeigt auf den Editor-Node
+	# der BirdOfPrey-Scene — nach _instantiate_ship() existiert aber eine neue
+	# Instanz im Tree. ship_controller.cloak_component ist der korrekte Verweis.
+	if is_instance_valid(ship_controller) and is_instance_valid(ship_controller.cloak_component):
+		cloak_component = ship_controller.cloak_component
+		_dbg_cloak("✅ cloak_component von Runtime-ShipController übernommen: '%s'" % cloak_component.name)
+	elif is_instance_valid(cloak_component):
+		_dbg_cloak("ℹ cloak_component aus @export genutzt (ship_controller hat keinen): '%s'" % cloak_component.name)
+	else:
+		_dbg_cloak("ℹ Kein cloak_component — Schiff tarnt nicht")
+
 	if cloak_on_spawn:
 		if is_instance_valid(cloak_component):
 			_trigger_spawn_cloak()
 		else:
-			_dbg_cloak("⚠ cloak_on_spawn=true aber keine CloakComponent im Inspector zugewiesen!")
+			_dbg_cloak("⚠ cloak_on_spawn=true aber kein CloakComponent gefunden!")
 
 	_initialized = true
 	_dbg("AIController fully initialized")
@@ -644,7 +654,6 @@ func _is_target_dead() -> bool:
 	if not is_instance_valid(_target): return true
 	return not _target.is_in_group("ships")
 
-
 func _enter_patrol() -> void:
 	if _state == State.PATROL:
 		return
@@ -662,6 +671,12 @@ func _enter_patrol() -> void:
 
 	_dbg("→ PATROL Modus | Radar wieder grün + pulsierend")
 
+	# ── Re-Cloak nach Combat (mit kleiner Verzögerung) ─────────────────
+	if is_instance_valid(cloak_component) and cloak_on_spawn:  # oder eine separate @export var re_cloak_on_patrol: bool = true
+		# Kurze Pause, damit das Schiff nicht sofort wieder verschwindet
+		await get_tree().create_timer(1.5).timeout
+		if is_instance_valid(cloak_component) and cloak_component.toggle_cloak():
+			_dbg("🫥 Re-Cloak nach Patrol-Wechsel aktiviert")
 
 ## Öffentliche API für Debug-Tools oder externe Systeme.
 ## Setzt den NPC hart in den PATROL-Modus zurück und startet den Scan-Timer neu.
@@ -760,6 +775,8 @@ func _move_reposition(stats: ShipStats, delta: float) -> void:
 
 
 func on_hit_by_player(damage: float) -> void:
+	if not _initialized or not is_instance_valid(ship_controller):
+		return
 	ReputationSystem.on_player_attacked_ship(ship_data.faction)
 	var player := _find_player_node()
 	if player and _state == State.PATROL:
@@ -830,33 +847,34 @@ func _set_radar_pulsing(active: bool) -> void:
 # ─────────────────────────────────────────────────────────────────────────────
 # STATE WECHSEL
 # ─────────────────────────────────────────────────────────────────────────────
-
 func _enter_combat(target: Node3D) -> void:
-	# TEMPORÄRER DIAGNOSE-LOG (unabhängig von show_debug).
-	# Zeigt welcher Pfad den Kampf tatsächlich startet – mit Stack-Trace.
-	# Nach Debug-Phase wieder entfernen oder hinter ein Debug-Flag setzen.
-	var target_name: String = String(target.name) if is_instance_valid(target) else "NULL"
-	var my_faction: String  = ShipData.Faction.keys()[ship_data.faction] if ship_data else "?"
-	print("[AI-COMBAT-ENTRY] '%s' [%s] → COMBAT gegen '%s' | Stack:" % [
-		name, my_faction, target_name
-	])
-	for frame in get_stack():
-		print("    @ %s:%d in %s()" % [frame.get("source", "?"), frame.get("line", 0), frame.get("function", "?")])
+	if not is_instance_valid(target):
+		return
 
+	# ── WICHTIG: Zuerst Cloak brechen, falls aktiv ─────────────────────
+	if is_instance_valid(cloak_component) and \
+	   (cloak_component.is_cloaked() or cloak_component.is_transitioning()):
+		
+		cloak_component.break_cloak("combat_entry")
+		_dbg("💥 Cloak gebrochen wegen COMBAT-Eintritt – warte auf Decloak...")
+
+		# Kurze Wartezeit, bis Decloak-Fade fertig ist (fade_out_duration + Puffer)
+		# Damit der NPC nicht sofort schießt, während er noch unsichtbar ist.
+		await get_tree().create_timer(cloak_component.fade_out_duration + 0.2).timeout
+		
+		if not is_instance_valid(self) or not is_instance_valid(cloak_component):
+			return  # NPC mittlerweile zerstört
+
+	# ── Jetzt erst in Combat gehen ─────────────────────────────────────
 	_state = State.COMBAT
 	_target = target
 
-	# Cloak brechen wenn der NPC in den Kampf geht — getarnte Schiffe kämpfen nicht
-	if is_instance_valid(cloak_component) and \
-		(cloak_component.is_cloaked() or cloak_component.is_transitioning()):
-		cloak_component.break_cloak("combat_entry")
-		_dbg("💥 Cloak gebrochen wegen COMBAT-Eintritt")
 	_torpedo_fire_timer = randf_range(2.0, 4.0)
 	_combat_phase = CombatPhase.APPROACH
 	_orbit_dir = 1.0 if randf() > 0.5 else -1.0
 	_reposition_timer = _random_reposition_time()
 
-	if is_instance_valid(ship_controller):
+	if is_instance_valid(ship_controller) and ship_controller.targeting_system:
 		ship_controller.targeting_system.force_lock(target)
 
 	_set_radar_pulsing(false)

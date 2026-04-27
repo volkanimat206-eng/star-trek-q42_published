@@ -29,24 +29,24 @@ shader_parameter/fade_length = 0.10000000475
 size = Vector2(0.2, 1)
 orientation = 1
 
-[node name="PhaserBeam" type="Node3D"]
+[node name="PhaserBeam" type="Node3D" unique_id=1576435971]
 script = ExtResource("1_emjm4")
 impact_hull_scene = ExtResource("2_0mlgd")
 
-[node name="RayCast3D" type="RayCast3D" parent="."]
+[node name="RayCast3D" type="RayCast3D" parent="." unique_id=384216126]
 collision_mask = 10
 debug_shape_custom_color = Color(0.80049086, 0.80049074, 0.80049074, 1)
 
-[node name="ConvergenceMarker" type="Marker3D" parent="."]
+[node name="ConvergenceMarker" type="Marker3D" parent="." unique_id=1406684257]
 
-[node name="BeamContainer" type="Node3D" parent="."]
+[node name="BeamContainer" type="Node3D" parent="." unique_id=481784553]
 
-[node name="BeamCore" type="MeshInstance3D" parent="BeamContainer"]
+[node name="BeamCore" type="MeshInstance3D" parent="BeamContainer" unique_id=83126210]
 transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, 0, 0, 0)
 material_override = SubResource("ShaderMaterial_jun8w")
 mesh = SubResource("QuadMesh_yx1n1")
 
-[node name="BeamGlow" type="MeshInstance3D" parent="BeamContainer"]
+[node name="BeamGlow" type="MeshInstance3D" parent="BeamContainer" unique_id=1821202069]
 transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, 0, 0, 0)
 material_override = SubResource("ShaderMaterial_r3mkt")
 transparency = 0.27

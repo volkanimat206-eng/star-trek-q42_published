@@ -24,7 +24,9 @@
 [ext_resource type="PackedScene" uid="uid://b6c7qf200ku55" path="res://scenes/vfx/fires/Effects_Fire3.tscn" id="16_4xfhx"]
 [ext_resource type="Script" uid="uid://bb2df4t0jrl2e" path="res://scripts/combat/cloak_component.gd" id="17_6dckk"]
 [ext_resource type="PackedScene" uid="uid://b5m6vm56oe4lh" path="res://scenes/vfx/fires/Effects_Fire5.tscn" id="17_s11h6"]
+[ext_resource type="AudioStream" uid="uid://d2wgc5r0puu1r" path="res://assets/audio/cloak/cloak_klingon.mp3" id="18_240yq"]
 [ext_resource type="PackedScene" uid="uid://c74qhlwq483rx" path="res://scenes/vfx/effect_smoke.tscn" id="18_od4m3"]
+[ext_resource type="AudioStream" uid="uid://deoji8knor3jh" path="res://assets/audio/cloak/decloak_klingon.mp3" id="19_240yq"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1ujlw"]
 resource_name = "Material.001"
@@ -404,16 +406,16 @@ shadow_mesh = SubResource("ArrayMesh_hbfal")
 radius = 1.0
 height = 2.0
 
-[sub_resource type="FastNoiseLite" id="FastNoiseLite_shx7j"]
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_6dckk"]
 noise_type = 2
-seed = 1581627222
+seed = 1706866504
 frequency = 0.08
 fractal_octaves = 3
 
-[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_6dckk"]
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_cek0b"]
 width = 256
 height = 256
-noise = SubResource("FastNoiseLite_shx7j")
+noise = SubResource("FastNoiseLite_6dckk")
 seamless = true
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_xnmtx"]
@@ -434,7 +436,7 @@ shader_parameter/impact_ages = Array[float]([100.0, 100.0, 100.0, 100.0, 100.0, 
 shader_parameter/impact_colors = Array[Color]([Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1)])
 shader_parameter/impact_types = Array[float]([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 shader_parameter/dissolve_progress = 0.0
-shader_parameter/dissolve_noise = SubResource("NoiseTexture2D_6dckk")
+shader_parameter/dissolve_noise = SubResource("NoiseTexture2D_cek0b")
 shader_parameter/pattern_type = 1
 shader_parameter/pattern_scale = 60.0
 shader_parameter/pattern_line_width = 0.05
@@ -499,20 +501,26 @@ weapon_attach_path = NodePath("..")
 mouse_target_height = 0.0
 fire_sound = ExtResource("8_od4m3")
 charge_volume_offset_db = 20.0
+distance_attenuation_strength = 0.65
+max_distance = 1500.0
+attenuation_filter_cutoff_hz = 15000.0
 arc_half_angle_deg = 80.0
 arc_radius = 400.0
-show_gizmo = false
 
 [node name="WingDisruptorMount" type="Node3D" parent="Model/Weapons" unique_id=454144902 node_paths=PackedStringArray("left_marker", "right_marker")]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 0, 0)
 script = ExtResource("8_4xfhx")
 left_marker = NodePath("../../WingTip_L")
 right_marker = NodePath("../../WingTip_R")
 bolt_scene = ExtResource("9_s11h6")
 bolt_weapon_data = ExtResource("11_stjfv")
 fire_sound = ExtResource("11_wcxa4")
-fire_volume_db = 1.0
-player_panning_strength = 1.0
-npc_unit_size = 200.0
+fire_volume_offset_db = 30.0
+distance_attenuation_strength = 0.65
+max_distance = 1000.0
+no_distance_attenuation = null
+attenuation_filter_cutoff_hz = 15000.0
+sound_fade_out_time = 2.0
 
 [node name="Effects" type="Node3D" parent="Model" unique_id=611753747]
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 6.593826e-08, 0.7542454, 7.935009)
@@ -540,8 +548,18 @@ script = ExtResource("8_xnmtx")
 script = ExtResource("7_ut18v")
 max_lock_range = 2000.0
 
-[node name="CloakComponent" type="Node3D" parent="ShipController" unique_id=1302067432]
+[node name="CloakComponent" type="Node3D" parent="ShipController" unique_id=1302067432 node_paths=PackedStringArray("target_meshes")]
 script = ExtResource("17_6dckk")
+target_meshes = [NodePath("../../Model/MeshModel/Object_37")]
+sound_cloak = ExtResource("18_240yq")
+sound_decloak = ExtResource("19_240yq")
+cloak_volume_offset_db = 100.0
+decloak_volume_offset_db = 200.0
+distance_attenuation_strength = 0.65
+max_distance = 1500.0
+attenuation_filter_cutoff_hz = 15000.0
+sound_fade_out_time = 2.0
+use_distortion = true
 
 [node name="HullImpactReceiver" type="Node" parent="." unique_id=1701943236 node_paths=PackedStringArray("mesh_instances")]
 script = ExtResource("10_hrn4b")

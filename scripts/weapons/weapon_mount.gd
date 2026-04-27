@@ -37,21 +37,33 @@ enum WeaponType    { PHASER, DISRUPTOR, TORPEDO, PULSE_PHASER }
 ## Lade-Sound für Auflade-Phaser (Federation-Stil mit Path3D).
 @export var charge_sound: AudioStream
 ## Feuer-Sound – wird bei jedem Schuss einmal abgespielt.
-@export var fire_sound:   AudioStream
-## Lautstärke-Offset für den Charge-Sound in dB (addiert zum Pool-Basiswert).
-@export_range(-20.0, 20.0) var charge_volume_offset_db: float = 0.0
+@export var fire_sound:   AudioStream = null
+
+## Lautstärke-Offset für den Charge-Sound in dB.
+@export_range(-30.0, 200.0, 0.1) var charge_volume_offset_db: float = 0.0
 ## Lautstärke-Offset für den Fire-Sound in dB.
-@export_range(-20.0, 20.0) var fire_volume_offset_db:   float = 0.0
-## Wenn true: Kamera-Zoom hat keinen Einfluss auf die Lautstärke.
-## Für Waffen des eigenen Schiffs empfohlen – feindliche Waffen auf false lassen.
+@export_range(-30.0, 200.0, 0.1) var fire_volume_offset_db:   float = 0.0
+
+## Wie stark die Distanz-/Zoom-Abschwächung wirkt (0.0 = fast keine Abschwächung, 1.0 = normale Godot-Abschwächung).
+## Niedriger Wert (0.1–0.4) macht Waffen-Sounds weniger abhängig vom Kamera-Zoom.
+@export_range(0.0, 2.0, 0.05) var distance_attenuation_strength: float = 0.35
+
+## Maximale Distanz, bis zu der der Sound gut hörbar bleibt (höher = weniger Zoom-Einfluss).
+@export_range(100.0, 5000.0, 50.0) var max_distance: float = 1500.0
+
+## Wenn true: Attenuation komplett deaktivieren → Sound immer gleich laut (ideal für Player-Waffen).
+## Für feindliche Waffen meist false lassen.
 @export var no_distance_attenuation: bool = false
+
+## Low-pass Filter Cutoff (höher = weniger "dumpf" bei Distanz/Zoom).
+@export_range(1000.0, 30000.0, 100.0) var attenuation_filter_cutoff_hz: float = 11000.0
+
 ## Fade-out Dauer des Charge-Sounds wenn der Strahl feuert (Sekunden).
-## 0.0 = sofort stoppen.
 @export_range(0.0, 2.0) var charge_fade_out_time: float = 0.3
 ## Fade-out Dauer des Feuer-Sounds wenn der Strahl endet (Sekunden).
 @export_range(0.0, 2.0) var fire_fade_out_time:   float = 0.2
-## Optionale Curve für den Charge-Fade (X=Zeit 0→1, Y=Lautstärke 1→0).
-## Leer = linearer Fade.
+
+## Optionale Curve für den Charge-Fade.
 @export var charge_fade_curve: Curve
 ## Optionale Curve für den Fire-Fade.
 @export var fire_fade_curve:   Curve
@@ -160,6 +172,18 @@ func _connect_weapon_node():
 		weapon_instance.fire_volume_offset_db = fire_volume_offset_db
 	if "no_distance_attenuation" in weapon_instance:
 		weapon_instance.no_distance_attenuation = no_distance_attenuation
+	# Neue Parameter für Zoom-Kontrolle
+	if "distance_attenuation_strength" in weapon_instance:
+		weapon_instance.distance_attenuation_strength = distance_attenuation_strength
+	if "max_distance" in weapon_instance:
+		weapon_instance.max_distance = max_distance
+	if "no_distance_attenuation" in weapon_instance:
+		weapon_instance.no_distance_attenuation = no_distance_attenuation
+	if "attenuation_filter_cutoff_hz" in weapon_instance:
+		weapon_instance.attenuation_filter_cutoff_hz = attenuation_filter_cutoff_hz
+	# Fade-Zeiten bleiben wie bisher
+	if "charge_fade_out_time" in weapon_instance:
+		weapon_instance.charge_fade_out_time = charge_fade_out_time
 	if "charge_fade_out_time" in weapon_instance:
 		weapon_instance.charge_fade_out_time = charge_fade_out_time
 	if "fire_fade_out_time" in weapon_instance:
