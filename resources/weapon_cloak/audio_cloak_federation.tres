@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CloakAudioData" format=3 uid="uid://bnqm5frfvudf7"]
+
+[ext_resource type="Script" uid="uid://bqymybvip2dje" path="res://resources/data/cloak_audio_data.gd" id="1_8xrpw"]
+[ext_resource type="AudioStream" uid="uid://dpqmfpbcfw3k6" path="res://assets/audio/cloak/federation/cloak_federation_pixabay.mp3" id="2_dpddw"]
+[ext_resource type="AudioStream" uid="uid://5iyerxmteflh" path="res://assets/audio/cloak/federation/decloak_federation_pixabay.mp3" id="3_102ob"]
+
+[resource]
+script = ExtResource("1_8xrpw")
+sound_cloak = ExtResource("2_dpddw")
+sound_decloak = ExtResource("3_102ob")
+cloak_volume_offset_db = 30.0
+decloak_volume_offset_db = 30.0
+distance_attenuation_strength = 0.0
+max_distance = 5000.0
+sound_fade_out_time = 3.0
+metadata/_custom_type_script = "uid://bqymybvip2dje"

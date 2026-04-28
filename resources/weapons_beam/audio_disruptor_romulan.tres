@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="BeamWeaponAudioData" format=3 uid="uid://48cn1b0es7mp"]
+
+[ext_resource type="Script" uid="uid://ddwml241jf6ng" path="res://resources/data/beam_weapon_audio_data.gd" id="1_3r11s"]
+
+[resource]
+script = ExtResource("1_3r11s")
+metadata/_custom_type_script = "uid://ddwml241jf6ng"

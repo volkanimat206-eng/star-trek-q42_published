@@ -67,6 +67,9 @@ enum Faction {
 ## BeamWeaponData für alle Phaser/Disruptor-Mounts dieses Schiffes.
 ## Leer lassen = Mount-eigene weapon_data behalten.
 @export var beam_weapon_data: BeamWeaponData
+## Zentrale Bolt-Waffen-Daten – gilt für alle WingDisruptorMount dieses Schiffs.
+## NULL lassen wenn das Schiff keine Bolt-Waffen hat (z.B. Federation-Schiffe).
+@export var bolt_weapon_data: BoltWeaponData
 ## TorpedoData für alle TorpedoMount3D-Nodes dieses Schiffes.
 ## Leer lassen = Mount-eigene torpedo_data behalten.
 @export var torpedo_data: TorpedoData

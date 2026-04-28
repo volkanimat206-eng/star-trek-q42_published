@@ -404,8 +404,13 @@ func _update_combat_phase(dist: float, delta: float) -> void:
 			if _reposition_timer <= 0.0:
 				_combat_phase = CombatPhase.APPROACH
 
-
 func _handle_weapons(to_target: Vector3, dist: float, delta: float) -> void:
+	# ── HARTE REGEL: Kein Feuer im Cloak ───────────────────────────────
+	if is_instance_valid(cloak_component):
+		if cloak_component.is_cloaked() or cloak_component.is_transitioning():
+			cloak_component.break_cloak("weapon_fire")
+			return  # KEIN Schuss in diesem Frame
+
 	if dist <= fire_range:
 		var forward := -global_transform.basis.z
 		if forward.dot(to_target.normalized()) > 0.5:
@@ -415,8 +420,7 @@ func _handle_weapons(to_target: Vector3, dist: float, delta: float) -> void:
 	if _torpedo_fire_timer <= 0.0 and dist <= fire_range * 1.8:
 		if ship_controller.fire_torpedos(_target) > 0:
 			_torpedo_fire_timer = randf_range(5.0, 9.0)
-
-
+			
 # ─────────────────────────────────────────────────────────────────────────────
 # STEERING & PHYSICS CORE
 # ─────────────────────────────────────────────────────────────────────────────

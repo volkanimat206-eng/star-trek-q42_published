@@ -6,4 +6,10 @@
 script = ExtResource("1_2mj5w")
 weapon_name = "Disruptor"
 damage_type = "disruptor"
+damage_per_second = 35.0
+charge_duration = 0.3
+fire_duration = 1.0
+trail_fade_out_time = 0.1
+beam_core_width = 10.0
+beam_glow_width = 30.0
 metadata/_custom_type_script = "uid://uadlkt5xdjn0"

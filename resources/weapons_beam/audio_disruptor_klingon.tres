@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="BeamWeaponAudioData" format=3 uid="uid://ch5k48335xxon"]
+
+[ext_resource type="Script" uid="uid://ddwml241jf6ng" path="res://resources/data/beam_weapon_audio_data.gd" id="1_1jh51"]
+[ext_resource type="AudioStream" uid="uid://b502ynytrd785" path="res://assets/audio/disruptor/klingon_disruptor4.mp3" id="1_mxpq1"]
+
+[resource]
+script = ExtResource("1_1jh51")
+fire_sound = ExtResource("1_mxpq1")
+charge_volume_offset_db = 30.0
+fire_volume_offset_db = 30.0
+distance_attenuation_strength = 0.1
+attenuation_filter_cutoff_hz = 12000.0
+charge_fade_out_time = 0.1
+fire_fade_out_time = 1.0
+metadata/_custom_type_script = "uid://ddwml241jf6ng"

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="BeamWeaponAudioData" format=3 uid="uid://ciriwim0gt8l7"]
+
+[ext_resource type="AudioStream" uid="uid://qpjora02kvir" path="res://assets/audio/phaser/tng_phaser_load.mp3" id="1_0bftp"]
+[ext_resource type="AudioStream" uid="uid://cxgoqswf4r4ll" path="res://assets/audio/phaser/tng_phaser2_clean.mp3" id="2_ueaw1"]
+[ext_resource type="Script" uid="uid://ddwml241jf6ng" path="res://resources/data/beam_weapon_audio_data.gd" id="3_6wao3"]
+
+[resource]
+script = ExtResource("3_6wao3")
+charge_sound = ExtResource("1_0bftp")
+fire_sound = ExtResource("2_ueaw1")
+charge_fade_out_time = 0.8
+fire_fade_out_time = 0.3
+metadata/_custom_type_script = "uid://ddwml241jf6ng"

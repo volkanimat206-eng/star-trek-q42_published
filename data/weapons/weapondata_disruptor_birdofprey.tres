@@ -6,7 +6,8 @@
 script = ExtResource("1_jjsst")
 weapon_name = "Disruptor"
 damage_type = "disruptor"
-charge_duration = 0.2
+damage_per_second = 10.0
+charge_duration = 0.1
 fire_duration = 1.0
 beam_core_width = 10.0
 beam_glow_width = 30.0

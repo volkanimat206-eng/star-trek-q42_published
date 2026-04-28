@@ -59,21 +59,9 @@ var _state: State = State.IDLE
 # EXPORTS — direkt im Inspector pro Schiff konfigurierbar
 # ─────────────────────────────────────────────────────────────────────────────
 
-@export_group("Cloak – Timing")
-## Dauer des Eintar-Fades in Sekunden.
-@export_range(0.2, 5.0, 0.1) var fade_in_duration:     float = 1.5
-## Dauer des Enttarn-Fades in Sekunden.
-@export_range(0.2, 5.0, 0.1) var fade_out_duration:    float = 1.0
-## Cooldown nach erzwungenem Enttarnen (Waffe, Treffer) in Sekunden.
-@export_range(1.0, 30.0, 0.5) var emergency_cooldown:  float = 8.0
-
-@export_group("Cloak – Detection")
-## Radius in Metern innerhalb dem ein Observer das Schiff als Distortion sehen kann.
-## Außerhalb: komplett unsichtbar. Innerhalb: Raumverzerrungseffekt.
-@export_range(10.0, 500.0, 5.0) var detection_range:   float = 100.0
-## Maximaler Alpha-Shimmer bei altem Proximity-System (Legacy, nicht mehr genutzt).
-## Wird für die Distortion-Stärken-Kurve weiterverwendet (0.1–0.5 empfohlen).
-@export_range(0.0, 1.0, 0.05) var shimmer_max_alpha:   float = 0.15
+@export_group("Cloak – Configuration")
+## Die zentrale Konfiguration für dieses Schiff
+@export var cloak_data: CloakData
 
 @export_group("Cloak – Meshes")
 ## Die MeshInstance3D-Nodes die beim Cloaken transparent werden.
@@ -89,30 +77,8 @@ var _state: State = State.IDLE
 @export_range(0.0, 1.0, 0.01) var cloaked_min_alpha: float = 0.0
 
 @export_group("Cloak – Audio")
-## Sound beim Aktivieren der Tarnung (Cloak).
-@export var sound_cloak: AudioStream = null
-## Sound beim Deaktivieren der Tarnung (Decloak).
-@export var sound_decloak: AudioStream = null
-
-## Lautstärke-Offset für Cloak-Sound in dB (+ = lauter, - = leiser)
-@export_range(-30.0, 200.0, 0.1) var cloak_volume_offset_db: float = 0.0
-## Lautstärke-Offset für Decloak-Sound in dB
-@export_range(-30.0, 200.0, 0.1) var decloak_volume_offset_db: float = 0.0
-
-## Wie stark die Distanz-/Zoom-Abschwächung wirkt (0.0 = fast keine Abschwächung, 1.0 = normal)
-@export_range(0.0, 2.0, 0.05) var distance_attenuation_strength: float = 0.25
-
-## Maximale Distanz, bis zu der der Sound gut hörbar bleibt (höher = weniger Zoom-Einfluss)
-@export_range(100.0, 2000.0, 50.0) var max_distance: float = 800.0
-
-## Wenn true: Sound wird komplett unabhängig von Distanz/Zoom abgespielt (ideal für Player)
-@export var no_distance_attenuation: bool = false
-
-## Low-pass Filter (höher = weniger dumpf bei großer Distanz/Zoom)
-@export_range(1000.0, 20500.0, 100.0) var attenuation_filter_cutoff_hz: float = 12000.0
-
-## Fade-out Dauer des Sounds nach dem Abspielen (in Sekunden). 0.0 = kein Fade
-@export_range(0.0, 3.0, 0.1) var sound_fade_out_time: float = 0.8
+## Alle Tarnung-Sounds als Resource – z.B. res://resources/audio/cloak/audio_cloak_romulan.tres
+@export var audio_data: CloakAudioData = null
 
 @export_group("Cloak – Distortion Shader")
 ## Distortion aktivieren: Original-Meshes bekommen den Refraktions-Shader
@@ -175,7 +141,7 @@ func _ready() -> void:
 	_dbg("✅ CloakComponent bereit | root='%s' | sc='%s' | detection_range=%.0fm | fade_in=%.1fs" % [
 		_ship_root.name if _ship_root else "NULL",
 		_ship_controller.name if _ship_controller else "NULL",
-		detection_range, fade_in_duration
+		cloak_data.detection_range, cloak_data.fade_in_duration
 	])
 
 func _process(delta: float) -> void:
@@ -258,12 +224,12 @@ func visibility_to(observer: Node3D) -> float:
 		return 0.0
 
 	var dist: float = _ship_root.global_position.distance_to(observer.global_position)
-	if dist >= detection_range:
+	if dist >= cloak_data.detection_range:
 		return 0.0
 
 	# Linear interpoliert: bei dist=0 → shimmer_max_alpha, bei dist=detection_range → 0
-	var t: float = 1.0 - (dist / detection_range)
-	return t * shimmer_max_alpha
+	var t: float = 1.0 - (dist / cloak_data.detection_range)
+	return t * cloak_data.shimmer_max_alpha
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -274,18 +240,19 @@ func _begin_cloak() -> bool:
 	if not _ship_controller:
 		return false
 
-	_dbg("🌀 CLOAKING gestartet (fade=%.1fs)" % fade_in_duration)
+	_dbg("🌀 CLOAKING gestartet (fade=%.1fs)" % cloak_data.fade_in_duration)
 	_state = State.CLOAKING
 	cloaking_started.emit()
 
-	_play_sound(sound_cloak, cloak_volume_offset_db)
+	if audio_data:
+		_play_sound(audio_data.sound_cloak, audio_data.cloak_volume_offset_db)
 
 	# Schilde und Waffen offline schalten
 	_set_weapons_locked(true)
 	_set_shields_offline(true)
 
 	# Mesh-Fade auf cloaked_min_alpha (0.0 = komplett unsichtbar, >0 = leicht sichtbar)
-	_fade_to(cloaked_min_alpha, fade_in_duration, _on_cloak_complete)
+	_fade_to(cloaked_min_alpha, cloak_data.fade_in_duration, _on_cloak_complete)
 	_dbg("  → Ziel-Alpha: %.2f" % cloaked_min_alpha)
 	return true
 
@@ -294,7 +261,7 @@ func _begin_decloak(emergency: bool = false) -> bool:
 	if not _ship_controller:
 		return false
 
-	var duration: float = fade_out_duration
+	var duration: float = cloak_data.fade_out_duration
 	if emergency:
 		duration = 0.3   # Schneller Blitz beim erzwungenen Enttarnen
 
@@ -302,7 +269,8 @@ func _begin_decloak(emergency: bool = false) -> bool:
 	_state = State.DECLOAKING
 	decloaking_started.emit()
 
-	_play_sound(sound_decloak, decloak_volume_offset_db)
+	if audio_data:
+		_play_sound(audio_data.sound_decloak, audio_data.cloak_volume_offset_db)
 
 	# Mesh-Fade zurück auf 1.0
 	_fade_to(1.0, duration, _on_decloak_complete.bind(emergency))
@@ -340,7 +308,7 @@ func _on_decloak_complete(emergency: bool) -> void:
 
 	if emergency:
 		_state = State.COOLDOWN
-		_cooldown_timer = emergency_cooldown
+		_cooldown_timer = cloak_data.emergency_cooldown
 		_dbg("⏰ COOLDOWN aktiv (%.1fs)" % _cooldown_timer)
 	else:
 		_state = State.IDLE
@@ -491,37 +459,36 @@ func _play_sound(stream: AudioStream, volume_offset_db: float = 0.0) -> void:
 	var player := AudioStreamPlayer3D.new()
 	player.stream = stream
 
-	# Position
 	if is_instance_valid(_ship_root):
 		player.global_position = _ship_root.global_position
 	elif is_instance_valid(_ship_controller) and _ship_controller is Node3D:
 		player.global_position = _ship_controller.global_position
 
-	# Basis-Lautstärke
 	player.volume_db = volume_offset_db
 
-	# ── Zoom/Distanz-Steuerung ─────────────────────────────────────
-	if no_distance_attenuation:
-		player.attenuation_model = AudioStreamPlayer3D.ATTENUATION_DISABLED
-		player.max_distance = 2000.0
-	else:
-		player.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE   # oder LOGARITHMIC für natürlicheres Verhalten
-		player.max_distance = max_distance
-		
-		# Wichtiger Trick: Die Stärke der Abschwächung reduzieren
-		# Godot hat keinen direkten "attenuation_strength", aber wir können über Unit Size + Filter simulieren
-		# Hier nutzen wir eine Kombination aus max_distance und Filter
-		player.unit_size = 1.0 / max(0.1, distance_attenuation_strength)   # niedriger distance_attenuation_strength → höherer unit_size → weniger Abschwächung
+	# ── Zoom/Distanz-Steuerung – Werte aus audio_data ─────────────────
+	var no_atten:  bool  = audio_data.no_distance_attenuation      if audio_data else false
+	var max_dist:  float = audio_data.max_distance                  if audio_data else 800.0
+	var atten_str: float = audio_data.distance_attenuation_strength if audio_data else 0.25
+	var cutoff:    float = audio_data.attenuation_filter_cutoff_hz  if audio_data else 12000.0
+	var fade_time: float = audio_data.sound_fade_out_time           if audio_data else 0.8
 
-	player.attenuation_filter_cutoff_hz = attenuation_filter_cutoff_hz
+	if no_atten:
+		player.attenuation_model = AudioStreamPlayer3D.ATTENUATION_DISABLED
+		player.max_distance      = 2000.0
+	else:
+		player.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
+		player.max_distance      = max_dist
+		player.unit_size         = 1.0 / max(0.1, atten_str)
+
+	player.attenuation_filter_cutoff_hz = cutoff
 
 	add_child(player)
 	player.play()
 
-	# Fade-Out + Aufräumen (wie vorher)
-	if sound_fade_out_time > 0.0:
+	if fade_time > 0.0:
 		var tween := create_tween()
-		tween.tween_property(player, "volume_db", -80.0, sound_fade_out_time)\
+		tween.tween_property(player, "volume_db", -80.0, fade_time)\
 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 		tween.tween_callback(func():
 			if is_instance_valid(player): player.queue_free()
@@ -674,8 +641,8 @@ func _update_distortion_strength() -> void:
 			nearest_dist = d
 
 	var strength: float = 0.0
-	if nearest_dist < detection_range:
-		strength = 1.0 - (nearest_dist / detection_range)
+	if nearest_dist < cloak_data.detection_range:
+		strength = 1.0 - (nearest_dist / cloak_data.detection_range)
 		strength = pow(strength, 0.6)  # Kurve: am Rand subtil, in Mitte stark
 
 	_distortion_material.set_shader_parameter("distortion_strength", strength)

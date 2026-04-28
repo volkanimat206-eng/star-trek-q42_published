@@ -6,7 +6,6 @@ class_name TorpedoMount3D
 # ===== EXPORTS =====
 @export_group("Setup")
 @export var torpedo_scene:  PackedScene
-@export var torpedo_data:   TorpedoData
 ## Optional: Marker3D als Abschussposition. Fallback = dieser Node.
 @export var launch_marker: Marker3D:
 	set(v): launch_marker = v; _update_visual_gizmo()
@@ -14,14 +13,19 @@ class_name TorpedoMount3D
 ## bevor das Homing zum Ziel aktiviert wird.
 @export var launch_straight_distance: float = 20.0
 
-@export_group("Cooldown")
-@export var cooldown: float = 0.5  # Wartezeit zwischen Einzelschüssen
-
-@export_group("Ammo")
-## Maximale Torpedo-Anzahl im Magazin
-@export var max_ammo: int = 4
-## Sekunden bis ein Torpedo nachgeladen ist
-@export var reload_time: float = 8.0
+# ─────────────────────────────────────────────────────────────────────────────
+# OVERRIDE-PATTERN
+# ─────────────────────────────────────────────────────────────────────────────
+# torpedo_data wird normalerweise vom ShipController gesetzt – aus
+# ship_data.torpedo_data. Damit haben alle Torpedo-Werfer desselben Schiffes
+# automatisch dieselben Werte (Schaden, Range, Cooldown, max_ammo, reload_time).
+# ─────────────────────────────────────────────────────────────────────────────
+@export_group("Torpedo Data Override (Optional)")
+## NUR setzen wenn dieser Mount ANDERE Werte braucht als die zentralen aus
+## ship_data.torpedo_data. Beispiel: schwächerer Heck-Werfer mit längerer
+## Reload-Zeit oder kleinerem Magazin.
+## Leer lassen → ShipController setzt automatisch ship_data.torpedo_data ein.
+@export var torpedo_data_override: TorpedoData = null
 
 @export_group("Arc")
 @export_range(10.0, 180.0) var arc_half_angle: float = 60.0:
@@ -55,8 +59,19 @@ class_name TorpedoMount3D
 @export var show_debug: bool = false
 
 # ===== INTERN =====
+## Wird zur Laufzeit vom ShipController gesetzt – entweder aus
+## torpedo_data_override (Sonderfall) oder aus ship_data.torpedo_data.
+## Nicht mehr im Inspector pro Mount – Tuning passiert zentral.
+var torpedo_data: TorpedoData = null
+
+# Cooldown / Ammo / Reload kommen jetzt aus TorpedoData – siehe _get_*() Helpers.
+# Diese Defaults greifen nur wenn torpedo_data NULL ist (Fehlerfall).
+const _DEFAULT_COOLDOWN:    float = 0.5
+const _DEFAULT_MAX_AMMO:    int   = 4
+const _DEFAULT_RELOAD_TIME: float = 8.0
+
 var _cooldown_remaining: float           = 0.0
-var _current_ammo:       int             = 4
+var _current_ammo:       int             = 0
 var _reload_timer:       float           = 0.0
 var _ship_controller:    ShipController  = null
 var _ship_body:          CharacterBody3D = null
@@ -76,14 +91,29 @@ func _ready() -> void:
 		return
 	_ship_controller = _find_ship_controller()
 	_ship_body       = _find_character_body()
-	_current_ammo    = max_ammo
-	_reload_timer    = 0.0
 	call_deferred("_build_exclude_rids")
 	_setup_audio()
-	print("[TorpedoMount3D|%s] bereit | data=%s | ammo=%d/%d | ship_body=%s" % [
+
+	# Ammo-Init und Status-Print verzögert: torpedo_data wird vom ShipController
+	# via Override-Pattern gesetzt, dessen _ready() läuft NACH unserem.
+	# Mit call_deferred sehen wir die finalen Werte aus TorpedoData.
+	call_deferred("_post_setup")
+
+
+func _post_setup() -> void:
+	_current_ammo = _get_max_ammo()
+	_reload_timer = 0.0
+
+	if not torpedo_data:
+		push_warning("[TorpedoMount3D|%s] torpedo_data nicht gesetzt – Defaults aktiv (cd=%.1fs ammo=%d reload=%.1fs)" % [
+			name, _DEFAULT_COOLDOWN, _DEFAULT_MAX_AMMO, _DEFAULT_RELOAD_TIME])
+		return
+
+	print("[TorpedoMount3D|%s] bereit | data=%s | ammo=%d/%d | cd=%.1fs reload=%.1fs | ship_body=%s" % [
 		name,
-		torpedo_data.torpedo_name if torpedo_data else "❌",
-		max_ammo, max_ammo,
+		torpedo_data.torpedo_name,
+		_current_ammo, _get_max_ammo(),
+		_get_cooldown(), _get_reload_time(),
 		_ship_body.name if _ship_body else "❌ NULL – keine Geschwindigkeitsvererbung!"
 	])
 
@@ -94,13 +124,37 @@ func _process(delta: float) -> void:
 	if _cooldown_remaining > 0.0:
 		_cooldown_remaining -= delta
 	# Ammo nachladen: ein Torpedo pro reload_time Sekunden
-	if _current_ammo < max_ammo:
+	var max_a: int = _get_max_ammo()
+	if _current_ammo < max_a:
 		_reload_timer += delta
-		if _reload_timer >= reload_time:
+		if _reload_timer >= _get_reload_time():
 			_current_ammo += 1
 			_reload_timer  = 0.0
 			if show_debug:
-				print("[TorpedoMount] 🔄 Torpedo nachgeladen | %d/%d" % [_current_ammo, max_ammo])
+				print("[TorpedoMount] 🔄 Torpedo nachgeladen | %d/%d" % [_current_ammo, max_a])
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DATA-ZUGRIFF mit Fallback
+# ─────────────────────────────────────────────────────────────────────────────
+# Diese Helpers lesen Cooldown/Ammo/Reload aus TorpedoData.
+# Falls die Resource (noch) nicht die nötigen Felder hat, greifen die Defaults.
+# Damit bleibt das Refactoring auch während der Migration funktionsfähig.
+
+func _get_cooldown() -> float:
+	if torpedo_data and "cooldown" in torpedo_data:
+		return torpedo_data.cooldown
+	return _DEFAULT_COOLDOWN
+
+func _get_max_ammo() -> int:
+	if torpedo_data and "max_ammo" in torpedo_data:
+		return torpedo_data.max_ammo
+	return _DEFAULT_MAX_AMMO
+
+func _get_reload_time() -> float:
+	if torpedo_data and "reload_time" in torpedo_data:
+		return torpedo_data.reload_time
+	return _DEFAULT_RELOAD_TIME
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -207,14 +261,14 @@ func fire_at(target_pos: Vector3, _range: float = INF,
 			_ship_controller, _exclude_rids,
 			ship_velocity, velocity_decay_time, launch_straight_distance)
 
-	_cooldown_remaining = cooldown
+	_cooldown_remaining = _get_cooldown()
 	_current_ammo      -= 1
 	_play_launch_sound()
 
 	if show_debug:
 		var aim: Vector3 = tracking_node.global_position 			if tracking_node and is_instance_valid(tracking_node) else target_pos
 		print("[TorpedoMount3D] 🚀 Torpedo → %s | ammo=%d/%d | vel=%.1f" % [
-			aim.snappedf(1.0), _current_ammo, max_ammo, ship_velocity.length()])
+			aim.snappedf(1.0), _current_ammo, _get_max_ammo(), ship_velocity.length()])
 
 	return true
 

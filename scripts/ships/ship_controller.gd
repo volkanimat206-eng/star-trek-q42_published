@@ -785,17 +785,19 @@ func _find_weapon_mounts() -> void:
 	_apply_weapon_data_to_mounts()
 
 # ─────────────────────────────────────────────────────────────────────────────
-# WEAPON DATA SETUP
+# WEAPON DATA SETUP (Override-Pattern)
 # ─────────────────────────────────────────────────────────────────────────────
 
-## Wendet beam_weapon_data und torpedo_data aus dem Inspector auf alle
-## gefundenen Mounts an. Überschreibt nur wenn der Export gesetzt ist.
-## Wendet beam_weapon_data, bolt_weapon_data und torpedo_data aus dem Inspector
-## auf alle gefundenen Mounts an. Überschreibt nur wenn der Export gesetzt ist.
+## Wendet Waffen-Daten auf alle Mounts an. Priorität:
+##   1. mount.X_data_override     (im Inspector pro Mount gesetzt → Sonderfall)
+##   2. ship_data.X_data          (zentral, gilt für alle Mounts dieses Typs)
+## Mount-spezifische Felder (Position, Arc, Marker) bleiben pro Mount im Inspector.
 ##
-## Priorität bei DISRUPTOR-Mounts:
-##   WingDisruptorMount (bolt_weapon_data) → BoltWeaponData   (Bolzen + Schadens-Multiplikatoren)
-##   WeaponMount        (weapon_data)      → BeamWeaponData   (Strahl-Disruptor)
+## Dispatch nach WeaponType:
+##   PHASER, PULSE_PHASER → BeamWeaponData
+##   DISRUPTOR            → BoltWeaponData (WingDisruptorMount)
+##                          oder BeamWeaponData (klassischer WeaponMount)
+##   TORPEDO              → TorpedoData
 func _apply_weapon_data_to_mounts() -> void:
 	if not ship_data:
 		return
@@ -807,79 +809,90 @@ func _apply_weapon_data_to_mounts() -> void:
 	var bld: BoltWeaponData = ship_data.get("bolt_weapon_data") as BoltWeaponData \
 		if "bolt_weapon_data" in ship_data else null
 
-	print("\n[SC|%s] ══════ WEAPON DATA DEBUG ══════" % ship_name)
+	print("\n[SC|%s] ══════ WEAPON DATA RESOLVE ══════" % ship_name)
 	print("  ship_data path  : %s" % ship_data.resource_path)
-	print("  beam_weapon_data: %s" % (bwd.resource_path if bwd else "❌ NULL"))
-	print("  bolt_weapon_data: %s" % (bld.resource_path if bld else "❌ NULL (nur für WingDisruptorMount)"))
-	print("  torpedo_data    : %s" % (tpd.resource_path if tpd else "❌ NULL"))
-	if bwd:
-		print("    beam name     : %s" % (bwd.get("weapon_name") if "weapon_name" in bwd else "?"))
-		print("    beam damage   : %s" % (bwd.get("damage_per_second") if "damage_per_second" in bwd else "?"))
-	if bld:
-		print("    bolt name     : %s" % bld.weapon_name)
-		print("    bolt damage   : %.0f | shield×%.2f | hull×%.2f" % [
-			bld.damage, bld.shield_damage_multiplier, bld.hull_damage_multiplier])
-	if tpd:
-		print("    torpedo name  : %s" % (tpd.get("torpedo_name") if "torpedo_name" in tpd else "?"))
-		print("    torpedo damage: %s" % (tpd.get("damage") if "damage" in tpd else "?"))
-	print("  Mounts (%d):" % weapon_mounts.size())
+	print("  zentrale Quellen:")
+	print("    beam_weapon_data: %s" % (bwd.weapon_name if bwd else "❌ NULL"))
+	print("    bolt_weapon_data: %s" % (bld.weapon_name if bld else "— (kein WingDisruptor)"))
+	print("    torpedo_data    : %s" % (tpd.torpedo_name if tpd else "❌ NULL"))
 
 	for mount in weapon_mounts:
 		var wtype: WeaponMount.WeaponType = mount.get_weapon_type()
-		var current_data_path: String = ""
-
-		if "bolt_weapon_data" in mount and mount.bolt_weapon_data:
-			current_data_path = mount.bolt_weapon_data.resource_path
-		elif "weapon_data" in mount and mount.weapon_data:
-			current_data_path = mount.weapon_data.resource_path
-		elif "torpedo_data" in mount and mount.torpedo_data:
-			current_data_path = mount.torpedo_data.resource_path
-
-		print("    [%s] '%s' | data vorher: %s" % [
-			WeaponMount.WeaponType.keys()[wtype],
-			mount.name,
-			current_data_path if current_data_path else "NULL"
-		])
-
 		match wtype:
 			WeaponMount.WeaponType.PHASER, \
 			WeaponMount.WeaponType.PULSE_PHASER:
-				if bwd and "weapon_data" in mount:
-					mount.weapon_data = bwd
-					print("      → beam_weapon_data gesetzt ✓")
-				else:
-					print("      → beam_weapon_data: NICHT gesetzt (bwd=%s, hat weapon_data=%s)" % [
-						bwd != null, "weapon_data" in mount])
+				_resolve_beam_data(mount, bwd)
 
 			WeaponMount.WeaponType.DISRUPTOR:
-				# WingDisruptorMount hat bolt_weapon_data → BoltWeaponData verwenden
-				if "bolt_weapon_data" in mount:
-					if bld:
-						mount.bolt_weapon_data = bld
-						print("      → bolt_weapon_data gesetzt ✓ (shield×%.2f | hull×%.2f)" % [
-							bld.shield_damage_multiplier, bld.hull_damage_multiplier])
-					else:
-						print("      → bolt_weapon_data: NICHT gesetzt")
-						print("         → 'bolt_weapon_data: BoltWeaponData' in ShipData anlegen!")
-				# WeaponMount (Strahl-Disruptor) hat weapon_data → BeamWeaponData
-				elif "weapon_data" in mount:
-					if bwd:
-						mount.weapon_data = bwd
-						print("      → beam_weapon_data gesetzt ✓ (Strahl-Disruptor)")
-					else:
-						print("      → beam_weapon_data: NICHT gesetzt (bwd=null)")
+				# WingDisruptorMount erkennen wir am bolt_weapon_data_override-Feld.
+				# Klassischer WeaponMount (Strahl-Disruptor) hat weapon_data_override.
+				if "bolt_weapon_data_override" in mount:
+					_resolve_bolt_data(mount, bld)
 				else:
-					print("      → ⚠ Kein bekanntes data-Feld!")
+					_resolve_beam_data(mount, bwd)
 
 			WeaponMount.WeaponType.TORPEDO:
-				if tpd and "torpedo_data" in mount:
-					mount.torpedo_data = tpd
-					print("      → torpedo_data gesetzt ✓")
-				else:
-					print("      → torpedo_data: NICHT gesetzt (tpd=%s, hat torpedo_data=%s)" % [
-						tpd != null, "torpedo_data" in mount])
+				_resolve_torpedo_data(mount, tpd)
 
-	print("[SC|%s] ══════════════════════════════\n" % ship_name)
+	print("[SC|%s] ══════════════════════════════════\n" % ship_name)
+
+
+## Setzt mount.weapon_data – Override hat Priorität vor zentralem Wert.
+func _resolve_beam_data(mount: Node, central: BeamWeaponData) -> void:
+	if not "weapon_data_override" in mount:
+		push_warning("[ShipController|%s] Mount '%s' kennt 'weapon_data_override' nicht – altes Skript?" % [ship_name, mount.name])
+		return
+
+	var override: BeamWeaponData = mount.weapon_data_override
+	if override:
+		mount.weapon_data = override
+		print("  [%-24s] OVERRIDE → '%s'" % [mount.name, override.weapon_name])
+	elif central:
+		mount.weapon_data = central
+		print("  [%-24s] zentral  → '%s'" % [mount.name, central.weapon_name])
+	else:
+		push_warning("[ShipController|%s] Mount '%s' hat weder Override noch zentrale BeamWeaponData!" \
+			% [ship_name, mount.name])
+
+
+## Setzt mount.bolt_weapon_data – Override hat Priorität vor zentralem Wert.
+func _resolve_bolt_data(mount: Node, central: BoltWeaponData) -> void:
+	if not "bolt_weapon_data_override" in mount:
+		push_warning("[ShipController|%s] Mount '%s' kennt 'bolt_weapon_data_override' nicht – altes Skript?" % [ship_name, mount.name])
+		return
+
+	var override: BoltWeaponData = mount.bolt_weapon_data_override
+	if override:
+		mount.bolt_weapon_data = override
+		print("  [%-24s] OVERRIDE → '%s' (shield×%.2f | hull×%.2f)" % [
+			mount.name, override.weapon_name,
+			override.shield_damage_multiplier, override.hull_damage_multiplier])
+	elif central:
+		mount.bolt_weapon_data = central
+		print("  [%-24s] zentral  → '%s' (shield×%.2f | hull×%.2f)" % [
+			mount.name, central.weapon_name,
+			central.shield_damage_multiplier, central.hull_damage_multiplier])
+	else:
+		push_warning("[ShipController|%s] Mount '%s' hat weder Override noch zentrale BoltWeaponData!" \
+			% [ship_name, mount.name])
+
+
+## Setzt mount.torpedo_data – Override hat Priorität vor zentralem Wert.
+func _resolve_torpedo_data(mount: Node, central: TorpedoData) -> void:
+	if not "torpedo_data_override" in mount:
+		push_warning("[ShipController|%s] Mount '%s' kennt 'torpedo_data_override' nicht – altes Skript?" % [ship_name, mount.name])
+		return
+
+	var override: TorpedoData = mount.torpedo_data_override
+	if override:
+		mount.torpedo_data = override
+		print("  [%-24s] OVERRIDE → '%s'" % [mount.name, override.torpedo_name])
+	elif central:
+		mount.torpedo_data = central
+		print("  [%-24s] zentral  → '%s'" % [mount.name, central.torpedo_name])
+	else:
+		push_warning("[ShipController|%s] Mount '%s' hat weder Override noch zentrale TorpedoData!" \
+			% [ship_name, mount.name])
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1013,8 +1026,10 @@ func _setup_cloak() -> void:
 		_dbg_cloak("💥 Cloak gebrochen: %s" % reason))
 
 	_dbg_cloak("✅ CloakComponent '%s' bereit (detection_range=%.0fm | fade_in=%.1fs)" % [
-		cloak_component.name, cloak_component.detection_range, cloak_component.fade_in_duration
-	])
+	cloak_component.name, 
+	cloak_component.cloak_data.detection_range, 
+	cloak_component.cloak_data.fade_in_duration
+])
 
 
 ## Debug-Log speziell für Cloak-Events — über DebugManager-Flag "cloak.setup" steuerbar.

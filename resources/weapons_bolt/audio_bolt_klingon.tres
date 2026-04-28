@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="BoltWeaponAudioData" format=3 uid="uid://bmyofols6odh8"]
+
+[ext_resource type="Script" uid="uid://dvrqfpqun4w7u" path="res://resources/data/bolt_weapon_audio_data.gd" id="1_1q2tu"]
+[ext_resource type="AudioStream" uid="uid://dw678xr7vkmlk" path="res://assets/audio/bolt/klingon_disruptor_clean.mp3" id="1_4w7c4"]
+
+[resource]
+script = ExtResource("1_1q2tu")
+fire_sound = ExtResource("1_4w7c4")
+fire_volume_offset_db = 30.0
+distance_attenuation_strength = 0.1
+max_distance = 1500.0
+sound_fade_out_time = 0.1
+metadata/_custom_type_script = "uid://dvrqfpqun4w7u"

@@ -4,29 +4,27 @@
 [ext_resource type="Resource" uid="uid://b4sv0jlqsx88l" path="res://data/ships/shipddata_birdofprey.tres" id="2_r577l"]
 [ext_resource type="PackedScene" uid="uid://cy3q4vd3ojfu1" path="res://scenes/vfx/effect_explosion_ship.tscn" id="3_ag3r8"]
 [ext_resource type="PackedScene" uid="uid://b0ps2n8bkhaie" path="res://scenes/weapon/Weapon_BeamDisruptor.tscn" id="4_xnmtx"]
-[ext_resource type="Resource" uid="uid://cqo177vihgx6k" path="res://data/weapons/weapondata_disruptor_birdofprey.tres" id="5_6pmaq"]
 [ext_resource type="Shader" uid="uid://du5dkyik5wt31" path="res://shaders/shield.gdshader" id="5_ip1cg"]
 [ext_resource type="PackedScene" uid="uid://b55vgygqcen7v" path="res://scenes/weapon/Weapon_Mount.tscn" id="5_ks720"]
 [ext_resource type="Script" uid="uid://drfo5i81fkhuc" path="res://scripts/combat/shield_system.gd" id="6_ip1cg"]
 [ext_resource type="Resource" uid="uid://s5no21vj7a1" path="res://data/shields/shielddata_birdofprey.tres" id="6_xnmtx"]
 [ext_resource type="Script" uid="uid://bphq1pbix7nib" path="res://scripts/combat/targeting_system.gd" id="7_ut18v"]
-[ext_resource type="Script" uid="uid://ng03p8rp1rkm" path="res://scripts/weapons/wing_bolt_mount.gd" id="8_4xfhx"]
-[ext_resource type="AudioStream" uid="uid://b502ynytrd785" path="res://assets/audio/disruptor/klingon_disruptor4.mp3" id="8_od4m3"]
+[ext_resource type="Script" uid="uid://ng03p8rp1rkm" path="res://scripts/weapons/weapon_mount_bolt.gd" id="8_4xfhx"]
+[ext_resource type="Resource" uid="uid://ch5k48335xxon" path="res://resources/weapons_beam/audio_disruptor_klingon.tres" id="8_shx7j"]
 [ext_resource type="Script" uid="uid://dsl76tjsngj6" path="res://scripts/ships/movement_component.gd" id="8_xnmtx"]
 [ext_resource type="PackedScene" uid="uid://celow4qg0pxxa" path="res://scenes/weapon/DisruptorBolt.tscn" id="9_s11h6"]
 [ext_resource type="Script" uid="uid://bs4uq2531fjap" path="res://scripts/hull/hull_impact_receiver.gd" id="10_hrn4b"]
-[ext_resource type="Resource" uid="uid://dwdrltgy68j4k" path="res://data/weapons/weapondata_bolt_birdofprey.tres" id="11_stjfv"]
-[ext_resource type="AudioStream" uid="uid://dw678xr7vkmlk" path="res://assets/audio/bolt/klingon_disruptor_clean.mp3" id="11_wcxa4"]
+[ext_resource type="Resource" uid="uid://bmyofols6odh8" path="res://resources/weapons_bolt/audio_bolt_klingon.tres" id="12_6dckk"]
 [ext_resource type="PackedScene" uid="uid://xv7n7wr4rbqd" path="res://scenes/vfx/fires/Effects_Fire1.tscn" id="14_3psj3"]
 [ext_resource type="Texture2D" uid="uid://y5xh05g2twy5" path="res://assets/textures/hull_damage/burn_small1.png" id="14_yvyye"]
 [ext_resource type="Texture2D" uid="uid://dtwd6xdmo6xjv" path="res://assets/textures/hull_damage/burn_small2.png" id="15_2bypn"]
 [ext_resource type="PackedScene" uid="uid://bju7gy3wiw7mf" path="res://scenes/vfx/fires/Effects_Fire2.tscn" id="15_ag3r8"]
 [ext_resource type="PackedScene" uid="uid://b6c7qf200ku55" path="res://scenes/vfx/fires/Effects_Fire3.tscn" id="16_4xfhx"]
+[ext_resource type="Resource" uid="uid://rnjw554k4unh" path="res://resources/cloak_data_birdofprey.tres" id="16_6dckk"]
 [ext_resource type="Script" uid="uid://bb2df4t0jrl2e" path="res://scripts/combat/cloak_component.gd" id="17_6dckk"]
+[ext_resource type="Resource" uid="uid://bp70loho04vtm" path="res://resources/weapon_cloak/audio_cloak_klingon.tres" id="17_cek0b"]
 [ext_resource type="PackedScene" uid="uid://b5m6vm56oe4lh" path="res://scenes/vfx/fires/Effects_Fire5.tscn" id="17_s11h6"]
-[ext_resource type="AudioStream" uid="uid://d2wgc5r0puu1r" path="res://assets/audio/cloak/cloak_klingon.mp3" id="18_240yq"]
 [ext_resource type="PackedScene" uid="uid://c74qhlwq483rx" path="res://scenes/vfx/effect_smoke.tscn" id="18_od4m3"]
-[ext_resource type="AudioStream" uid="uid://deoji8knor3jh" path="res://assets/audio/cloak/decloak_klingon.mp3" id="19_240yq"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1ujlw"]
 resource_name = "Material.001"
@@ -406,16 +404,16 @@ shadow_mesh = SubResource("ArrayMesh_hbfal")
 radius = 1.0
 height = 2.0
 
-[sub_resource type="FastNoiseLite" id="FastNoiseLite_6dckk"]
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_sdqp7"]
 noise_type = 2
-seed = 1706866504
+seed = -1717131016
 frequency = 0.08
 fractal_octaves = 3
 
-[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_cek0b"]
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_shx7j"]
 width = 256
 height = 256
-noise = SubResource("FastNoiseLite_6dckk")
+noise = SubResource("FastNoiseLite_sdqp7")
 seamless = true
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_xnmtx"]
@@ -436,7 +434,7 @@ shader_parameter/impact_ages = Array[float]([100.0, 100.0, 100.0, 100.0, 100.0, 
 shader_parameter/impact_colors = Array[Color]([Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1)])
 shader_parameter/impact_types = Array[float]([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 shader_parameter/dissolve_progress = 0.0
-shader_parameter/dissolve_noise = SubResource("NoiseTexture2D_cek0b")
+shader_parameter/dissolve_noise = SubResource("NoiseTexture2D_shx7j")
 shader_parameter/pattern_type = 1
 shader_parameter/pattern_scale = 60.0
 shader_parameter/pattern_line_width = 0.05
@@ -496,14 +494,9 @@ transform = Transform3D(-1, 0, -8.742278e-08, -8.742278e-08, 0, 1, 0, 1, 0, -1.2
 weapon_type = 1
 mount_position = 2
 weapon_scene = ExtResource("4_xnmtx")
-weapon_data = ExtResource("5_6pmaq")
 weapon_attach_path = NodePath("..")
 mouse_target_height = 0.0
-fire_sound = ExtResource("8_od4m3")
-charge_volume_offset_db = 20.0
-distance_attenuation_strength = 0.65
-max_distance = 1500.0
-attenuation_filter_cutoff_hz = 15000.0
+audio_data = ExtResource("8_shx7j")
 arc_half_angle_deg = 80.0
 arc_radius = 400.0
 
@@ -513,14 +506,7 @@ script = ExtResource("8_4xfhx")
 left_marker = NodePath("../../WingTip_L")
 right_marker = NodePath("../../WingTip_R")
 bolt_scene = ExtResource("9_s11h6")
-bolt_weapon_data = ExtResource("11_stjfv")
-fire_sound = ExtResource("11_wcxa4")
-fire_volume_offset_db = 30.0
-distance_attenuation_strength = 0.65
-max_distance = 1000.0
-no_distance_attenuation = null
-attenuation_filter_cutoff_hz = 15000.0
-sound_fade_out_time = 2.0
+audio_data = ExtResource("12_6dckk")
 
 [node name="Effects" type="Node3D" parent="Model" unique_id=611753747]
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 6.593826e-08, 0.7542454, 7.935009)
@@ -550,16 +536,14 @@ max_lock_range = 2000.0
 
 [node name="CloakComponent" type="Node3D" parent="ShipController" unique_id=1302067432 node_paths=PackedStringArray("target_meshes")]
 script = ExtResource("17_6dckk")
+cloak_data = ExtResource("16_6dckk")
 target_meshes = [NodePath("../../Model/MeshModel/Object_37")]
-sound_cloak = ExtResource("18_240yq")
-sound_decloak = ExtResource("19_240yq")
-cloak_volume_offset_db = 100.0
-decloak_volume_offset_db = 200.0
-distance_attenuation_strength = 0.65
-max_distance = 1500.0
-attenuation_filter_cutoff_hz = 15000.0
-sound_fade_out_time = 2.0
+audio_data = ExtResource("17_cek0b")
 use_distortion = true
+refraction_scale = 0.2
+distortion_rim_strength = 0.9
+distortion_flow_speed = 3.0
+distortion_noise_scale = 6.0
 
 [node name="HullImpactReceiver" type="Node" parent="." unique_id=1701943236 node_paths=PackedStringArray("mesh_instances")]
 script = ExtResource("10_hrn4b")

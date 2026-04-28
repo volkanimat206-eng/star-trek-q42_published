@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="BeamWeaponData" format=3 uid="uid://bvd7ggcysbdxx"]
+
+[ext_resource type="Script" uid="uid://uadlkt5xdjn0" path="res://resources/data/weapon_data_beam.gd" id="1_643xl"]
+
+[resource]
+script = ExtResource("1_643xl")
+weapon_name = "Phaser"
+damage_per_second = 60.0
+charge_duration = 0.2
+fire_duration = 0.8
+fade_out_time = 0.2
+trail_spawn_interval = 0.1
+trail_fade_out_time = 0.05
+beam_core_width = 10.0
+beam_glow_width = 30.0
+hull_layer = 1
+shield_layer = 2
+metadata/_custom_type_script = "uid://uadlkt5xdjn0"

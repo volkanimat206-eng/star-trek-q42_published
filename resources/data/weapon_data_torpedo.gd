@@ -18,6 +18,16 @@ extends Resource
 ## Quantum: 2.0 (massiv)
 @export_range(0.0, 5.0, 0.05) var hull_damage_multiplier: float = 1.5
 
+@export_group("Firing")
+## Wartezeit zwischen Einzelschüssen in Sekunden.
+@export var cooldown: float = 0.5
+
+@export_group("Magazine")
+## Maximale Torpedo-Anzahl im Magazin.
+@export var max_ammo: int = 4
+## Sekunden bis ein Torpedo nachgeladen ist.
+@export var reload_time: float = 8.0
+
 @export_group("Bewegung")
 @export var speed:          float  = 200.0
 @export var turn_rate_deg:  float  = 60.0
