@@ -2,19 +2,13 @@
 
 [ext_resource type="Resource" uid="uid://dj52fe2b1v8i4" path="res://resources/cb_klingon.tres" id="1_1o8v7"]
 [ext_resource type="Script" uid="uid://bfs0pr5hru0du" path="res://resources/data/ship_data.gd" id="1_7sek7"]
-[ext_resource type="Script" uid="uid://dq5py42u2ije5" path="res://resources/data/cloak_data.gd" id="1_olxir"]
 [ext_resource type="Resource" uid="uid://cgqcf6cytlaai" path="res://data/weapons/weapondata_disruptor_kvek.tres" id="1_qte1b"]
 [ext_resource type="Resource" uid="uid://j7kdjw4gagys" path="res://data/hulls/hulldata_birdofprey.tres" id="2_d4kd8"]
 [ext_resource type="Resource" uid="uid://dwdrltgy68j4k" path="res://data/weapons/weapondata_bolt_birdofprey.tres" id="2_otble"]
 [ext_resource type="Resource" uid="uid://s5no21vj7a1" path="res://data/shields/shielddata_birdofprey.tres" id="3_d4kd8"]
+[ext_resource type="Resource" uid="uid://rnjw554k4unh" path="res://resources/cloak_data_birdofprey.tres" id="3_otble"]
 [ext_resource type="Resource" uid="uid://nsgk2qqpppmc" path="res://resources/shipstats_birdofprey.tres" id="4_yfkko"]
 [ext_resource type="Resource" uid="uid://bxkh3m2yf8p3i" path="res://resources/shockwavedata_birdofprey.tres" id="5_yfkko"]
-
-[sub_resource type="Resource" id="Resource_qte1b"]
-script = ExtResource("1_olxir")
-fade_out_duration = 1.5
-shimmer_tint = Color(0, 0.8001019, 0.35253903, 1)
-metadata/_custom_type_script = "uid://dq5py42u2ije5"
 
 [resource]
 script = ExtResource("1_7sek7")
@@ -31,5 +25,5 @@ beam_weapon_data = ExtResource("1_qte1b")
 bolt_weapon_data = ExtResource("2_otble")
 ship_scene_path = "uid://ba2kgx0xuybdg"
 can_cloak = true
-cloak_data = SubResource("Resource_qte1b")
+cloak_data = ExtResource("3_otble")
 metadata/_custom_type_script = "uid://bfs0pr5hru0du"

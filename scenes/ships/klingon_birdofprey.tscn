@@ -404,16 +404,16 @@ shadow_mesh = SubResource("ArrayMesh_hbfal")
 radius = 1.0
 height = 2.0
 
-[sub_resource type="FastNoiseLite" id="FastNoiseLite_sdqp7"]
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_6dckk"]
 noise_type = 2
-seed = -1717131016
+seed = -1041971692
 frequency = 0.08
 fractal_octaves = 3
 
-[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_shx7j"]
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_cek0b"]
 width = 256
 height = 256
-noise = SubResource("FastNoiseLite_sdqp7")
+noise = SubResource("FastNoiseLite_6dckk")
 seamless = true
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_xnmtx"]
@@ -434,7 +434,7 @@ shader_parameter/impact_ages = Array[float]([100.0, 100.0, 100.0, 100.0, 100.0, 
 shader_parameter/impact_colors = Array[Color]([Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1)])
 shader_parameter/impact_types = Array[float]([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 shader_parameter/dissolve_progress = 0.0
-shader_parameter/dissolve_noise = SubResource("NoiseTexture2D_shx7j")
+shader_parameter/dissolve_noise = SubResource("NoiseTexture2D_cek0b")
 shader_parameter/pattern_type = 1
 shader_parameter/pattern_scale = 60.0
 shader_parameter/pattern_line_width = 0.05

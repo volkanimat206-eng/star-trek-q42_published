@@ -4,6 +4,6 @@
 
 [resource]
 script = ExtResource("1_2sot2")
-fade_in_duration = 3.0
-fade_out_duration = 3.0
+fade_in_duration = 1.0
+fade_out_duration = 1.0
 metadata/_custom_type_script = "uid://dq5py42u2ije5"

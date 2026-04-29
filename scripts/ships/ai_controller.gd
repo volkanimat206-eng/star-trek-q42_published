@@ -139,23 +139,43 @@ func _ready() -> void:
 
 	_instantiate_ship()
 
-	# WICHTIG: cloak_component vom Runtime-ShipController holen, NICHT vom
-	# @export-Feld des AIControllers. Der @export zeigt auf den Editor-Node
-	# der BirdOfPrey-Scene — nach _instantiate_ship() existiert aber eine neue
-	# Instanz im Tree. ship_controller.cloak_component ist der korrekte Verweis.
-	if is_instance_valid(ship_controller) and is_instance_valid(ship_controller.cloak_component):
+	# ─────────────────────────────────────────────────────────────────────────
+	# CLOAK SETUP MIT can_cloak RESPEKT
+	# ─────────────────────────────────────────────────────────────────────────
+	# Prüfe ob das Schiff laut ShipData tarnen DARF
+	var may_cloak: bool = ship_data and ship_data.can_cloak
+	
+	if not may_cloak:
+		# Schiff darf nicht tarnen – CloakComponent deaktivieren/ignorieren
+		if is_instance_valid(ship_controller) and is_instance_valid(ship_controller.cloak_component):
+			_dbg_cloak("⚠ Ship hat can_cloak=false → CloakComponent wird deaktiviert")
+			# CloakComponent entfernen oder deaktivieren
+			var illegal_cloak = ship_controller.cloak_component
+			ship_controller.cloak_component = null
+			if is_instance_valid(illegal_cloak):
+				illegal_cloak.queue_free()
+		cloak_component = null
+		_dbg_cloak("ℹ Cloak deaktiviert (can_cloak=false)")
+		
+	elif is_instance_valid(ship_controller) and is_instance_valid(ship_controller.cloak_component):
+		# can_cloak=true UND CloakComponent existiert → verwenden
 		cloak_component = ship_controller.cloak_component
 		_dbg_cloak("✅ cloak_component von Runtime-ShipController übernommen: '%s'" % cloak_component.name)
+		
 	elif is_instance_valid(cloak_component):
+		# can_cloak=true aber ship_controller hat keinen → Fallback auf @export
 		_dbg_cloak("ℹ cloak_component aus @export genutzt (ship_controller hat keinen): '%s'" % cloak_component.name)
+		
 	else:
-		_dbg_cloak("ℹ Kein cloak_component — Schiff tarnt nicht")
+		_dbg_cloak("⚠ can_cloak=true aber kein CloakComponent gefunden! Schiff tarnt nicht.")
 
-	if cloak_on_spawn:
-		if is_instance_valid(cloak_component):
-			_trigger_spawn_cloak()
-		else:
-			_dbg_cloak("⚠ cloak_on_spawn=true aber kein CloakComponent gefunden!")
+	# Spawn-Cloak NUR wenn can_cloak=true UND cloak_component existiert
+	if cloak_on_spawn and may_cloak and is_instance_valid(cloak_component):
+		_trigger_spawn_cloak()
+	elif cloak_on_spawn and not may_cloak:
+		_dbg_cloak("⚠ cloak_on_spawn=true aber can_cloak=false → Spawn-Cloak ignoriert")
+	elif cloak_on_spawn and not is_instance_valid(cloak_component):
+		_dbg_cloak("⚠ cloak_on_spawn=true aber kein CloakComponent gefunden!")
 
 	_initialized = true
 	_dbg("AIController fully initialized")
@@ -864,7 +884,10 @@ func _enter_combat(target: Node3D) -> void:
 
 		# Kurze Wartezeit, bis Decloak-Fade fertig ist (fade_out_duration + Puffer)
 		# Damit der NPC nicht sofort schießt, während er noch unsichtbar ist.
-		await get_tree().create_timer(cloak_component.fade_out_duration + 0.2).timeout
+		var fade_wait: float = 0.8  # sicherer Fallback
+		if is_instance_valid(cloak_component) and cloak_component.cloak_data:
+			fade_wait = cloak_component.cloak_data.fade_out_duration
+		await get_tree().create_timer(fade_wait + 0.2).timeout
 		
 		if not is_instance_valid(self) or not is_instance_valid(cloak_component):
 			return  # NPC mittlerweile zerstört

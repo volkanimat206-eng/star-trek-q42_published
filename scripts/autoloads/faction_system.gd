@@ -32,6 +32,7 @@
 #                           → hält FactionConfig (@export)
 #                           → is_faction_pair_hostile(), get_group_name()
 #                           → Live-Persistenz via set_faction_pair_hostile()
+#                           → get_cloak_visuals(faction) für Cloak-Shader
 #
 #   RelationshipResolver  = POLICY-SCHICHT (Zwei-Ebenen-Logik)
 #                           → are_hostile(nodes) mit Rep-Override + Aggro
@@ -93,6 +94,42 @@ const _HOSTILE_PAIRS_SEED: Array[Array] = [
 const PLAYER_FACTIONS: Array[int] = [
 	ShipData.Faction.FEDERATION as int,
 ]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CLOAK-VISUAL-DEFAULTS (per-Faction)
+# ─────────────────────────────────────────────────────────────────────────────
+# Predator-Style subtile Defaults. Werden vom CloakComponent über
+# get_cloak_visuals() abgefragt. CloakData.tres kann pro Schiff überschreiben.
+#
+# Tuning-Hinweise:
+#   rim_color    — Farbe des Silhouetten-Schimmers. Subtil halten,
+#                  zu intensive Farben wirken in 2.5D-Iso comicartig.
+#   displacement_strength — Vertex-Versatz in Welt-Units. 0.03–0.05 ist
+#                  Predator-Bereich; alles über 0.08 wirkt zu sehr nach
+#                  "Geist-Mesh".
+#
+# Erweiterbar: weitere Fraktionen einfach als neuen Eintrag hinzufügen.
+# Unbekannte Fraktion → _CLOAK_VISUALS_DEFAULT (icy blue, neutral).
+const _CLOAK_VISUALS: Dictionary = {
+	ShipData.Faction.KLINGON: {
+		"rim_color":             Color(0.50, 0.65, 0.95),  # kühles Blau-Violett
+		"displacement_strength": 0.05,                      # härter, marginal stärker
+	},
+	ShipData.Faction.ROMULAN: {
+		"rim_color":             Color(0.45, 0.85, 0.75),  # türkis-grün (canon)
+		"displacement_strength": 0.04,                      # weicher als Klingon
+	},
+	ShipData.Faction.FEDERATION: {
+		"rim_color":             Color(0.85, 0.75, 0.50),  # bernstein-amber
+		"displacement_strength": 0.05,
+	},
+}
+
+const _CLOAK_VISUALS_DEFAULT: Dictionary = {
+	"rim_color":             Color(0.4, 0.75, 1.0),         # icy blue (Shader-Default)
+	"displacement_strength": 0.04,
+}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -177,6 +214,27 @@ func get_config() -> FactionConfig:
 
 func get_group_name(faction: ShipData.Faction) -> String:
 	return GROUP_PREFIX + ShipData.Faction.keys()[faction]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PUBLIC – Cloak-Visuals (Default-Look pro Faction)
+# ─────────────────────────────────────────────────────────────────────────────
+
+## Liefert die Cloak-Visual-Defaults für eine Fraktion. Vom CloakComponent
+## während _initialize_distortion() aufgerufen, danach mit CloakData-Overrides
+## gemergt und an den Shader weitergereicht.
+##
+## Returns Dictionary mit Keys:
+##   "rim_color"             : Color    — Silhouetten-Schimmer
+##   "displacement_strength" : float    — Vertex-Versatz (Welt-Units)
+##
+## Unbekannte Fraktion → neutraler Default (icy blue).
+## Returns IMMER eine Kopie — Aufrufer dürfen sie modifizieren ohne die
+## Const-Konstante zu beeinflussen.
+func get_cloak_visuals(faction: int) -> Dictionary:
+	if faction in _CLOAK_VISUALS:
+		return (_CLOAK_VISUALS[faction] as Dictionary).duplicate()
+	return _CLOAK_VISUALS_DEFAULT.duplicate()
 
 
 # ─────────────────────────────────────────────────────────────────────────────

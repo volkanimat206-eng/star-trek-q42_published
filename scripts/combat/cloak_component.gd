@@ -2,6 +2,10 @@
 #
 # Cloaking-System als ShipController-Subsystem. Analog zu ShieldSystem aufgebaut.
 #
+# DESIGN: Reine Alpha-Transparenz als visuelle Tarnung. Keine Shader, keine
+# Refraktion, keine Faction-Farben, keine Vertex-Displacements. Das Schiff
+# verschwindet einfach durch sukzessive Reduktion der Material-Albedo-Alpha.
+#
 # LEBENSZYKLUS:
 #   IDLE → CLOAKING (fade-in) → CLOAKED → DECLOAKING (fade-out) → IDLE
 #                                ↓ break_cloak()
@@ -9,7 +13,7 @@
 #
 # WAFFEN/SCHILDE:
 #   - CLOAKING startet:    weapons_offline + shields_offline + immer noch Mesh sichtbar
-#   - CLOAKED:             alles aus, Mesh transparent, Layer aus
+#   - CLOAKED:             alles aus, Mesh transparent (oder voll unsichtbar bei NPC)
 #   - DECLOAKING startet:  Mesh wird wieder sichtbar
 #   - DECLOAKING fertig:   weapons_online + shields_online (mit recharge_delay)
 #
@@ -18,9 +22,36 @@
 #   NICHT direkt am Component ab, sondern über ShipController.is_visible_to(observer).
 #   Der ShipController delegiert dann an den CloakComponent — das hält die API
 #   einheitlich auch für Schiffe ohne Cloak.
+#
+# PLAYER-AUTO-DETECT:
+#   Schiffe in der "player"-Group bekommen automatisch _PLAYER_MIN_ALPHA = 0.15
+#   (immer leicht sichtbar). Sonst sieht der Spieler nicht mehr was er steuert.
+#   NPC-Schiffe nutzen den Inspector-Wert (typischerweise 0.0 = voll unsichtbar).
+#
+# MATERIAL-ISOLATION (kritisch!):
+#   Zwei Schiffe vom selben Typ teilen sich per Default die gleiche Material-
+#   Resource (auch surface_override_material!). Cloakt eines, würde das andere
+#   mitfaden. Wir duplizieren daher IMMER (egal ob schon ein Override existiert)
+#   und IMMER mit duplicate(true) (Deep-Copy inkl. Texturen).
+#
+#   Zusätzlich: VOR dem Duplizieren snapshotten wir die Original-Albedo-Farben
+#   aus den geteilten Base-Materials. Damit überleben wir auch den Fall, dass
+#   duplicate(true) bestimmte Sub-Resources nicht 1:1 mitschleppt.
 
 class_name CloakComponent
 extends Node
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CONST
+# ─────────────────────────────────────────────────────────────────────────────
+
+## Im Player-Modus erzwungener Min-Alpha (überschreibt Inspector).
+## Player-Schiffe MÜSSEN sichtbar bleiben (auch wenn nur leicht), sonst sieht
+## der Spieler nicht mehr was er steuert. NPC-Modus darf voll unsichtbar werden.
+const _PLAYER_MIN_ALPHA: float = 0.15
+
+## Gruppen-Name für Player-Erkennung (muss zu FactionSystem.GROUP_PLAYER passen).
+const _PLAYER_GROUP: String = "player"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SIGNALS
@@ -74,27 +105,14 @@ var _state: State = State.IDLE
 ## 0.0 = komplett unsichtbar, 0.15 = leicht sichtbar (empfohlen für Player),
 ## 0.05 = kaum sichtbar (empfohlen für NPC).
 ## Dieser Wert ist die "Untergrenze" des Fade — das Schiff wird nie transparenter.
+##
+## ⚠ BEI PLAYER-SCHIFFEN ÜBERSCHRIEBEN: Schiffe in der "player"-Group bekommen
+## automatisch _PLAYER_MIN_ALPHA (0.15), egal was hier steht.
 @export_range(0.0, 1.0, 0.01) var cloaked_min_alpha: float = 0.0
 
 @export_group("Cloak – Audio")
 ## Alle Tarnung-Sounds als Resource – z.B. res://resources/audio/cloak/audio_cloak_romulan.tres
 @export var audio_data: CloakAudioData = null
-
-@export_group("Cloak – Distortion Shader")
-## Distortion aktivieren: Original-Meshes bekommen den Refraktions-Shader
-## als material_overlay. Außerhalb Scanner-Range unsichtbar, innerhalb Verzerrung.
-## Für NPC: true. Für Player mit min_alpha-Effekt: false.
-@export var use_distortion: bool = false
-## Pfad zum Distortion-Shader im Projekt.
-@export_file("*.gdshader") var distortion_shader_path: String = "res://shaders/cloak_distortion.gdshader"
-## Maximale Brechungsstärke. 0.01 = subtil, 0.1 = stark.
-@export_range(0.001, 0.2, 0.001) var refraction_scale: float = 0.05
-## Stärke des bläulichen Rim-Leuchtens an Silhouettenkanten. 0 = aus.
-@export_range(0.0, 1.0, 0.05) var distortion_rim_strength: float = 0.3
-## Geschwindigkeit des Noise-Flows im Distortion-Shader.
-@export_range(0.0, 3.0, 0.1) var distortion_flow_speed: float = 0.4
-## Skalierung des Noise-Musters (kleiner = gröbere Wellen).
-@export_range(0.5, 8.0, 0.1) var distortion_noise_scale: float = 2.5
 
 @export_group("Debug")
 ## Debug-Logs aktivieren (wird auch vom ShipController propagiert).
@@ -110,15 +128,19 @@ var _cloak_alpha: float    = 1.0
 var _cooldown_timer: float = 0.0
 var _active_tween: Tween   = null
 
-## Distortion-System: ShaderMaterial das als material_overlay auf die
-## Original-Meshes gesetzt wird. Kein Klon — kein Z-Fighting.
-var _distortion_material: ShaderMaterial = null
-var _distortion_meshes: Array[MeshInstance3D] = []  ## Meshes die den Overlay tragen
-var _distortion_initialized: bool = false
+## Wird in _ready() einmal anhand der "player"-Group ermittelt und cached.
+var _is_player_ship: bool = false
 
-## Standard-Materials gecacht für Alpha-Fade.
-var _cached_materials: Array[StandardMaterial3D] = []
-var _original_colors:  Array[Color]              = []
+## Effektiver Min-Alpha (entweder aus Inspector oder Player-Override).
+## Wird in _ready() initialisiert und NUR dieser Wert wird zur Laufzeit benutzt.
+var _effective_min_alpha: float = 0.0
+
+## Per-Instanz duplizierte Materials für Alpha-Fade.
+## Garantiert isoliert: ein Cloak betrifft nie andere Schiffe.
+var _cached_materials: Array[Material] = []
+## Original-Albedo-Farben (Snapshot VOR der Duplizierung gesichert).
+## Reihenfolge entspricht 1:1 _cached_materials.
+var _original_colors:  Array[Color]    = []
 var _materials_initialized: bool = false
 
 
@@ -138,11 +160,51 @@ func _ready() -> void:
 	if not _ship_root:
 		push_warning("[CloakComponent] Kein Root-Node gefunden – Meshes können nicht gesucht werden!")
 
-	_dbg("✅ CloakComponent bereit | root='%s' | sc='%s' | detection_range=%.0fm | fade_in=%.1fs" % [
+	# Player-Auto-Detect: einmalig in _ready() — die Group-Mitgliedschaft ändert
+	# sich während des Spiels normalerweise nicht (Player-Schiff bleibt Player).
+	_resolve_player_mode()
+
+	# WICHTIG: Originalfarben SOFORT in _ready() snapshotten — bevor irgendein
+	# Code (auch von anderen Systemen) die geteilten Base-Materials anfasst.
+	# Kein duplicate(), kein Override — nur lesen. Absolut sicher in _ready().
+	_snapshot_original_colors()
+
+	_dbg("✅ CloakComponent bereit | root='%s' | sc='%s' | mode=%s | min_alpha=%.2f | detection_range=%.0fm | fade_in=%.1fs" % [
 		_ship_root.name if _ship_root else "NULL",
 		_ship_controller.name if _ship_controller else "NULL",
+		"PLAYER" if _is_player_ship else "NPC",
+		_effective_min_alpha,
 		cloak_data.detection_range, cloak_data.fade_in_duration
 	])
+
+
+## Prüft ob das Schiff zum Spieler gehört und setzt den effektiven Min-Alpha.
+##
+## Player-Schiffe (in der "player"-Group):
+##   _effective_min_alpha = 0.15  (immer leicht sichtbar)
+## NPC-Schiffe:
+##   Wert aus Inspector wird 1:1 übernommen.
+func _resolve_player_mode() -> void:
+	_is_player_ship = false
+
+	# Hierarchie hoch laufen: CloakComponent → ShipController → Root → ...
+	var node: Node = self
+	while is_instance_valid(node):
+		if node.is_in_group(_PLAYER_GROUP):
+			_is_player_ship = true
+			break
+		node = node.get_parent()
+
+	if _is_player_ship:
+		_effective_min_alpha = _PLAYER_MIN_ALPHA
+		# Logs zeigen prominent dass Inspector-Wert überschrieben wurde
+		if cloaked_min_alpha != _PLAYER_MIN_ALPHA:
+			_dbg("🎮 Player-Modus: Inspector-Wert überschrieben (min_alpha=%.2f→%.2f)" % [
+				cloaked_min_alpha, _PLAYER_MIN_ALPHA
+			])
+	else:
+		_effective_min_alpha = cloaked_min_alpha
+
 
 func _process(delta: float) -> void:
 	if _state == State.COOLDOWN:
@@ -151,11 +213,6 @@ func _process(delta: float) -> void:
 			_state = State.IDLE
 			_dbg("✅ Cooldown beendet, kann erneut tarnen")
 		return
-
-	# Distortion-Stärke basierend auf Distanz zum nächsten Observer anpassen.
-	# Nur im aktiven Cloak-Zustand — in IDLE/COOLDOWN ist _distortion_strength = 0.
-	if _state == State.CLOAKED:
-		_update_distortion_strength()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -202,8 +259,9 @@ func is_transitioning() -> bool:
 ## Sichtbarkeit für einen bestimmten Beobachter (0.0 = unsichtbar, 1.0 = voll
 ## sichtbar). Berücksichtigt Detection-Range bei aktivem Cloak.
 ##
-## Diese Funktion ist die Wahrheits-Quelle für externe Visibility-Checks.
-## ShipController.is_visible_to(observer) nutzt diese.
+## Diese Funktion ist die Wahrheits-Quelle für externe Visibility-Checks
+## (TargetingSystem, AIController). ShipController.is_visible_to(observer)
+## delegiert hierhin.
 func visibility_to(observer: Node3D) -> float:
 	# Im IDLE: voll sichtbar
 	if _state == State.IDLE:
@@ -240,7 +298,10 @@ func _begin_cloak() -> bool:
 	if not _ship_controller:
 		return false
 
-	_dbg("🌀 CLOAKING gestartet (fade=%.1fs)" % cloak_data.fade_in_duration)
+	_dbg("🌀 CLOAKING gestartet (fade=%.1fs, mode=%s)" % [
+		cloak_data.fade_in_duration,
+		"PLAYER" if _is_player_ship else "NPC"
+	])
 	_state = State.CLOAKING
 	cloaking_started.emit()
 
@@ -251,9 +312,9 @@ func _begin_cloak() -> bool:
 	_set_weapons_locked(true)
 	_set_shields_offline(true)
 
-	# Mesh-Fade auf cloaked_min_alpha (0.0 = komplett unsichtbar, >0 = leicht sichtbar)
-	_fade_to(cloaked_min_alpha, cloak_data.fade_in_duration, _on_cloak_complete)
-	_dbg("  → Ziel-Alpha: %.2f" % cloaked_min_alpha)
+	# Mesh-Fade auf _effective_min_alpha (0.0 = komplett unsichtbar, >0 = leicht sichtbar)
+	_fade_to(_effective_min_alpha, cloak_data.fade_in_duration, _on_cloak_complete)
+	_dbg("  → Ziel-Alpha: %.2f" % _effective_min_alpha)
 	return true
 
 
@@ -281,25 +342,21 @@ func _on_cloak_complete() -> void:
 	_state = State.CLOAKED
 	_set_collision_active(false)
 
-	if use_distortion:
-		# DISTORTION-MODUS (NPC): Alpha-Fade hat Meshes auf 0 gebracht.
-		# Jetzt material_overlay mit Distortion-Shader setzen —
-		# rendert Refraktion + Rim ohne Original-Materials zu ersetzen.
-		_initialize_distortion()
-		_dbg("✅ CLOAKED (Distortion-Modus | %d Meshes)" % _distortion_meshes.size())
-	elif cloaked_min_alpha <= 0.0:
+	# NPC-Modus mit min_alpha=0: Mesh komplett ausblenden für sauberen Look
+	# (sonst können Restartefakte vom transparenten Material sichtbar bleiben).
+	# Player-Modus mit min_alpha>0: Mesh bleibt sichtbar.
+	if _effective_min_alpha <= 0.0:
 		_set_original_meshes_visible(false)
 		_dbg("✅ CLOAKED (komplett unsichtbar)")
 	else:
-		_dbg("✅ CLOAKED (leicht sichtbar, alpha=%.2f)" % cloaked_min_alpha)
+		_dbg("✅ CLOAKED (leicht sichtbar, alpha=%.2f)" % _effective_min_alpha)
 
 	cloaked.emit()
 
 
 func _on_decloak_complete(emergency: bool) -> void:
-	if use_distortion:
-		_set_distortion_overlay(false)
-	elif cloaked_min_alpha <= 0.0:
+	# Mesh wieder sichtbar wenn es im Cloak versteckt wurde (NPC-Modus)
+	if _effective_min_alpha <= 0.0:
 		_set_original_meshes_visible(true)
 
 	_set_collision_active(true)
@@ -321,19 +378,63 @@ func _on_decloak_complete(emergency: bool) -> void:
 # INTERN – Mesh-Fade
 # ─────────────────────────────────────────────────────────────────────────────
 
-## Cached alle MeshInstance3D Override-Materials für schnelles Tweening.
-## Wird beim ersten Cloak-Versuch aufgerufen, danach ist alles vorbereitet.
+## Snapshot der Original-Albedo-Farben aus den (noch geteilten) Base-Materials.
+## Wird in _ready() aufgerufen, BEVOR irgendein duplicate() oder Override passiert.
 ##
-## WICHTIG: Wir DUPLIZIEREN die Materials, sonst würde ein cloakedes Schiff
-## auch alle anderen Instanzen desselben Typs durchscheinen lassen.
+## WARUM: Wenn beim Duplizieren der Materials später irgendeine Sub-Resource
+## verloren geht (selten, aber möglich bei komplexen Material-Setups), haben
+## wir hier die echte Originalfarbe gesichert. Beim Decloak schreiben wir
+## diese zurück → Schiff erscheint garantiert in der Originalfarbe.
+##
+## Reihenfolge: gleiche Iterationsreihenfolge wie _initialize_materials() —
+## damit color_idx später 1:1 passt.
+func _snapshot_original_colors() -> void:
+	_original_colors.clear()
 
+	var mesh_instances: Array[MeshInstance3D] = []
+	if target_meshes.size() > 0:
+		for m in target_meshes:
+			if is_instance_valid(m):
+				mesh_instances.append(m)
+	elif _ship_root:
+		mesh_instances = _find_all_mesh_instances(_ship_root)
+
+	for mesh in mesh_instances:
+		if mesh.name == "ShieldMesh":
+			continue
+		var surface_count: int = mesh.mesh.get_surface_count() if mesh.mesh else 0
+		for i in range(surface_count):
+			var base_mat: Material = mesh.mesh.surface_get_material(i)
+			# Falls schon ein Override existiert, nutzen wir DESSEN Farbe als
+			# "original" — z.B. wenn das Schiff im Editor bereits eine eigene
+			# Albedo gesetzt bekommen hat.
+			var override_mat: Material = mesh.get_surface_override_material(i)
+			var source_mat: Material = override_mat if override_mat else base_mat
+			if not source_mat:
+				continue
+			if source_mat is StandardMaterial3D:
+				_original_colors.append((source_mat as StandardMaterial3D).albedo_color)
+			else:
+				# Nicht-Standard Material (ShaderMaterial etc.) — wir können die
+				# Farbe nicht zuverlässig auslesen, behalten weißen Default als Marker.
+				_original_colors.append(Color.WHITE)
+
+	_dbg("📷 Originalfarben gesichert: %d Einträge" % _original_colors.size())
+
+
+## Dupliziert alle relevanten Mesh-Materials per-Instanz (Material-Isolation).
+## Wird LAZY beim ersten Cloak-Versuch aufgerufen — nicht in _ready(),
+## damit Schiffe die nie cloaken keinen unnötigen Material-Speicher belegen.
+##
+## ⚠ KRITISCH: IMMER duplicate(true) (Deep-Copy) und IMMER neu setzen, auch
+## wenn surface_override_material schon existiert. Sonst teilen sich zwei
+## Schiffe desselben Typs die Material-Reference und cloaken zusammen.
 func _initialize_materials() -> void:
 	if _materials_initialized:
 		return
 
 	# EXPLIZIT: target_meshes aus dem Inspector nutzen wenn gesetzt.
-	# Das ist der zuverlässige Weg — kein Raten welches Mesh gemeint ist.
-	# FALLBACK: automatische Suche vom Root-Node (weniger sicher, aber kompatibel).
+	# FALLBACK: automatische Suche vom Root-Node (weniger sicher).
 	var mesh_instances: Array[MeshInstance3D] = []
 	if target_meshes.size() > 0:
 		for m in target_meshes:
@@ -347,48 +448,48 @@ func _initialize_materials() -> void:
 		_dbg("⚠ _initialize_materials: kein _ship_root und keine target_meshes!")
 		return
 
+	# Separater Index für die Snapshot-Farben — wir überspringen Surfaces ohne
+	# Material, daher kann der Surface-Index abweichen.
+	var color_idx: int = 0
+
 	for mesh in mesh_instances:
 		if mesh.name == "ShieldMesh":
 			continue
 
 		var surface_count: int = mesh.mesh.get_surface_count() if mesh.mesh else 0
 
-		# Alle Surfaces des Meshes durchgehen — nicht nur Index 0!
-		# Schiffe haben oft mehrere Materials (Hülle, Fenster, Triebwerke etc.)
 		for i in range(surface_count):
-			var mat_override: Material = mesh.get_surface_override_material(i)
-			if not mat_override:
-				var base_mat: Material = mesh.mesh.surface_get_material(i)
-				if base_mat:
-					# DUPLIZIEREN — damit andere Instanzen desselben Schiffstyps
-					# nicht mitmachen wenn ein Schiff cloakt.
-					mat_override = base_mat.duplicate()
-					mesh.set_surface_override_material(i, mat_override)
+			# Quelle: Override falls vorhanden, sonst Base. Beide sind potenziell
+			# zwischen Schiffsinstanzen geteilt — wir MÜSSEN duplizieren.
+			var override_mat: Material = mesh.get_surface_override_material(i)
+			var source_mat: Material = override_mat if override_mat else mesh.mesh.surface_get_material(i)
+			if not source_mat:
+				continue
 
-			if mat_override is StandardMaterial3D:
-				var sm: StandardMaterial3D = mat_override
-				_original_colors.append(sm.albedo_color)
-				# Transparency erst beim Cloak aktivieren (nicht schon jetzt) —
-				# verhindert Render-Artefakte im normalen Zustand
-				_cached_materials.append(sm)
+			# DEEP-COPY: duplicate(true) kopiert auch verschachtelte Sub-Resources
+			# wie Texture-Refs, Sub-Materials etc. Ohne true gehen Texturen
+			# verloren → Schiff erscheint farblos.
+			var new_mat: Material = source_mat.duplicate(true)
+			mesh.set_surface_override_material(i, new_mat)
+			_cached_materials.append(new_mat)
+
+			# Snapshot-Farbe explizit zurückschreiben — Versicherung falls
+			# duplicate(true) doch was verschluckt hat.
+			if color_idx < _original_colors.size() and new_mat is StandardMaterial3D:
+				(new_mat as StandardMaterial3D).albedo_color = _original_colors[color_idx]
+			color_idx += 1
 
 	_materials_initialized = true
-	_dbg("🎨 %d Materials für Cloak-Fade vorbereitet | Meshes: %d" % [
-		_cached_materials.size(), mesh_instances.size()
-	])
+	_dbg("✅ Materials dupliziert: %d (deep-copy + Farb-Snapshot zurückgeschrieben)" % _cached_materials.size())
+
 	if _cached_materials.is_empty():
 		_dbg("⚠ KEINE Materials gefunden! Mögliche Ursachen:")
 		_dbg("  1. target_meshes leer UND _ship_root falsch")
-		_dbg("  2. Meshes nutzen ShaderMaterial statt StandardMaterial3D")
-		_dbg("  3. Mesh hat keine Surfaces (mesh.get_surface_count() = 0)")
-		for mesh in mesh_instances:
-			var sc: int = mesh.mesh.get_surface_count() if mesh.mesh else -1
-			_dbg("  Mesh '%s': surface_count=%d | material_type=%s" % [
-				mesh.name, sc,
-				mesh.get_surface_override_material(0).get_class() if sc > 0 and mesh.get_surface_override_material(0) else
-				(mesh.mesh.surface_get_material(0).get_class() if sc > 0 and mesh.mesh.surface_get_material(0) else "NULL")
-			])
+		_dbg("  2. Mesh hat keine Surfaces (mesh.get_surface_count() = 0)")
+		_dbg("  3. Surfaces haben weder Base-Material noch Override")
 
+
+## Tween-basierter Alpha-Fade von _cloak_alpha → target_alpha.
 func _fade_to(target_alpha: float, duration: float, on_complete: Callable) -> void:
 	_initialize_materials()
 
@@ -400,53 +501,56 @@ func _fade_to(target_alpha: float, duration: float, on_complete: Callable) -> vo
 		on_complete.call()
 		return
 
-	# Transparency aktivieren bevor der Fade startet
+	# Transparency aktivieren bevor der Fade startet (nur StandardMaterial3D)
 	for mat in _cached_materials:
-		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		if mat is StandardMaterial3D:
+			(mat as StandardMaterial3D).transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 
-	# tween_method: Ein einziger Tween steuert _cloak_alpha, _apply_alpha_to_materials
-	# wird pro Frame aufgerufen — performanter als N parallele tween_property calls
-	# und einfacher zu debuggen.
+	var start_alpha: float = _cloak_alpha
 	_active_tween = create_tween()
 	_active_tween.tween_method(
-		_apply_alpha_to_materials,
-		_cloak_alpha,      # von aktuellem Alpha
-		target_alpha,      # zum Ziel-Alpha
+		func(progress: float) -> void:
+			var current_alpha: float = lerp(start_alpha, target_alpha, progress)
+			_apply_alpha_to_materials(current_alpha),
+		0.0, 1.0,
 		duration
 	)
 	_active_tween.tween_callback(func() -> void:
 		_cloak_alpha = target_alpha
-		# Transparency nur zurücksetzen wenn voll sichtbar (Decloak fertig).
-		# Beim Cloak-Ziel (cloaked_min_alpha) bleibt TRANSPARENCY_ALPHA aktiv
-		# damit das Schiff weiterhin transparent gerendert wird.
+		# Beim Decloak (target=1.0): Originalfarbe + Transparency aus.
+		# Beim Cloak (target=min_alpha): Transparency bleibt aktiv.
 		if target_alpha >= 1.0:
 			for i in range(_cached_materials.size()):
-				var mat: StandardMaterial3D = _cached_materials[i]
-				if i < _original_colors.size():
-					mat.albedo_color = _original_colors[i]
-				mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+				var mat: Material = _cached_materials[i]
+				if mat is StandardMaterial3D:
+					var sm: StandardMaterial3D = mat as StandardMaterial3D
+					if i < _original_colors.size():
+						sm.albedo_color = _original_colors[i]
+					sm.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
 		on_complete.call()
 	)
 
 
 ## Wird von tween_method pro Frame aufgerufen — setzt alpha auf allen Materials.
+## Behält Original-RGB bei und setzt nur den Alpha-Kanal — kein Farbverlust.
 func _apply_alpha_to_materials(alpha: float) -> void:
 	_cloak_alpha = alpha
 	for i in range(_cached_materials.size()):
-		var mat: StandardMaterial3D = _cached_materials[i]
-		var base: Color = _original_colors[i] if i < _original_colors.size() else mat.albedo_color
-		mat.albedo_color = Color(base.r, base.g, base.b, alpha)
+		var mat: Material = _cached_materials[i]
+		if not mat is StandardMaterial3D:
+			continue
+		var sm: StandardMaterial3D = mat as StandardMaterial3D
+		# Original-RGB aus Snapshot, nur Alpha aus dem aktuellen Fade-Wert
+		var base: Color = _original_colors[i] if i < _original_colors.size() else sm.albedo_color
+		sm.albedo_color = Color(base.r, base.g, base.b, alpha)
 
 	# Debug bei markanten Alpha-Werten
 	if show_debug:
 		if alpha <= 0.01:
-			_dbg("🎨 Alpha=0.0 erreicht | %d Materials | transparency=%s" % [
-				_cached_materials.size(),
-				BaseMaterial3D.TRANSPARENCY_ALPHA if _cached_materials.size() > 0
-				else "n/a"
-			])
+			_dbg("🎨 Alpha=0.0 erreicht | %d Materials" % _cached_materials.size())
 		elif alpha >= 0.99:
 			_dbg("🎨 Alpha=1.0 erreicht | %d Materials" % _cached_materials.size())
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # INTERN – Audio (nach dem Vorbild von WeaponMount)
@@ -498,6 +602,7 @@ func _play_sound(stream: AudioStream, volume_offset_db: float = 0.0) -> void:
 			if is_instance_valid(player): player.queue_free()
 		)
 
+
 func _find_all_mesh_instances(node: Node) -> Array[MeshInstance3D]:
 	var result: Array[MeshInstance3D] = []
 	if node is MeshInstance3D:
@@ -548,106 +653,6 @@ func _set_collision_active(active: bool) -> void:
 		_dbg("⚛️ HullCollision Layer-1 = %s" % active)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# INTERN – Distortion-System (Screen-Space Refraktion via material_overlay)
-# ─────────────────────────────────────────────────────────────────────────────
-# ANSATZ: Kein Klon-Mesh! Stattdessen bekommt jedes Original-Mesh einen
-# material_overlay mit dem Distortion-Shader. Das Overlay rendert über den
-# normalen Materials und erzeugt Refraktion + Rim ohne Z-Fighting.
-# Der Alpha-Fade (cloaked_min_alpha=0) hat die Meshes bereits unsichtbar
-# gemacht — der Overlay-Shader macht nur den Verzerrungseffekt sichtbar.
-
-## Initialisiert den Distortion-Shader und setzt ihn als material_overlay
-## auf alle relevanten Meshes. Idempotent — kann mehrfach aufgerufen werden.
-func _initialize_distortion() -> void:
-	if _distortion_initialized:
-		# Overlay nur reaktivieren (Strength auf aktuellen Wert setzen)
-		_set_distortion_overlay(true)
-		return
-
-	var shader_res: Shader = load(distortion_shader_path) as Shader
-	if not shader_res:
-		_dbg("⚠ Distortion-Shader nicht gefunden: '%s'" % distortion_shader_path)
-		# Fallback: Meshes bleiben alpha=0 (unsichtbar), kein Effekt
-		return
-
-	# Shared ShaderMaterial — alle Meshes teilen dasselbe Material,
-	# ein set_shader_parameter reicht für alle gleichzeitig.
-	_distortion_material = ShaderMaterial.new()
-	_distortion_material.shader = shader_res
-	_distortion_material.set_shader_parameter("distortion_strength", 0.0)
-	_distortion_material.set_shader_parameter("refraction_scale",    refraction_scale)
-	_distortion_material.set_shader_parameter("rim_strength",        distortion_rim_strength)
-	_distortion_material.set_shader_parameter("flow_speed",          distortion_flow_speed)
-	_distortion_material.set_shader_parameter("noise_scale",         distortion_noise_scale)
-
-	# Noise-Textur procedural erzeugen
-	var noise_tex := NoiseTexture2D.new()
-	var fn        := FastNoiseLite.new()
-	fn.noise_type      = FastNoiseLite.TYPE_PERLIN
-	fn.frequency       = 0.025
-	fn.fractal_octaves = 4
-	noise_tex.width    = 256
-	noise_tex.height   = 256
-	noise_tex.noise    = fn
-	_distortion_material.set_shader_parameter("noise_texture", noise_tex)
-
-	# Meshes sammeln
-	var meshes: Array[MeshInstance3D] = _get_target_meshes()
-	for mesh in meshes:
-		# material_overlay setzt einen Shader ÜBER den normalen Materials —
-		# keine Änderung an surface_override_material nötig.
-		mesh.material_overlay = _distortion_material
-		_distortion_meshes.append(mesh)
-		_dbg("  🌊 Overlay auf '%s' gesetzt" % mesh.name)
-
-	_distortion_initialized = true
-	_dbg("🌊 Distortion bereit | %d Meshes | refraction_scale=%.3f" % [
-		_distortion_meshes.size(), refraction_scale
-	])
-	# Overlay sofort aktivieren
-	_set_distortion_overlay(true)
-
-
-## Aktiviert/deaktiviert den Distortion-Overlay-Effekt.
-## true = Shader aktiv (distortion_strength per _update_distortion_strength gesteuert)
-## false = Shader unsichtbar (strength=0), material_overlay bleibt gesetzt für späteren Aufruf
-func _set_distortion_overlay(active: bool) -> void:
-	if not _distortion_material:
-		return
-	if not active:
-		_distortion_material.set_shader_parameter("distortion_strength", 0.0)
-		_dbg("🌊 Distortion-Overlay deaktiviert")
-		# material_overlay nicht entfernen — beim nächsten Cloak einfach wieder aktivieren
-
-
-## Berechnet die Distortion-Stärke basierend auf dem nächsten Observer.
-## Außerhalb detection_range → 0.0 (unsichtbar, kein Effekt).
-## Innerhalb → steigt von 0.0 bis 1.0 je näher der Observer ist.
-func _update_distortion_strength() -> void:
-	if not _distortion_material:
-		return
-	if not _ship_root:
-		return
-
-	var my_pos: Vector3 = _ship_root.global_position
-	var nearest_dist: float = INF
-
-	for ship in get_tree().get_nodes_in_group("ships"):
-		if ship == _ship_root or ship == _ship_controller or not ship is Node3D:
-			continue
-		var d: float = (ship as Node3D).global_position.distance_to(my_pos)
-		if d < nearest_dist:
-			nearest_dist = d
-
-	var strength: float = 0.0
-	if nearest_dist < cloak_data.detection_range:
-		strength = 1.0 - (nearest_dist / cloak_data.detection_range)
-		strength = pow(strength, 0.6)  # Kurve: am Rand subtil, in Mitte stark
-
-	_distortion_material.set_shader_parameter("distortion_strength", strength)
-
-
 ## Liefert die relevanten Meshes — aus Inspector oder Auto-Suche.
 func _get_target_meshes() -> Array[MeshInstance3D]:
 	var result: Array[MeshInstance3D] = []
@@ -655,20 +660,19 @@ func _get_target_meshes() -> Array[MeshInstance3D]:
 		for m in target_meshes:
 			if is_instance_valid(m) and m.name != "ShieldMesh":
 				result.append(m)
-		_dbg("🎯 %d Meshes aus Inspector" % result.size())
 	elif _ship_root:
 		for m in _find_all_mesh_instances(_ship_root):
 			if m.name != "ShieldMesh":
 				result.append(m)
-		_dbg("🔍 %d Meshes per Auto-Suche" % result.size())
 	return result
 
 
-## Blendet Original-Meshes komplett aus/ein (Fallback ohne Distortion).
+## Blendet Original-Meshes komplett aus/ein (für NPC-Modus mit min_alpha=0).
 func _set_original_meshes_visible(visible: bool) -> void:
 	for mesh in _get_target_meshes():
 		mesh.visible = visible
 	_dbg("👁 Meshes visible=%s" % visible)
+
 
 func _dbg(msg: String) -> void:
 	if not show_debug:

@@ -6,6 +6,13 @@
 # Default-Werte sind balanciert für mittlere Schiffsklassen — anpassen für
 # spezielle Lore-Touches (Romulan-Warbird = schneller Cloak-Cycle, Klingon
 # = langsamer aber robuster, etc.).
+#
+# VISUAL-OVERRIDES (rim_color, displacement_strength):
+#   Lass die Override-Felder leer (Sentinel-Werte) und das Schiff bekommt
+#   automatisch die Farben aus FactionSystem.get_cloak_visuals() — also
+#   kanonische Klingon/Romulan/Federation-Looks. Setze sie nur wenn ein
+#   einzelnes Schiff abweichen soll (z.B. ein erbeuteter Romulan-Warbird
+#   in klingonischer Hand → Romulan-Hülle aber Klingon-Cloak-Look).
 
 @tool
 class_name CloakData
@@ -38,3 +45,16 @@ extends Resource
 ## Farbe des Schimmer-Effekts. Klassisch romulanisch grün-blau, klingonisch
 ## könnte rötlicher sein.
 @export var shimmer_tint: Color = Color(0.4, 0.7, 1.0, 1.0)
+
+# ── Visual Overrides (per-Schiff Sonderfälle) ─────────────────────────────────
+@export_group("Visual Overrides (Optional)")
+## Override für die Rim-Farbe des Cloak-Shaders. Sentinel: alpha=0.0 bedeutet
+## "nicht gesetzt" → FactionSystem-Default wird genutzt. Setzen NUR wenn
+## dieses Schiff eine andere Cloak-Farbe als seine Faction haben soll
+## (z.B. erbeutete fremde Cloaking-Tech).
+@export var rim_color_override: Color = Color(0.0, 0.0, 0.0, 0.0)
+
+## Override für die Vertex-Displacement-Stärke während der Cloak-Transition.
+## -1.0 = nicht gesetzt → FactionSystem-Default wird genutzt.
+## 0.03–0.05 = Predator-subtil. >0.1 = sichtbares "Geist-Mesh".
+@export var displacement_strength_override: float = -1.0
