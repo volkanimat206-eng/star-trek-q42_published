@@ -53,6 +53,18 @@ extends Resource
 @export var proximity_radius: float = 3.0
 @export_range(0.1, 100.0) var explosion_scale: float = 1.0
 
+@export_group("Audio – Impact")
+## Sound der beim Einschlag des Torpedos abgespielt wird.
+## Wird vom Torpedo-Projektil selbst abgespielt – nicht vom Mount.
+@export var impact_sound: AudioStream = null
+@export_range(-30.0, 200.0, 0.1) var impact_volume_db: float = 0.0
+@export_range(0.0, 5.0, 0.05)   var impact_delay: float = 0.0  # z.B. kurz nach Einschlag
+@export_range(0.0, 2.0, 0.05)   var impact_distance_attenuation_strength: float = 0.2
+@export_range(100.0, 5000.0, 50.0) var impact_max_distance: float = 1800.0
+@export var impact_no_distance_attenuation: bool = false
+## Maximale Abspieldauer des Impact-Sounds in Sekunden.
+## 0.0 = vollständige Länge abspielen.
+@export_range(0.0, 10.0, 0.05) var impact_sound_duration: float = 0.0
 
 ## Gibt den skalierten Schaden zurück.
 ## hit_shield = true  → shield_damage_multiplier

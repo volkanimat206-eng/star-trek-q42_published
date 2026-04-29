@@ -30,12 +30,14 @@ bg_color = Color(0.078431375, 0.09803922, 0.14117648, 0.9490196)
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kfvwx"]
 bg_color = Color(0.5529412, 0.84313726, 1, 1)
 
-[node name="DebugControlPanel" type="CanvasLayer" unique_id=1651575783 node_paths=PackedStringArray("panel", "title_bar", "close_button", "ship_list_container", "spawn_button", "despawn_button", "spawn_count_label", "faction_list_container", "rep_reset_button", "reputation_label", "reputation_list", "reputation_reset_button", "ki_patrol_button", "ki_attack_button", "ki_list_container", "flags_list", "reset_flags_button", "spawn_bar", "spawn_content", "npc_bar", "npc_content", "faction_bar", "faction_content", "reputation_bar", "reputation_content", "sound_bar", "sound_content")]
+[node name="DebugControlPanel" type="CanvasLayer" unique_id=1651575783 node_paths=PackedStringArray("debug_flags_node", "panel", "title_bar", "close_button", "ship_list_container", "spawn_button", "despawn_button", "spawn_count_label", "faction_list_container", "rep_reset_button", "reputation_label", "reputation_list", "reputation_reset_button", "ki_patrol_button", "ki_attack_button", "ki_list_container", "flags_list", "reset_flags_button", "spawn_bar", "spawn_content", "npc_bar", "npc_content", "faction_bar", "faction_content", "reputation_bar", "reputation_content", "sound_bar", "sound_content")]
 layer = 100
 script = ExtResource("1_kvtvj")
 spawn_ship_datas = Array[ExtResource("2_8jptv")]([ExtResource("3_8gwfh"), ExtResource("4_1nfr7"), ExtResource("5_t24vc")])
 spawn_offset_radius = 200.0
 ai_controller_scene = ExtResource("6_t24vc")
+toggle_key = null
+debug_flags_node = NodePath("Debug_Flags")
 panel = NodePath("Debug_Control")
 title_bar = NodePath("Debug_Control/VBoxContainer/TitleBar")
 close_button = NodePath("Debug_Control/VBoxContainer/TitleBar/HBoxContainer/CloseBtn")

@@ -1011,26 +1011,58 @@ func _dbg(msg: String) -> void:
 ## Setzt den CloakComponent auf, wenn ship_data.can_cloak gesetzt ist.
 ## Wird aus _setup_shield_deferred() aufgerufen, also nach allen anderen
 ## Subsystemen damit der Cloak auf Schilde/Waffen zugreifen kann.
+
 func _setup_cloak() -> void:
 	# cloak_component ist per @export im Inspector zugewiesen — keine Suche nötig.
 	if not is_instance_valid(cloak_component):
 		_dbg_cloak("ℹ Kein CloakComponent zugewiesen → Schiff tarnt nicht")
 		return
 
-	cloak_component.show_debug = show_debug
+	# Berechtigungs-Check: can_cloak ODER Player-Bypass
+	var can_cloak: bool = ship_data.can_cloak if ship_data else false
+	var player_bypass: bool = has_meta("player_cloak_bypass") and get_meta("player_cloak_bypass") == true
 
+	# Master-Gate: ohne Berechtigung → Component bleibt is_active=false (Default).
+	# Damit lehnt toggle_cloak()/break_cloak() jeden Aufruf silent ab.
+	if not can_cloak and not player_bypass:
+		cloak_component.is_active = false
+		_dbg_cloak("🚫 Cloak deaktiviert: can_cloak=false und kein Player-Bypass — Component is_active=false")
+		return
+
+	# Berechtigt → aktivieren und Setup durchführen
+	cloak_component.is_active = true
+
+	# Logging-Ursache für die Aktivierung — hilft beim Diagnostizieren,
+	# warum dieses Schiff cloakt obwohl can_cloak im .tres vielleicht false ist.
+	var reason: String = ""
+	if can_cloak and player_bypass:
+		reason = "can_cloak=true + Player-Bypass"
+	elif can_cloak:
+		reason = "can_cloak=true (NPC/Standard)"
+	else:
+		reason = "Player-Bypass (force_cloak_for_player)"
+
+	# Konfiguration und Signal-Verbindungen
+	cloak_component.show_debug = show_debug
+	
 	cloak_component.cloaking_started.connect(func(): _dbg_cloak("🌀 Cloak: tarnt sich..."))
 	cloak_component.cloaked.connect(func(): _dbg_cloak("✅ Cloak: voll getarnt"))
 	cloak_component.decloaked.connect(func(): _dbg_cloak("✅ Cloak: enttarnt"))
-	cloak_component.cloak_broken.connect(func(reason: String):
-		_dbg_cloak("💥 Cloak gebrochen: %s" % reason))
+	
+	cloak_component.cloak_broken.connect(func(reason_msg: String):
+		_dbg_cloak("💥 Cloak gebrochen: %s" % reason_msg)
+	)
 
-	_dbg_cloak("✅ CloakComponent '%s' bereit (detection_range=%.0fm | fade_in=%.1fs)" % [
-	cloak_component.name, 
-	cloak_component.cloak_data.detection_range, 
-	cloak_component.cloak_data.fade_in_duration
-])
+	# Daten-Validierung für das Logging (verhindert "Invalid access"-Fehler)
+	var det_range: float = 0.0
+	var fade_in: float = 0.0
+	if cloak_component.cloak_data:
+		det_range = cloak_component.cloak_data.detection_range
+		fade_in = cloak_component.cloak_data.fade_in_duration
 
+	_dbg_cloak("✅ CloakComponent '%s' AKTIV [%s] (detection_range=%.0fm | fade_in=%.1fs)" % [
+		cloak_component.name, reason, det_range, fade_in
+	])
 
 ## Debug-Log speziell für Cloak-Events — über DebugManager-Flag "cloak.setup" steuerbar.
 func _dbg_cloak(msg: String) -> void:

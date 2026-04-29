@@ -43,7 +43,7 @@ billboard_mode = 1
 [sub_resource type="QuadMesh" id="QuadMesh_7a1qc"]
 material = SubResource("StandardMaterial3D_k57ga")
 
-[node name="HullImpact" type="Node3D"]
+[node name="HullImpact" type="Node3D" unique_id=290604497]
 transform = Transform3D(3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0)
 script = ExtResource("1_2esx8")
 effect_scale = 2.0
@@ -54,12 +54,12 @@ flash_energy = 7.0
 flash_range = 4.0
 spark_amount = 120
 
-[node name="FlashLight" type="OmniLight3D" parent="."]
+[node name="FlashLight" type="OmniLight3D" parent="." unique_id=832329177]
 light_color = Color(0.89476854, 0.2885815, 3.85046e-07, 1)
 light_energy = 8.0
 omni_range = 3.0
 
-[node name="Sparks" type="GPUParticles3D" parent="."]
+[node name="Sparks" type="GPUParticles3D" parent="." unique_id=1751045084]
 emitting = false
 amount = 48
 lifetime = 0.6
@@ -68,7 +68,7 @@ explosiveness = 0.9
 process_material = SubResource("ParticleProcessMaterial_wi1st")
 draw_pass_1 = SubResource("SphereMesh_gbmj8")
 
-[node name="ScorchSmoke" type="GPUParticles3D" parent="."]
+[node name="ScorchSmoke" type="GPUParticles3D" parent="." unique_id=562003709]
 emitting = false
 amount = 12
 lifetime = 1.5
@@ -77,7 +77,7 @@ explosiveness = 0.4
 process_material = SubResource("ParticleProcessMaterial_j26j1")
 draw_pass_1 = SubResource("QuadMesh_7a1qc")
 
-[node name="ScorchDecal" type="Decal" parent="."]
+[node name="ScorchDecal" type="Decal" parent="." unique_id=1278661925]
 size = Vector3(0.8, 1, 0.8)
 texture_albedo = ExtResource("2_2esx8")
 modulate = Color(0.33715135, 0.33715135, 0.33715135, 0.702)

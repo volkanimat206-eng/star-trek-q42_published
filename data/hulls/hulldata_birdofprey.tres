@@ -4,6 +4,4 @@
 
 [resource]
 script = ExtResource("1_4jyym")
-max_hp = 5000.0
-current_hp = 5000.0
 metadata/_custom_type_script = "uid://cfo8lhue31v3u"

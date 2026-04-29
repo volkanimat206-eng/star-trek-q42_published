@@ -19,6 +19,19 @@ extends CharacterBody3D
 @export_group("Auto-Fire")
 @export var auto_fire_action: String = "auto_fire"
 
+@export_group("Cloak")
+## Wenn true: Player darf cloaken auch wenn ship_data.can_cloak = false ist.
+## Erlaubt das Testen jedes Schiffs als Player ohne die zentrale ShipData-
+## Konfiguration zu ändern (was alle NPC-Klone derselben tres beeinflussen würde).
+##
+## Wirkungsweise:
+##   - true  + cloak_component im Schiff zugewiesen → Player kann cloaken
+##   - true  + kein cloak_component                 → kein Cloak (logisch)
+##   - false                                         → Player respektiert can_cloak wie ein NPC
+##
+## NPCs nutzen IMMER ship_data.can_cloak — dieser Flag wirkt nur auf den Player.
+@export var force_cloak_for_player: bool = true
+
 @export_group("Debug")
 @export var show_debug: bool = true
 
@@ -51,8 +64,9 @@ func _ready() -> void:
 		print("[PLAYER DEBUG] Meine Fraktion: ", ShipData.Faction.keys()[ship_data.faction])
 
 	_dbg("=== PLAYER CONTROLLER READY ===")
-	_dbg("  ship_data  : %s" % ("SET → " + ship_data.ship_name if ship_data else "❌ NULL"))
-	_dbg("  input_comp : %s" % (input_comp != null))
+	_dbg("  ship_data            : %s" % ("SET → " + ship_data.ship_name if ship_data else "❌ NULL"))
+	_dbg("  input_comp           : %s" % (input_comp != null))
+	_dbg("  force_cloak_for_player: %s" % force_cloak_for_player)
 
 	if not ship_data:
 		push_error("[PlayerController] Kein ship_data zugewiesen!")
@@ -108,6 +122,21 @@ func _instantiate_ship() -> void:
 
 	sc.ship_data = ship_data
 	_dbg("  ship_data gesetzt ✓ (vor add_child)")
+
+	# ── Cloak-Bypass-Flag VOR add_child setzen ─────────────────────────────
+	# WICHTIG: Reihenfolge!
+	#   1. ship_data setzen (oben)
+	#   2. cloak-Bypass setzen (HIER)
+	#   3. add_child → triggert _ready() → _setup_shield_deferred() → _setup_cloak()
+	#
+	# Wenn wir das Flag NACH add_child setzen würden, hätte _setup_cloak()
+	# schon entschieden ohne den Bypass zu kennen.
+	#
+	# Set via meta — erfordert keinen @export am ShipController, ist aber von dort
+	# auslesbar (defensives Pattern: ShipController fragt mit has_meta()).
+	if force_cloak_for_player:
+		sc.set_meta("player_cloak_bypass", true)
+		_dbg("  player_cloak_bypass gesetzt ✓ (Cloak-Setup ignoriert can_cloak)")
 
 	add_child(instance)
 

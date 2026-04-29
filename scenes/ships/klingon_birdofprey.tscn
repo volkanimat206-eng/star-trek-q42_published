@@ -406,7 +406,7 @@ height = 2.0
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_6dckk"]
 noise_type = 2
-seed = -1041971692
+seed = -1904597318
 frequency = 0.08
 fractal_octaves = 3
 
@@ -539,11 +539,6 @@ script = ExtResource("17_6dckk")
 cloak_data = ExtResource("16_6dckk")
 target_meshes = [NodePath("../../Model/MeshModel/Object_37")]
 audio_data = ExtResource("17_cek0b")
-use_distortion = true
-refraction_scale = 0.2
-distortion_rim_strength = 0.9
-distortion_flow_speed = 3.0
-distortion_noise_scale = 6.0
 
 [node name="HullImpactReceiver" type="Node" parent="." unique_id=1701943236 node_paths=PackedStringArray("mesh_instances")]
 script = ExtResource("10_hrn4b")

@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="ExplosionAudioData" format=3 uid="uid://bxh1g1lxr6o5r"]
+
+[ext_resource type="Script" uid="uid://id6xdd73m4fb" path="res://resources/data/explosion_audio_data.gd" id="1_nprp7"]
+[ext_resource type="AudioStream" uid="uid://thkp1d0yraaj" path="res://assets/audio/explosion/largeexplosion3.mp3" id="1_wsm4n"]
+[ext_resource type="AudioStream" uid="uid://dj13tl8dhowh1" path="res://assets/audio/explosion/largeexplosion4.mp3" id="2_3ht6e"]
+[ext_resource type="AudioStream" uid="uid://btrqyjpyeglvu" path="res://assets/audio/explosion/soundreality-game-explosion-321700.mp3" id="4_ryncv"]
+
+[resource]
+script = ExtResource("1_nprp7")
+explosion_sound = ExtResource("1_wsm4n")
+explosion_volume_db = 10.0
+explosion_delay = 1.4
+explosion_sound_layer2 = ExtResource("2_3ht6e")
+layer2_volume_db = 8.0
+layer2_delay = 1.2
+shockwave_sound = ExtResource("4_ryncv")
+shockwave_volume_db = 10.0
+shockwave_sound_delay = 1.0
+distance_attenuation_strength = 0.1
+metadata/_custom_type_script = "uid://id6xdd73m4fb"

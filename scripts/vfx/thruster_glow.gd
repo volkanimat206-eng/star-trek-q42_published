@@ -1,4 +1,17 @@
 # res://scripts/thruster_glow.gd
+#
+# Thruster-Glow + Audio das auf Schiffsgeschwindigkeit reagiert.
+# Hängt am MeshInstance3D des Thrusters und liest dessen Material direkt.
+#
+# WICHTIG: Material-Lookup pro Update, NICHT gecached!
+# Andere Systeme können das surface_override_material zur Laufzeit austauschen
+# (z.B. CloakComponent dupliziert es zur Material-Isolation, Damage-Effects
+# könnten ähnliches tun). Wenn wir hier eine Material-Reference cachen,
+# zeigen wir nach so einem Tausch ins Leere — sichtbarer Bug: Glow bleibt
+# nach Decloak aus.
+#
+# Die Performance-Kosten von get_active_material() pro Speed-Update sind
+# vernachlässigbar (es ist ein einfacher Property-Lookup, kein Deep-Search).
 extends MeshInstance3D
 
 @export_group("Slot Settings")
@@ -16,15 +29,25 @@ extends MeshInstance3D
 @export var max_pitch: float = 1.2        # Inspector einstellbar
 @export var use_pitch: bool = true        # optional ausschalten
 
-var _material: StandardMaterial3D
+## Aktuelle Glow-Energie — nur fürs Debug-Inspect, nicht extern lesen.
 var current_glow_display: float = 0.0
 
+## Markierung damit wir andere Systeme erkennen lassen können dass dieses
+## Material vom ThrusterGlow verwaltet wird. Aktuell nur informativ; falls
+## CloakComponent später eine "respect external owners"-Liste bekommt,
+## könnte er hierauf prüfen.
+const META_OWNED_BY: String = "thruster_glow_owner"
+
+
 func _ready() -> void:
-	# Material vorbereiten
+	# Initiales Material setzen: Original duplizieren und als Override eintragen.
+	# Das ist nur die Erst-Initialisierung — danach lesen wir IMMER live aus
+	# dem Mesh, weil andere Systeme den Override tauschen könnten.
 	var original := get_active_material(impulse_slot)
 	if original is StandardMaterial3D:
-		_material = original.duplicate() as StandardMaterial3D
-		set_surface_override_material(impulse_slot, _material)
+		var initial: StandardMaterial3D = (original as StandardMaterial3D).duplicate()
+		initial.set_meta(META_OWNED_BY, get_path())
+		set_surface_override_material(impulse_slot, initial)
 	else:
 		push_warning("[ThrusterGlow] Kein StandardMaterial3D auf Slot %d!" % impulse_slot)
 		return
@@ -65,15 +88,33 @@ func _find_ship_controller() -> ShipController:
 	return null
 
 
+## Holt das aktuell aktive Material aus dem Slot. Wird pro Speed-Update
+## aufgerufen, damit wir gegen Material-Tausch durch andere Systeme robust
+## bleiben (CloakComponent, Damage-Effects, etc.).
+##
+## Falls das Material vom Cloak-System dupliziert wurde, hat es trotzdem
+## emission_enabled=true und alle anderen Properties unverändert — wir können
+## also einfach drauf schreiben. Was wir verlieren ist die META_OWNED_BY-
+## Markierung; das ist okay, der Glow funktioniert trotzdem.
+func _get_live_material() -> StandardMaterial3D:
+	var mat: Material = get_active_material(impulse_slot)
+	if mat is StandardMaterial3D:
+		return mat as StandardMaterial3D
+	return null
+
+
 func _on_speed_updated(current_speed: float, max_speed: float) -> void:
-	if not _material:
+	# IMMER frisch holen — kein Cache! Andere Systeme könnten den
+	# Override seit dem letzten Frame ausgetauscht haben.
+	var mat: StandardMaterial3D = _get_live_material()
+	if not mat:
 		return
 
 	# --- Glow Update ---
 	var ratio: float = clamp(absf(current_speed) / max_speed, 0.0, 1.0)
 	var eased_ratio: float = ratio * ratio
 	var energy: float = lerp(idle_glow, max_glow, eased_ratio)
-	_material.emission_energy_multiplier = energy
+	mat.emission_energy_multiplier = energy
 	current_glow_display = energy
 
 	# --- Sound Update ---

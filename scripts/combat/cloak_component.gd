@@ -127,6 +127,7 @@ var _ship_root: Node3D     = null
 var _cloak_alpha: float    = 1.0
 var _cooldown_timer: float = 0.0
 var _active_tween: Tween   = null
+var is_active: bool
 
 ## Wird in _ready() einmal anhand der "player"-Group ermittelt und cached.
 var _is_player_ship: bool = false
@@ -222,6 +223,10 @@ func _process(delta: float) -> void:
 ## Toggle für Player-Input und externe Trigger.
 ## Returns: true wenn der Toggle akzeptiert wurde, false wenn ignoriert.
 func toggle_cloak() -> bool:
+	if not is_active:
+		_dbg("⚠ toggle_cloak abgelehnt: Component nicht aktiviert (can_cloak=false und kein Player-Bypass)")
+		return false
+
 	match _state:
 		State.IDLE:
 			return _begin_cloak()
@@ -236,10 +241,21 @@ func toggle_cloak() -> bool:
 ## Erzwungene Enttarnung von außen — z.B. wenn der ShipController feuert
 ## während getarnt. Springt sofort in DECLOAKING und triggered Cooldown.
 func break_cloak(reason: String = "external") -> void:
+	# Sicherheitscheck: Wenn die Komponente deaktiviert ist, ignorieren
+	if not is_active:
+		_dbg("⚠ break_cloak abgelehnt: Component nicht aktiviert")
+		return
+
+	# Nur abbrechen, wenn das Schiff gerade getarnt ist oder sich im Prozess befindet
 	if _state != State.CLOAKED and _state != State.CLOAKING:
 		return
+
 	_dbg("💥 Cloak gebrochen: %s" % reason)
+	
+	# Signal an andere Systeme senden (z.B. für UI-Effekte oder Sound)
 	cloak_broken.emit(reason)
+	
+	# Not-Enttarnung einleiten (true setzt den Cooldown aktiv)
 	_begin_decloak(true)  # emergency = true → Cooldown nach Decloak
 
 
@@ -555,7 +571,53 @@ func _apply_alpha_to_materials(alpha: float) -> void:
 # ─────────────────────────────────────────────────────────────────────────────
 # INTERN – Audio (nach dem Vorbild von WeaponMount)
 # ─────────────────────────────────────────────────────────────────────────────
-
+#
+#func _play_sound(stream: AudioStream, volume_offset_db: float = 0.0) -> void:
+	#if not stream:
+		#return
+#
+	#var player := AudioStreamPlayer3D.new()
+	#player.stream = stream
+#
+	#if is_instance_valid(_ship_root):
+		#player.global_position = _ship_root.global_position
+	#elif is_instance_valid(_ship_controller) and _ship_controller is Node3D:
+		#player.global_position = _ship_controller.global_position
+#
+	#player.volume_db = volume_offset_db
+#
+	## ── Zoom/Distanz-Steuerung – Werte aus audio_data ─────────────────
+	#var no_atten:  bool  = audio_data.no_distance_attenuation      if audio_data else false
+	#var max_dist:  float = audio_data.max_distance                  if audio_data else 800.0
+	#var atten_str: float = audio_data.distance_attenuation_strength if audio_data else 0.25
+	#var cutoff:    float = audio_data.attenuation_filter_cutoff_hz  if audio_data else 12000.0
+	#var fade_time: float = audio_data.sound_fade_out_time           if audio_data else 0.8
+#
+	#if no_atten:
+		#player.attenuation_model = AudioStreamPlayer3D.ATTENUATION_DISABLED
+		#player.max_distance      = 2000.0
+	#else:
+		#player.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
+		#player.max_distance      = max_dist
+		#player.unit_size         = 1.0 / max(0.1, atten_str)
+#
+	#player.attenuation_filter_cutoff_hz = cutoff
+#
+	#add_child(player)
+	#player.play()
+#
+	#if fade_time > 0.0:
+		#var tween := create_tween()
+		#tween.tween_property(player, "volume_db", -80.0, fade_time)\
+			#.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		#tween.tween_callback(func():
+			#if is_instance_valid(player): player.queue_free()
+		#)
+	#else:
+		#player.finished.connect(func():
+			#if is_instance_valid(player): player.queue_free()
+		#)
+#
 func _play_sound(stream: AudioStream, volume_offset_db: float = 0.0) -> void:
 	if not stream:
 		return
@@ -570,38 +632,59 @@ func _play_sound(stream: AudioStream, volume_offset_db: float = 0.0) -> void:
 
 	player.volume_db = volume_offset_db
 
-	# ── Zoom/Distanz-Steuerung – Werte aus audio_data ─────────────────
-	var no_atten:  bool  = audio_data.no_distance_attenuation      if audio_data else false
-	var max_dist:  float = audio_data.max_distance                  if audio_data else 800.0
+	# ── Zoom/Distanz-Steuerung – Werte aus audio_data ─────────────────────
+	var no_atten: bool  = audio_data.no_distance_attenuation       if audio_data else false
+	var max_dist: float = audio_data.max_distance                 if audio_data else 800.0
 	var atten_str: float = audio_data.distance_attenuation_strength if audio_data else 0.25
-	var cutoff:    float = audio_data.attenuation_filter_cutoff_hz  if audio_data else 12000.0
-	var fade_time: float = audio_data.sound_fade_out_time           if audio_data else 0.8
+	var cutoff: float   = audio_data.attenuation_filter_cutoff_hz if audio_data else 12000.0
+	var fade_time: float = audio_data.sound_fade_out_time         if audio_data else 0.8
 
 	if no_atten:
 		player.attenuation_model = AudioStreamPlayer3D.ATTENUATION_DISABLED
-		player.max_distance      = 2000.0
+		player.max_distance = 2000.0
 	else:
 		player.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
-		player.max_distance      = max_dist
-		player.unit_size         = 1.0 / max(0.1, atten_str)
+		player.max_distance = max_dist
+		player.unit_size = 1.0 / max(0.1, atten_str)
 
 	player.attenuation_filter_cutoff_hz = cutoff
 
 	add_child(player)
 	player.play()
 
+	# ── Phase A: Wartezeit bis Fade-Out beginnt ───────────────────────────
+	# Sentinel 0.0 = "spiele den ganzen Sound" → stream.get_length() nutzen.
+	# Achtung: get_length() liefert 0.0 wenn der Stream kein verlässliches
+	# Längen-Reporting hat (z.B. manche generierte Streams).
+	# In dem Fall fallen wir auf 2.0s zurück damit überhaupt etwas hörbar ist.
+	var play_duration: float = audio_data.sound_play_duration if audio_data else 0.0
+
+	if play_duration <= 0.0:
+		play_duration = stream.get_length()
+		if play_duration <= 0.0:
+			play_duration = 2.0  # Notfall-Fallback bei unbekannter Länge
+
+	# ── Phase B: Fade-Out + Cleanup ───────────────────────────────────────
 	if fade_time > 0.0:
+		# Tween wartet erst play_duration ab, DANN startet der Fade.
+		# Während der Wartezeit bleibt volume_db = volume_offset_db (voll).
 		var tween := create_tween()
-		tween.tween_property(player, "volume_db", -80.0, fade_time)\
+		tween.tween_interval(play_duration)
+		tween.tween_property(player, "volume_db", -80.0, fade_time) \
 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 		tween.tween_callback(func():
-			if is_instance_valid(player): player.queue_free()
+			if is_instance_valid(player):
+				player.queue_free()
 		)
 	else:
-		player.finished.connect(func():
-			if is_instance_valid(player): player.queue_free()
+		# Kein Fade gewünscht → harter Stop nach play_duration
+		var tween := create_tween()
+		tween.tween_interval(play_duration)
+		tween.tween_callback(func():
+			if is_instance_valid(player):
+				player.stop()
+				player.queue_free()
 		)
-
 
 func _find_all_mesh_instances(node: Node) -> Array[MeshInstance3D]:
 	var result: Array[MeshInstance3D] = []
@@ -610,6 +693,7 @@ func _find_all_mesh_instances(node: Node) -> Array[MeshInstance3D]:
 	for child in node.get_children():
 		result.append_array(_find_all_mesh_instances(child))
 	return result
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────

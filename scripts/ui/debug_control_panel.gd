@@ -53,13 +53,13 @@ class_name DebugControlPanel
 
 @export_group("UI")
 @export var toggle_key: Key = KEY_F12
-
+@export var debug_flags_node: Control
+@export var panel:        Control    # Geändert von PanelContainer auf Control
 # ─────────────────────────────────────────────────────────────────────────────
 # EXPORTS – Szenen-Nodes (alle im Editor per Drag zuweisen)
 # ─────────────────────────────────────────────────────────────────────────────
 
 @export_group("Scene Nodes – Panel")
-@export var panel:        Control    # Geändert von PanelContainer auf Control
 @export var title_bar:    Control
 @export var close_button: Button
 
@@ -197,7 +197,12 @@ func _ready() -> void:
 	# Collapsible Sections aufbauen (nach allen populate-Calls, damit der
 	# Content bereits seine Endgröße hat bevor wir ihn ein-/ausblenden)
 	_setup_collapsible_sections()
-
+	# INITIALER STATUS-FIX:
+	_is_visible = false
+	if panel: 
+		panel.visible = false
+	if debug_flags_node: 
+		debug_flags_node.visible = false
 
 # ─────────────────────────────────────────────────────────────────────────────
 # COLLAPSIBLE SECTIONS
@@ -945,20 +950,23 @@ func _get_all_ai_controllers() -> Array[AIController]:
 			ancestor = ancestor.get_parent()
 	return result
 
-
 func _toggle_panel() -> void:
 	_is_visible = not _is_visible
+	
+	# Umschalten des Haupt-Panels (Debug_Control)
 	if panel: 
 		panel.visible = _is_visible
-		# FIX 4: Erlaubt der Maus, durch leere Stellen des Panels zu klicken
-		# Das Haupt-Panel sollte auf MOUSE_FILTER_PASS stehen.
 		panel.mouse_filter = Control.MOUSE_FILTER_PASS if _is_visible else Control.MOUSE_FILTER_IGNORE
+	
+	# NEU: Umschalten der Debug_Flags
+	if debug_flags_node:
+		debug_flags_node.visible = _is_visible
+		debug_flags_node.mouse_filter = Control.MOUSE_FILTER_PASS if _is_visible else Control.MOUSE_FILTER_IGNORE
 	
 	if _is_visible:
 		_refresh_reputation_section()
 		_refresh_ki_list()
 		_update_spawn_count_label()
-
 
 func _update_spawn_count_label() -> void:
 	if spawn_count_label:

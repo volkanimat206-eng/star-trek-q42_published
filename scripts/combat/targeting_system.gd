@@ -307,26 +307,35 @@ func _validate_lock() -> void:
 # ─────────────────────────────────────────────────────────────────────────────
 
 func _add_to_multi_lock() -> void:
-	# ── Gate: Multi-Target braucht einen feindlichen Einstieg ───────────────
-	# Ohne aktuelles Lock ODER wenn das Lock nicht feindlich ist,
-	# wird kein Multi-Target freigeschaltet. Silent-Reject.
+	# ── PHASE 1: ENTRY – kein Lock? Erst eines aufbauen ────────────────────
 	if current_mode != Mode.TARGET_LOCK or not is_instance_valid(locked_target):
-		_dbg("MULTI: ❌ Kein aktives Lock → SHIFT+TAB ignoriert (silent)")
-		return
+		var entry: Node3D = _find_first_hostile_for_multi_entry()
+		if not entry:
+			_dbg("MULTI ENTRY: ❌ Kein feindliches Ziel verfügbar → SHIFT+TAB ignoriert")
+			return
 
+		_dbg("MULTI ENTRY: kein Lock → Auto-Lock auf '%s'" % entry.name)
+		_set_lock(entry)
+		# Fall-through: Wir haben jetzt ein gültiges Hostile-Lock und können
+		# in Phase 2 einsteigen. Beim ersten Aufruf landet damit nur EIN Ziel
+		# in der Multi-Liste (= primary). Der nächste SHIFT+TAB-Druck fügt
+		# dann das zweite hinzu.
+
+	# ── Schutz: bei befreundetem Lock NICHT überschreiben ──────────────────
+	# Wenn der Player bewusst ein freundliches Schiff als Scan-Lock hält,
+	# soll SHIFT+TAB ihn nicht aus der Beobachtung reißen.
 	if not _is_hostile(locked_target):
 		_dbg("MULTI: ❌ Aktuelles Lock '%s' nicht feindlich → SHIFT+TAB ignoriert (silent)" % locked_target.name)
 		return
 
-	# ── locked_target (hostile, garantiert) an Index 0 einfügen ────────────
+	# ── PHASE 2: EXTEND – locked_target an Index 0, weitere Hostiles dazu ──
 	if not multi_locked_targets.has(locked_target):
 		multi_locked_targets.insert(0, locked_target)
 		multi_target_added.emit(locked_target)
 		_dbg("MULTI: locked_target '%s' an Index 0 eingefügt" % locked_target.name)
 
-	# ── Kandidaten suchen: NUR feindliche, nicht bereits in der Liste ──────
+	# Kandidaten suchen: NUR feindliche, nicht bereits in der Liste
 	var candidate: Node3D = null
-
 	if hovered_target and is_instance_valid(hovered_target) \
 			and not multi_locked_targets.has(hovered_target) \
 			and _is_hostile(hovered_target):
@@ -346,8 +355,10 @@ func _add_to_multi_lock() -> void:
 	# FIFO: ältestes Ziel ab Index 1 entfernen wenn Liste voll.
 	# Index 0 (= locked_target) wird nie entfernt.
 	if multi_locked_targets.size() >= max_multi_targets:
-		var remove_idx: int   = 1 if multi_locked_targets.size() > 1 else 0
-		var removed:    Node3D = multi_locked_targets[remove_idx]
+		# Wenn wir nur ein Ziel haben (Index 0), entfernen wir das, 
+		# ansonsten immer das älteste hinzugefügte Ziel (Index 1).
+		var remove_idx: int = 1 if multi_locked_targets.size() > 1 else 0
+		var removed: Node3D = multi_locked_targets[remove_idx]
 		multi_locked_targets.remove_at(remove_idx)
 		multi_target_removed.emit(removed)
 		_dbg("MULTI: Liste voll – '%s' entfernt" % removed.name)
@@ -364,6 +375,18 @@ func _add_to_multi_lock() -> void:
 
 	_rebuild_multi_reticles()
 
+func _find_first_hostile_for_multi_entry() -> Node3D:
+	# Hover-Kandidat: Priorität, wenn die Maus aktuell über einem feindlichen Schiff steht
+	if hovered_target and is_instance_valid(hovered_target) and _is_hostile(hovered_target):
+		return hovered_target
+
+	# Fallback: Das nächstgelegene feindliche Ziel aus der sortierten Liste wählen
+	var hostiles := _get_hostile_targets_sorted()
+	if hostiles.size() > 0:
+		return hostiles[0]
+
+	# Wenn absolut kein feindliches Ziel gefunden wurde
+	return null
 
 func _clear_multi_locks_silent() -> void:
 	for t: Node3D in multi_locked_targets:

@@ -58,6 +58,7 @@ collision_layer = 32
 collision_mask = 7
 script = ExtResource("3_7g83o")
 ship_data = ExtResource("6_h1bdy")
+force_cloak_for_player = false
 show_debug = false
 
 [node name="ShipAnchor" type="Node3D" parent="Player" unique_id=2095272030]

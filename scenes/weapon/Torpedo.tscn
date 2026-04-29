@@ -102,43 +102,43 @@ shader_parameter/fade_out = 0.3
 shader_parameter/edge_softness = 0.5
 shader_parameter/randomness = 2.0
 
-[node name="Torpedo" type="Node3D"]
+[node name="Torpedo" type="Node3D" unique_id=1926592775]
 script = ExtResource("1_an5pm")
 debug_explosion = true
 
-[node name="CoreMesh" type="MeshInstance3D" parent="."]
+[node name="CoreMesh" type="MeshInstance3D" parent="." unique_id=408788307]
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0)
 material_override = SubResource("ShaderMaterial_218fl")
 mesh = SubResource("SphereMesh_o64tc")
 
-[node name="CoreLight" type="OmniLight3D" parent="."]
+[node name="CoreLight" type="OmniLight3D" parent="." unique_id=213848231]
 light_energy = 18.0
 light_bake_mode = 0
 omni_range = 300.0
 omni_attenuation = 1.5
 
-[node name="GPUParticles3D" type="GPUParticles3D" parent="."]
+[node name="GPUParticles3D" type="GPUParticles3D" parent="." unique_id=494111851]
 material_override = SubResource("ShaderMaterial_nsyta")
 amount = 1
 local_coords = true
 process_material = SubResource("ParticleProcessMaterial_s756j")
 draw_pass_1 = SubResource("QuadMesh_xciyw")
 
-[node name="GPUParticles3D2" type="GPUParticles3D" parent="."]
+[node name="GPUParticles3D2" type="GPUParticles3D" parent="." unique_id=1924643754]
 material_override = SubResource("ShaderMaterial_o64tc")
 amount = 1
 local_coords = true
 process_material = SubResource("ParticleProcessMaterial_s756j")
 draw_pass_1 = SubResource("QuadMesh_nsyta")
 
-[node name="GPUParticles3D3" type="GPUParticles3D" parent="."]
+[node name="GPUParticles3D3" type="GPUParticles3D" parent="." unique_id=928764161]
 material_override = SubResource("ShaderMaterial_xciyw")
 amount = 1
 local_coords = true
 process_material = SubResource("ParticleProcessMaterial_s756j")
 draw_pass_1 = SubResource("QuadMesh_0qrun")
 
-[node name="GPUParticles3D4" type="GPUParticles3D" parent="."]
+[node name="GPUParticles3D4" type="GPUParticles3D" parent="." unique_id=1331181528]
 material_override = SubResource("ShaderMaterial_yt5oi")
 amount = 1
 local_coords = true

@@ -3,8 +3,11 @@
 [ext_resource type="Texture2D" uid="uid://ds2dmqxy56fro" path="res://assets/effects/brackeys/flame_01_a.png" id="1_f71q1"]
 [ext_resource type="Script" uid="uid://b51ted7eh123" path="res://scripts/vfx/effect_explosion_ship.gd" id="1_xlu0u"]
 [ext_resource type="Texture2D" uid="uid://ch14bywprkufy" path="res://assets/effects/brackeys/smoke_01_a.png" id="2_hd7i2"]
+[ext_resource type="Resource" uid="uid://bxh1g1lxr6o5r" path="res://data/audio/explosion_audio_data.tres" id="2_kkhwf"]
 [ext_resource type="Texture2D" uid="uid://brg4e3riwvykl" path="res://assets/effects/brackeys/spotlight_01_a.png" id="4_0vo88"]
+[ext_resource type="Texture2D" uid="uid://cooexl5gc2xmv" path="res://assets/effects/brackeys/smoke_03_a.png" id="4_3urdb"]
 [ext_resource type="Texture2D" uid="uid://cx8c3n5ugpk3f" path="res://assets/effects/kenny/star_05.png" id="4_xlu0u"]
+[ext_resource type="Texture2D" uid="uid://kbh70v543tdq" path="res://assets/effects/brackeys/star_08_a.png" id="4_xofft"]
 [ext_resource type="Texture2D" uid="uid://cvmgtvd57hgt4" path="res://assets/effects/brackeys/spotlight_07_a.png" id="5_dgy4w"]
 [ext_resource type="Texture2D" uid="uid://bnmspjrhgsmf8" path="res://assets/effects/brackeys/circle_03_a.png" id="5_hd7i2"]
 [ext_resource type="Shader" uid="uid://wvwq8gcu26p3" path="res://shaders/shockwave.gdshader" id="7_0vo88"]
@@ -86,23 +89,23 @@ point_count = 2
 curve = SubResource("Curve_yrk2d")
 
 [sub_resource type="Gradient" id="Gradient_mua0f"]
-offsets = PackedFloat32Array(0, 0.29109588, 0.49657536, 1)
-colors = PackedColorArray(1, 0, 0, 1, 0.978496, 0.71020526, 0.7091619, 1, 0.9710743, 0.9553203, 0.95391685, 1, 1, 1, 0.1897483, 1)
+offsets = PackedFloat32Array(0, 0.6677852, 1)
+colors = PackedColorArray(0, 0, 0, 1, 0.9809116, 0.97051543, 0.6940305, 1, 0.28919542, 0.26469597, 0.2540796, 1)
 
 [sub_resource type="GradientTexture1D" id="GradientTexture1D_wc23w"]
 gradient = SubResource("Gradient_mua0f")
 
 [sub_resource type="Curve" id="Curve_yfdta"]
 _limits = [0.0, 4.0, 0.0, 1.0]
-_data = [Vector2(0, 4), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
-point_count = 2
+_data = [Vector2(0, 4), 0.0, 0.0, 0, 0, Vector2(0.5308642, 0), 0.0, 0.0, 0, 0, Vector2(1, 4), 0.0, 0.0, 0, 0]
+point_count = 3
 
 [sub_resource type="CurveTexture" id="CurveTexture_jfqqp"]
 curve = SubResource("Curve_yfdta")
 
 [sub_resource type="Curve" id="Curve_0jpt5"]
-_data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(0.12264151, 1), 1.6756449, 1.6756449, 0, 0, Vector2(0.24528301, 0.86065567), 0.0, 0.0, 0, 0, Vector2(0.3679245, 1), 0.06516291, 0.06516291, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
-point_count = 5
+_data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(0.40123454, 0.5992601), 0.1129041, 0.1129041, 0, 0, Vector2(0.6234568, 0.81565964), 0.17908934, 0.17908934, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 4
 
 [sub_resource type="CurveTexture" id="CurveTexture_bjuy5"]
 curve = SubResource("Curve_0jpt5")
@@ -126,6 +129,77 @@ alpha_curve = SubResource("CurveTexture_y1du8")
 emission_curve = SubResource("CurveTexture_jfqqp")
 
 [sub_resource type="QuadMesh" id="QuadMesh_lnhgi"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_kkhwf"]
+transparency = 1
+shading_mode = 0
+specular_mode = 2
+vertex_color_use_as_albedo = true
+albedo_color = Color(1, 1, 0.86663747, 1)
+albedo_texture = ExtResource("4_xofft")
+billboard_mode = 3
+billboard_keep_scale = true
+particles_anim_h_frames = 1
+particles_anim_v_frames = 1
+particles_anim_loop = false
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_s7v4n"]
+angle_min = 1.0728835e-05
+angle_max = 90.000015
+direction = Vector3(0, 0, 0)
+spread = 0.0
+radial_velocity_min = -2.2351742e-05
+radial_velocity_max = -2.2351742e-05
+gravity = Vector3(0, 0, 0)
+tangential_accel_min = -2.2351742e-06
+tangential_accel_max = 0.99999774
+damping_max = 6.0000005
+scale_min = 2.0
+scale_max = 10.0
+scale_curve = SubResource("CurveTexture_bjuy5")
+color_initial_ramp = SubResource("GradientTexture1D_wc23w")
+alpha_curve = SubResource("CurveTexture_y1du8")
+emission_curve = SubResource("CurveTexture_jfqqp")
+
+[sub_resource type="QuadMesh" id="QuadMesh_bvasb"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_xofft"]
+transparency = 1
+diffuse_mode = 3
+specular_mode = 2
+vertex_color_use_as_albedo = true
+albedo_texture = ExtResource("4_3urdb")
+emission_enabled = true
+emission = Color(0.7754197, 0.3574912, 0, 1)
+emission_energy_multiplier = 4.37
+rim_enabled = true
+rim_tint = 1.0
+billboard_mode = 3
+billboard_keep_scale = true
+particles_anim_h_frames = 1
+particles_anim_v_frames = 1
+particles_anim_loop = false
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_kkhwf"]
+angle_min = -360.0
+angle_max = 360.00003
+direction = Vector3(0, 1, 0)
+spread = 0.0
+initial_velocity_max = 1.0
+radial_velocity_min = -10.000022
+radial_velocity_max = -2.2351742e-05
+gravity = Vector3(0, 0, 0)
+tangential_accel_min = -2.2351742e-06
+tangential_accel_max = 0.99999774
+damping_max = 6.0000005
+scale_min = 2.0
+scale_max = 10.0
+scale_curve = SubResource("CurveTexture_bjuy5")
+color_initial_ramp = SubResource("GradientTexture1D_wc23w")
+alpha_curve = SubResource("CurveTexture_y1du8")
+emission_curve = SubResource("CurveTexture_jfqqp")
+
+[sub_resource type="QuadMesh" id="QuadMesh_s7v4n"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wc23w"]
 transparency = 1
@@ -431,6 +505,30 @@ tracks/7/keys = {
 "update": 1,
 "values": [true]
 }
+tracks/8/type = "value"
+tracks/8/imported = false
+tracks/8/enabled = true
+tracks/8/path = NodePath("Smoke4:emitting")
+tracks/8/interp = 1
+tracks/8/loop_wrap = true
+tracks/8/keys = {
+"times": PackedFloat32Array(1),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [true]
+}
+tracks/9/type = "value"
+tracks/9/imported = false
+tracks/9/enabled = true
+tracks/9/path = NodePath("Smoke3:emitting")
+tracks/9/interp = 1
+tracks/9/loop_wrap = true
+tracks/9/keys = {
+"times": PackedFloat32Array(1),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [true]
+}
 
 [sub_resource type="Animation" id="Animation_f71q1"]
 resource_name = "play"
@@ -526,11 +624,12 @@ _data = {
 &"play": SubResource("Animation_f71q1")
 }
 
-[node name="VFX_ExplosioShip" type="Node3D"]
+[node name="VFX_ExplosioShip" type="Node3D" unique_id=1310931428]
 script = ExtResource("1_xlu0u")
 shockwave_node_name = "Shockwave2"
+audio_data = ExtResource("2_kkhwf")
 
-[node name="Fire2" type="GPUParticles3D" parent="."]
+[node name="Fire2" type="GPUParticles3D" parent="." unique_id=369599519]
 material_override = SubResource("StandardMaterial3D_ywskf")
 emitting = false
 amount = 16
@@ -541,7 +640,7 @@ fixed_fps = 0
 process_material = SubResource("ParticleProcessMaterial_2mu1u")
 draw_pass_1 = SubResource("QuadMesh_y1du8")
 
-[node name="Smoke2" type="GPUParticles3D" parent="."]
+[node name="Smoke2" type="GPUParticles3D" parent="." unique_id=13325349]
 material_override = SubResource("StandardMaterial3D_b3txn")
 emitting = false
 amount = 16
@@ -553,7 +652,31 @@ fixed_fps = 0
 process_material = SubResource("ParticleProcessMaterial_cwts3")
 draw_pass_1 = SubResource("QuadMesh_lnhgi")
 
-[node name="Spark3" type="GPUParticles3D" parent="."]
+[node name="Smoke4" type="GPUParticles3D" parent="." unique_id=657361641]
+material_override = SubResource("StandardMaterial3D_kkhwf")
+emitting = false
+amount = 32
+amount_ratio = 0.8
+lifetime = 2.0
+one_shot = true
+explosiveness = 0.9
+fixed_fps = 0
+process_material = SubResource("ParticleProcessMaterial_s7v4n")
+draw_pass_1 = SubResource("QuadMesh_bvasb")
+
+[node name="Smoke3" type="GPUParticles3D" parent="." unique_id=2060354883]
+material_override = SubResource("StandardMaterial3D_xofft")
+emitting = false
+amount = 32
+amount_ratio = 0.8
+lifetime = 2.0
+one_shot = true
+explosiveness = 0.9
+fixed_fps = 0
+process_material = SubResource("ParticleProcessMaterial_kkhwf")
+draw_pass_1 = SubResource("QuadMesh_s7v4n")
+
+[node name="Spark3" type="GPUParticles3D" parent="." unique_id=23230289]
 material_override = SubResource("StandardMaterial3D_wc23w")
 emitting = false
 amount = 50
@@ -565,7 +688,7 @@ fixed_fps = 0
 process_material = SubResource("ParticleProcessMaterial_d7ndn")
 draw_pass_1 = SubResource("QuadMesh_duafy")
 
-[node name="Spark4" type="GPUParticles3D" parent="."]
+[node name="Spark4" type="GPUParticles3D" parent="." unique_id=1959893783]
 material_override = SubResource("StandardMaterial3D_2xe56")
 emitting = false
 amount = 50
@@ -576,7 +699,7 @@ fixed_fps = 0
 process_material = SubResource("ParticleProcessMaterial_d7ndn")
 draw_pass_1 = SubResource("QuadMesh_yb5xf")
 
-[node name="Shockwave" type="GPUParticles3D" parent="."]
+[node name="Shockwave" type="GPUParticles3D" parent="." unique_id=1148672507]
 material_override = SubResource("StandardMaterial3D_xlu0u")
 emitting = false
 amount = 1
@@ -585,7 +708,7 @@ one_shot = true
 process_material = SubResource("ParticleProcessMaterial_hswh6")
 draw_pass_1 = SubResource("QuadMesh_0vo88")
 
-[node name="Shockwave2" type="GPUParticles3D" parent="."]
+[node name="Shockwave2" type="GPUParticles3D" parent="." unique_id=1295395550]
 material_override = SubResource("ShaderMaterial_dgy4w")
 emitting = false
 amount = 1
@@ -596,7 +719,7 @@ fixed_fps = 0
 process_material = SubResource("ParticleProcessMaterial_i7rxg")
 draw_pass_1 = SubResource("TorusMesh_i6cp2")
 
-[node name="Windup2" type="GPUParticles3D" parent="."]
+[node name="Windup2" type="GPUParticles3D" parent="." unique_id=1685844172]
 material_override = SubResource("StandardMaterial3D_d6750")
 amount = 100
 lifetime = 2.0
@@ -606,10 +729,8 @@ fixed_fps = 0
 process_material = SubResource("ParticleProcessMaterial_c3iex")
 draw_pass_1 = SubResource("QuadMesh_i7rxg")
 
-[node name="Explosion_Ship" type="AnimationPlayer" parent="."]
-libraries = {
-&"": SubResource("AnimationLibrary_xlu0u")
-}
+[node name="Explosion_Ship" type="AnimationPlayer" parent="." unique_id=1517281890]
+libraries/ = SubResource("AnimationLibrary_xlu0u")
 
-[node name="OmniLight3D" type="OmniLight3D" parent="."]
+[node name="OmniLight3D" type="OmniLight3D" parent="." unique_id=1810989184]
 omni_range = 1.0

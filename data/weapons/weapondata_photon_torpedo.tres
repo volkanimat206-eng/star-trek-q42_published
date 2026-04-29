@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://e5d104onkic3" path="res://resources/data/weapon_data_torpedo.gd" id="1_0y63w"]
 [ext_resource type="PackedScene" uid="uid://bgvvs83cnka02" path="res://scenes/vfx/effect_explosion_torpedo.tscn" id="1_i6kj7"]
+[ext_resource type="AudioStream" uid="uid://dptr18f41y5h4" path="res://assets/audio/explosion/bryansantosbreton-deep-impact-sound-effect-176434.mp3" id="2_kweln"]
 
 [resource]
 script = ExtResource("1_0y63w")
@@ -14,4 +15,8 @@ glow_energy = 8.0
 collision_mask = 3
 explosion_scene = ExtResource("1_i6kj7")
 explosion_scale = 5.0
+impact_sound = ExtResource("2_kweln")
+impact_volume_db = 30.0
+impact_max_distance = 5000.0
+impact_sound_duration = 1.2
 metadata/_custom_type_script = "uid://e5d104onkic3"

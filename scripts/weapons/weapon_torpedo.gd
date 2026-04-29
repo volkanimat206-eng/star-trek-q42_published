@@ -379,33 +379,31 @@ func _on_hit(result: Dictionary) -> void:
 	var hit_norm: Vector3 = result.get("normal",   Vector3.UP)
 
 	if not collider:
+		_play_impact_sound(global_position)   # ← NEU
 		_despawn()
 		return
 
-	# Shield-Treffer – kein HIR, Particles sofort stoppen
 	if collider is Area3D and collider.has_meta("shield_system"):
 		var sc := _find_ship_controller(collider)
 		if sc and sc != _find_ship_controller(owner_ship):
-			sc.receive_damage(torpedo_data.damage, hit_pos,
-				"torpedo", torpedo_data.torpedo_color)
+			sc.receive_damage(torpedo_data.damage, hit_pos, "torpedo", torpedo_data.torpedo_color)
 		_stop_particles_immediately()
+		_play_impact_sound(hit_pos)           # ← NEU
 		_spawn_explosion(collider as Node)
 		_despawn()
 		return
 
-	# Fallback Shield-Check über Parent-Baum
 	var shield_sys := _find_shield_system(collider)
 	if shield_sys and shield_sys.is_active():
 		var sc := _find_ship_controller(collider)
 		if sc and sc != _find_ship_controller(owner_ship):
-			sc.receive_damage(torpedo_data.damage, hit_pos,
-				"torpedo", torpedo_data.torpedo_color)
+			sc.receive_damage(torpedo_data.damage, hit_pos, "torpedo", torpedo_data.torpedo_color)
 		_stop_particles_immediately()
+		_play_impact_sound(hit_pos)           # ← NEU
 		_spawn_explosion(collider as Node)
 		_despawn()
 		return
 
-	# Hülle
 	var sc := _find_ship_controller(collider)
 	if sc and sc != _find_ship_controller(owner_ship):
 		var hull_damage: float = sc.receive_damage(torpedo_data.damage, hit_pos,
@@ -415,10 +413,10 @@ func _on_hit(result: Dictionary) -> void:
 			if hir and hir.has_method("register_impact"):
 				hir.register_impact(hit_pos, hit_norm)
 
+	_play_impact_sound(hit_pos)               # ← NEU
 	_spawn_explosion(collider as Node)
 	_despawn()
-
-
+	
 func _on_hit_target(target: Node3D) -> void:
 	if _despawning:
 		return
@@ -431,16 +429,16 @@ func _on_hit_target(target: Node3D) -> void:
 			var hir := sc.find_child("HullImpactReceiver", true, false)
 			if hir and hir.has_method("register_impact"):
 				hir.register_impact(hit_pos, Vector3.UP)
+	_play_impact_sound(hit_pos)               # ← NEU
 	_spawn_explosion(target)
 	_despawn()
-
 
 func _on_lifetime_expired() -> void:
 	if _despawning:
 		return
+	# kein _play_impact_sound() – kein Treffer, kein Impact
 	_spawn_explosion()
 	_despawn()
-
 
 func _spawn_explosion(hit_target: Node = null) -> void:
 	if not torpedo_data:
@@ -569,6 +567,64 @@ func _apply_particle_colors(col: Color) -> void:
 			if debug_colors:
 				print("[Torpedo|COLOR]   '%s' → kein material_override!" % particles.name)
 
+# ─────────────────────────────────────────────────────────────────────────────
+# AUDIO
+# ─────────────────────────────────────────────────────────────────────────────
+
+func _play_impact_sound(hit_pos: Vector3) -> void:
+	if not torpedo_data:
+		return
+	var snd: AudioStream = torpedo_data.get("impact_sound")
+	if not snd:
+		return
+
+	# Zur Root-Scene hinzufügen – NICHT zum Torpedo, der stirbt gleich.
+	var player := AudioStreamPlayer3D.new()
+	player.stream    = snd
+	player.volume_db = torpedo_data.get("impact_volume_db") if "impact_volume_db" in torpedo_data else 0.0
+	player.bus       = "Weapons"
+
+	var no_atten: bool  = torpedo_data.get("impact_no_distance_attenuation") if "impact_no_distance_attenuation" in torpedo_data else false
+	var max_dist: float = torpedo_data.get("impact_max_distance")            if "impact_max_distance"            in torpedo_data else 1800.0
+	var atten:    float = torpedo_data.get("impact_distance_attenuation_strength") if "impact_distance_attenuation_strength" in torpedo_data else 0.2
+
+	if no_atten:
+		player.attenuation_model = AudioStreamPlayer3D.ATTENUATION_DISABLED
+		player.max_distance      = 5000.0
+	else:
+		player.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
+		player.max_distance      = max_dist
+		player.unit_size         = 1.0 / max(0.1, atten)
+
+	get_tree().current_scene.add_child(player)
+	player.global_position = hit_pos
+
+	var delay: float = torpedo_data.get("impact_delay") if "impact_delay" in torpedo_data else 0.0
+	if delay > 0.0:
+		await get_tree().create_timer(delay).timeout
+
+	if is_instance_valid(player):
+			player.play()
+	
+			var duration: float = torpedo_data.get("impact_sound_duration") if "impact_sound_duration" in torpedo_data else 0.0
+	
+			if duration > 0.0:
+				# Nach 'duration' Sekunden wegfaden und aufräumen
+				get_tree().create_timer(duration).timeout.connect(func():
+					if not is_instance_valid(player):
+						return
+					var tween := player.create_tween()
+					tween.tween_property(player, "volume_db", -80.0, 0.15)\
+						.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+					tween.tween_callback(func():
+						if is_instance_valid(player): player.queue_free()
+					)
+				, CONNECT_ONE_SHOT)
+			else:
+				# Volle Länge – normal aufräumen
+				player.finished.connect(func():
+					if is_instance_valid(player): player.queue_free()
+				)
 
 func _find_shield_system(node: Object) -> ShieldSystem:
 	var current: Node = node as Node
