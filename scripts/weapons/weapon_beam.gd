@@ -34,7 +34,6 @@ enum ImpactType { AUTO, HULL, SHIELD }
 var weapon_data: BeamWeaponData
 
 # ===== TRAIL SYSTEM =====
-var _trail_timer:    float         = 0.0
 var _active_impacts: Array[Node3D] = []
 var _is_fading_out:  bool          = false
 var _fade_out_timer: float         = 0.0
@@ -43,6 +42,10 @@ var _fade_out_timer: float         = 0.0
 @export_group("Impact Effects")
 @export var impact_hull_scene:   PackedScene
 @export var impact_shield_scene: PackedScene
+## Visueller Offset des Hull-Impact-Effekts entlang der Trefferflächen-Normalen.
+## Verhindert, dass der Effekt teilweise in der Hülle steckt.
+## Empfohlen: 0.10–0.25 (je nach Schiffsgröße / Effekt-Geometrie).
+@export_range(0.0, 1.0, 0.01) var hull_impact_normal_offset: float = 0.15
 
 @export_group("Target Surface")
 @export var surface_ray_overshoot: float = 10.0
@@ -308,6 +311,18 @@ func _precompute_baked_points() -> void:
 # ─────────────────────────────────────────────────────────────────────────────
 # MAIN PROCESS
 # ─────────────────────────────────────────────────────────────────────────────
+# WICHTIG zur Anti-Stutter-Architektur:
+#   _process()         → behandelt: Mouse-Eingabe, Pre-Fire-Animation (MOVING /
+#                        TRACKING), Fade-Out und Cooldown. Display-frame-getrieben.
+#   _physics_process() → behandelt: ALLES während FIRING (Tracking, Raycast,
+#                        Beam-Geometrie, Schaden, Hull-Impact-Position).
+#
+# Grund: Das Schiff bewegt sich im _physics_process (ShipController). Wenn die
+# Strahl-Position und der Hull-Impact aus _process gelesen würden, läuft das
+# bei abweichenden Tickraten (z.B. 144 Hz Display vs. 60 Hz Physik) sub-frame
+# auseinander → sichtbares Stottern des Impact-VFX hinter dem Strahl.
+# Indem ALLE positionsrelevanten Berechnungen im selben Tick wie die Schiffs-
+# Bewegung passieren, sind Schiff + Beam-Endpunkt + Impact zwingend in Phase.
 func _process(delta: float) -> void:
 	_convergence_pos = convergence_marker.global_position \
 		if convergence_marker else global_position
@@ -334,15 +349,7 @@ func _process(delta: float) -> void:
 			if animation_timer >= fire_threshold:
 				_trigger_fire()
 
-		AnimationState.FIRING:
-			_update_target_from_mouse()
-			_update_tracking(delta)
-			_update_convergence_marker()
-			_update_surface_beam_and_damage(delta)
-			beam_lifetime += delta
-			var fire_dur: float = weapon_data.fire_duration if weapon_data else 0.3
-			if beam_lifetime >= fire_dur:
-				_start_fade_out()
+		# AnimationState.FIRING wird in _physics_process behandelt – siehe oben.
 
 		AnimationState.FADING:
 			_update_fade_out(delta)
@@ -350,6 +357,31 @@ func _process(delta: float) -> void:
 			_cooldown_timer -= delta
 			if _cooldown_timer <= 0.0:
 				current_state = AnimationState.IDLE
+
+
+## Läuft synchron zum Schiffs-Movement (ShipController._physics_process) und
+## hält Beam-Endpunkt + Hull-Impact-VFX zwingend in derselben Frame-Phase wie
+## das bewegte Schiff. Ohne diese Synchronisation entsteht Sub-Frame-Versatz
+## und der Impact stottert sichtbar dem Strahl hinterher.
+func _physics_process(delta: float) -> void:
+	if current_state != AnimationState.FIRING:
+		return
+
+	# Konvergenzpunkt frisch lesen – das Schiff hat sich diesen Tick gerade bewegt.
+	_convergence_pos = convergence_marker.global_position \
+		if convergence_marker else global_position
+
+	_update_target_from_mouse()
+	_update_tracking(delta)
+	_update_convergence_marker()
+	# Macht Raycast, Schaden, Beam-Geometrie-Update UND Hull-Impact-Position
+	# in einem einzigen, atomaren Schritt – alles im selben Physik-Tick.
+	_update_surface_beam_and_damage(delta)
+
+	beam_lifetime += delta
+	var fire_dur: float = weapon_data.fire_duration if weapon_data else 0.3
+	if beam_lifetime >= fire_dur:
+		_start_fade_out()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -464,12 +496,10 @@ func _update_surface_beam_and_damage(delta: float) -> void:
 
 	_update_beam_geometry()
 
-	# Trail
-	_trail_timer += delta
-	var spawn_iv: float = weapon_data.trail_spawn_interval if weapon_data else 0.05
-	if _trail_timer >= spawn_iv:
-		_trail_timer = 0.0
-		_spawn_trail_impact(damage_pos, _convergence_pos)
+	# Following Impact: ein einziger Effekt der dem Strahl-Endpunkt jeden
+	# Physik-Frame folgt. Ersetzt den früheren Trail-Spawn (der pro Tick eine
+	# neue Instanz erzeugte und visuell „kleben blieb").
+	_update_following_impact(damage_pos, _convergence_pos)
 
 	# Schaden
 	_damage_timer -= delta
@@ -1010,33 +1040,79 @@ func _get_ellipsoid_impact_pos(from: Vector3, dir: Vector3, shield_sys: ShieldSy
 # ─────────────────────────────────────────────────────────────────────────────
 # TRAIL / IMPACT EFFECTS
 # ─────────────────────────────────────────────────────────────────────────────
-func _spawn_trail_impact(position: Vector3, from: Vector3) -> void:
+# ─────────────────────────────────────────────────────────────────────────────
+# FOLLOWING IMPACT
+# ─────────────────────────────────────────────────────────────────────────────
+## Stellt sicher, dass GENAU EIN Impact-Effekt aktiv ist und exakt auf
+## damage_pos sitzt – jeden Physik-Frame.
+##
+## Architektur (Anti-Stutter):
+##   • Position wird hier (im _physics_process via _update_surface_beam_and_damage)
+##     synchron zur Schiffsbewegung gesetzt – kein _process-Lag mehr.
+##   • look_at() wird NUR beim Erstspawn aufgerufen, damit der Eigen-Rotations-
+##     Tween in hull_impact.gd (rotation:z) jeden Folgeframe ungestört laufen
+##     kann. Würden wir look_at jeden Frame neu setzen, würde es den Tween
+##     komplett überschreiben.
+##   • Bei Wechsel des Impact-Typs (Schild kollabiert mid-shot → Hull) wird
+##     der alte Effekt despawnt und ein neuer vom passenden Typ erzeugt.
+func _update_following_impact(position: Vector3, from: Vector3) -> void:
 	if _is_fading_out:
 		return
 
 	var impact_type := _resolve_impact_type()
-	var scene: PackedScene = impact_hull_scene \
-		if impact_type == ImpactType.HULL else impact_shield_scene
 
-	if not scene:
-		return
+	# ── 1) Bestehenden Impact auf Gültigkeit / Typ-Wechsel prüfen ───────────
+	if not _active_impacts.is_empty():
+		var existing: Node3D = _active_impacts[0]
+		if not is_instance_valid(existing):
+			_active_impacts.clear()
+		elif existing.has_meta("impact_type") \
+				and int(existing.get_meta("impact_type")) != int(impact_type):
+			# Typ-Wechsel (Schild → Hull oder umgekehrt) → alten despawnen
+			existing.queue_free()
+			_active_impacts.clear()
 
-	var instance := scene.instantiate() as Node3D
-	if not instance:
-		return
+	# ── 2) Falls noch keiner existiert: neu spawnen + EINMAL orientieren ────
+	var just_spawned := false
+	if _active_impacts.is_empty():
+		var scene: PackedScene = impact_hull_scene \
+			if impact_type == ImpactType.HULL else impact_shield_scene
+		if not scene:
+			return
 
-	var fire_dur: float = weapon_data.fire_duration if weapon_data else 0.3
-	var trail_fade: float = weapon_data.trail_fade_out_time if weapon_data else 0.3
-	if "linked_duration" in instance:
-		instance.linked_duration = fire_dur + trail_fade
+		var instance := scene.instantiate() as Node3D
+		if not instance:
+			return
 
-	get_tree().current_scene.add_child(instance)
-	instance.global_position = position
+		var fire_dur:   float = weapon_data.fire_duration       if weapon_data else 0.3
+		var trail_fade: float = weapon_data.trail_fade_out_time if weapon_data else 0.3
+		if "linked_duration" in instance:
+			instance.linked_duration = fire_dur + trail_fade
 
-	if position.distance_squared_to(from) > 0.0001:
-		instance.look_at(position + (position - from).normalized())
+		instance.set_meta("impact_type", int(impact_type))
+		get_tree().current_scene.add_child(instance)
+		_active_impacts.append(instance)
+		just_spawned = true
 
-	_active_impacts.append(instance)
+	# ── 3) Position jeden Frame – hier passiert das Tracking ────────────────
+	var inst: Node3D = _active_impacts[0]
+
+	# Visueller Normal-Offset (nur Hull) – schiebt den Effekt entlang der
+	# Trefferflächen-Normalen ein Stück aus der Hülle heraus, damit er nicht
+	# halb darin steckt. Schaden, LOS, Decals bleiben auf der echten Oberfläche.
+	var visual_pos := position
+	if impact_type == ImpactType.HULL \
+			and hull_impact_normal_offset > 0.0 \
+			and _last_hit_normal.length_squared() > 0.0001:
+		visual_pos = position + _last_hit_normal.normalized() * hull_impact_normal_offset
+
+	inst.global_position = visual_pos
+
+	# ── 4) Orientierung NUR beim Erst-Spawn ─────────────────────────────────
+	# Danach übernimmt der Tween in hull_impact.gd (rotation:z) die visuelle
+	# Eigen-Rotation. Ein erneutes look_at hier würde den Tween überschreiben.
+	if just_spawned and position.distance_squared_to(from) > 0.0001:
+		inst.look_at(visual_pos + (position - from).normalized())
 
 
 func _resolve_impact_type() -> ImpactType:

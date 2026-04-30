@@ -33,7 +33,7 @@ extends CharacterBody3D
 @export var force_cloak_for_player: bool = true
 
 @export_group("Debug")
-@export var show_debug: bool = true
+@export var show_debug: bool = false
 
 # ===== NODE REFERENZEN =====
 @onready var input_comp: InputComponent = $InputComponent
@@ -58,10 +58,10 @@ func _ready() -> void:
 	add_to_group("ships")
 	add_to_group(FactionSystem.get_group_name(ship_data.faction))
 
-	print("[PLAYER DEBUG] Gruppen: ", get_groups())
-	print("[PLAYER DEBUG] ship_data vorhanden? ", ship_data != null)
+	_dbg("[PLAYER DEBUG] Gruppen: " + str(get_groups()))
+	_dbg("[PLAYER DEBUG] ship_data vorhanden? " + str(ship_data != null))
 	if ship_data:
-		print("[PLAYER DEBUG] Meine Fraktion: ", ShipData.Faction.keys()[ship_data.faction])
+		_dbg("[PLAYER DEBUG] Meine Fraktion: " + str(ShipData.Faction.keys()[ship_data.faction]))
 
 	_dbg("=== PLAYER CONTROLLER READY ===")
 	_dbg("  ship_data            : %s" % ("SET → " + ship_data.ship_name if ship_data else "❌ NULL"))
@@ -173,7 +173,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.pressed:
-			print("[PlayerController] Mouse Button: %d | action fire_torpedo=%s" % [
+			_dbg("Mouse Button: %d | action fire_torpedo=%s" % [
 				mb.button_index,
 				event.is_action_pressed("fire_torpedo")
 			])
@@ -188,7 +188,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			auto_fire = false
 
 	if event.is_action_pressed("fire_torpedo"):
-		print("[PlayerController] fire_torpedo Input erkannt!")
+		_dbg("fire_torpedo Input erkannt!")
 		_on_torpedo_pressed()
 		
 	# Cloak toggeln mit Taste C (Action: "toggle_cloak" in Project Settings anlegen)

@@ -104,7 +104,6 @@ shader_parameter/randomness = 2.0
 
 [node name="Torpedo" type="Node3D" unique_id=1926592775]
 script = ExtResource("1_an5pm")
-debug_explosion = true
 
 [node name="CoreMesh" type="MeshInstance3D" parent="." unique_id=408788307]
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0, 0)

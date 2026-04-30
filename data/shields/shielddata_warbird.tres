@@ -4,7 +4,11 @@
 
 [resource]
 script = ExtResource("1_hax2v")
+max_strength = 100.0
+current_strength = 100.0
 recharge_rate = 10.0
+recharge_delay = 8.0
+reactivation_delay = 10.0
 shield_color = Color(0, 0.9390932, 0.33361515, 0.68600005)
 impact_color = Color(0, 0, 0.95234615, 1)
 rim_power = 5.0

@@ -4,9 +4,9 @@
 
 [resource]
 script = ExtResource("1_ejsru")
-max_strength = 0.0
-current_strength = 0.0
-recharge_rate = 500.0
+max_strength = 10000.0
+current_strength = 10000.0
+recharge_rate = 2000.0
 shield_color = Color(0.13816993, 0.41551143, 1, 0.5)
 impact_radius = 0.7
 impact_ring_width = 0.3
