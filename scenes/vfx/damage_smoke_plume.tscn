@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://b3dmgsmoke01x"]
+
+[ext_resource type="Script" uid="uid://bu0c6t8wvhy5y" path="res://scripts/hull/damage_smoke_plume.gd" id="1_smkplm"]
+
+[node name="DamageSmokePlume" type="Node3D"]
+script = ExtResource("1_smkplm")

@@ -50,6 +50,8 @@ signal ship_destroyed()
 
 @export_group("Debug")
 @export var show_debug: bool = true
+## Wenn gesetzt, wird dieses Flag im DebugManager abgefragt (z.B. "ai.ship")
+@export var debug_category: String = "ship.logic"
 
 @export_group("Systeme")
 ## CloakComponent für dieses Schiff. Im Inspector zuweisen — Node unter ShipController.
@@ -99,20 +101,20 @@ var max_hull_hp: float:
 
 func _ready() -> void:
 	if not ship_data:
-		push_error("[ShipController] Kein ship_data zugewiesen!")
+		_dbg_error("Kein ship_data zugewiesen!")
 		return
 
-	print("[SC-DIAG] node.name='%s' | ship_data=%s | script=%s" % [
+	_dbg("[SC-DIAG] node.name='%s' | ship_data=%s | script=%s" % [
 		name, ship_data, get_script().resource_path if get_script() else "NULL"
 	])
 
 	_setup_metadata()
 	_register_faction_group()
 
-	model            = _find_model()
+	model = _find_model()
 	_dbg("  model: %s" % (model.name if model else "❌ NULL – kein Model-Node gefunden!"))
 	targeting_system = find_child("TargetingSystem", true, false) as TargetingSystem
-	movement_comp    = find_child("MovementComponent", true, false) as MovementComponent
+	movement_comp = find_child("MovementComponent", true, false) as MovementComponent
 	if model and movement_comp:
 		movement_comp.init_tilt(model)
 
@@ -122,8 +124,6 @@ func _ready() -> void:
 	_connect_targeting_signals()
 	_connect_movement_signal()
 
-	# FIX: Shield-Setup per call_deferred – stellt sicher dass ALLE _ready()-Aufrufe
-	# im Szenenbaum abgeschlossen sind bevor ShieldSystem gesucht wird.
 	call_deferred("_setup_shield_deferred")
 
 
@@ -131,21 +131,20 @@ func _setup_shield_deferred() -> void:
 	_setup_shield()
 	_setup_cloak()
 
-	print("═══════════════════════════════════")
-	print("  SHIP : %s | %s [%s]" % [ship_name, registry, ship_data.faction])
-	print("  Stats: max_speed=%.0f | shield=%.0f HP | hull=%.0f HP" % [
-		stats.max_speed          if stats       else 0.0,
+	_dbg("═══════════════════════════════════", true)  # force=true für wichtige Infos
+	_dbg("  SHIP : %s | %s [%s]" % [ship_name, registry, ship_data.faction], true)
+	_dbg("  Stats: max_speed=%.0f | shield=%.0f HP | hull=%.0f HP" % [
+		stats.max_speed if stats else 0.0,
 		shield_data.max_strength if shield_data else 0.0,
 		max_hull_hp
-	])
-	print("  Mounts: %d | Targeting: %s | Shield: %s | Movement: %s" % [
+	], true)
+	_dbg("  Mounts: %d | Targeting: %s | Shield: %s | Movement: %s" % [
 		weapon_mounts.size(),
 		"✓" if targeting_system else "❌",
-		"✓" if shield_system    else "❌",
-		"✓" if movement_comp    else "❌"
-	])
-	print("═══════════════════════════════════")
-
+		"✓" if shield_system else "❌",
+		"✓" if movement_comp else "❌"
+	], true)
+	_dbg("═══════════════════════════════════", true)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SETUP
@@ -182,21 +181,17 @@ func _setup_shield() -> void:
 					_dbg("🛡️ ShieldSystem als Geschwister-Node gefunden")
 
 	if not shield_system:
-		push_warning("[ShipController|%s] Kein ShieldSystem gefunden!" % ship_name)
+		_dbg_warning("Kein ShieldSystem gefunden!")
 		return
 
 	if not ship_data.shield:
 		_dbg("⚠️ ShieldSystem gefunden, aber ship_data.shield ist NULL!")
 		return
 
-	# FIX: ShieldData lokal duplizieren — sonst teilen sich alle Instanzen desselben
-	# Schiffstyps dieselbe current_strength (klassischer shared-Resource-Bug).
-	# Gleiches Pattern wie bei _local_hull_data in _setup_hull_hp().
-	# Ohne diesen Fix regenerieren/verlieren zwei BoPs gleichzeitig dieselben HP.
 	var local_shield_data: ShieldData = ship_data.shield.duplicate() as ShieldData
-	local_shield_data.reset()   # current_strength = max_strength
+	local_shield_data.reset()
 
-	shield_system.data       = local_shield_data
+	shield_system.data = local_shield_data
 	shield_system.show_debug = show_debug
 	shield_system.set_meta("ship_controller", self)
 	_connect_shield_signals()
@@ -387,87 +382,79 @@ func _trigger_shockwave_delayed() -> void:
 	if is_instance_valid(self):
 		_trigger_shockwave()
 
-
 func _trigger_shockwave() -> void:
-	print("\n[SHOCKWAVE|%s] ══════ SHOCKWAVE TRIGGER (delay=%.2fs) ══════" % [ship_name, shockwave_delay])
+	_dbg("══════ SHOCKWAVE TRIGGER (delay=%.2fs) ══════" % shockwave_delay, true)
 
 	if not ship_data:
-		print("[SHOCKWAVE|%s] ❌ ABBRUCH: ship_data ist null" % ship_name)
+		_dbg("❌ ABBRUCH: ship_data ist null", true)
 		return
 
-	# ShipData.shockwave_data prüfen – @export muss im Inspector gesetzt sein
 	if not "shockwave_data" in ship_data:
-		print("[SHOCKWAVE|%s] ❌ ABBRUCH: ShipData hat kein 'shockwave_data'-Feld (ShockwaveData.gd geladen?)" % ship_name)
+		_dbg("❌ ABBRUCH: ShipData hat kein 'shockwave_data'-Feld (ShockwaveData.gd geladen?)", true)
 		return
 
 	var sw_data: ShockwaveData = ship_data.shockwave_data
 	if not sw_data:
-		print("[SHOCKWAVE|%s] ❌ ABBRUCH: shockwave_data ist NULL – im Inspector eine ShockwaveData-Resource anlegen!" % ship_name)
+		_dbg("❌ ABBRUCH: shockwave_data ist NULL – im Inspector eine ShockwaveData-Resource anlegen!", true)
 		return
 
-	print("[SHOCKWAVE|%s] ✅ ShockwaveData geladen:" % ship_name)
-	print("  radius=%.0f | force=%.1f | tilt=%.1f° | recovery=%.2fs" % [
+	_dbg("✅ ShockwaveData geladen:", true)
+	_dbg("  radius=%.0f | force=%.1f | tilt=%.1f° | recovery=%.2fs" % [
 		sw_data.shockwave_radius, sw_data.shockwave_force,
-		sw_data.shockwave_tilt_angle, sw_data.shockwave_recovery_time])
+		sw_data.shockwave_tilt_angle, sw_data.shockwave_recovery_time
+	], true)
 
-	# excluded: CharacterBody3D-Parent dieses ShipControllers
 	var excluded: CharacterBody3D = get_parent() as CharacterBody3D
-	print("[SHOCKWAVE|%s] excluded node: %s" % [ship_name, excluded.name if excluded else "NULL (kein CharacterBody3D-Parent!)"])
+	_dbg("excluded node: %s" % (excluded.name if excluded else "NULL (kein CharacterBody3D-Parent!)"), true)
 
-	var origin: Vector3       = global_position
-	var ships: Array[Node]    = get_tree().get_nodes_in_group("ships")
-	print("[SHOCKWAVE|%s] Schiffe in Gruppe 'ships': %d" % [ship_name, ships.size()])
+	var origin: Vector3 = global_position
+	var ships: Array[Node] = get_tree().get_nodes_in_group("ships")
+	_dbg("Schiffe in Gruppe 'ships': %d" % ships.size(), true)
 
 	if ships.is_empty():
-		print("[SHOCKWAVE|%s] ⚠️  Gruppe 'ships' ist leer – sind alle Schiffe per add_to_group('ships') registriert?" % ship_name)
+		_dbg("⚠️  Gruppe 'ships' ist leer – sind alle Schiffe per add_to_group('ships') registriert?", true)
 
 	var hit_count: int = 0
 
 	for node: Node in ships:
-		# Eigenes Schiff überspringen
 		if node == excluded or node == self:
-			print("  [SKIP] '%s' → eigenes Schiff" % node.name)
+			_dbg("  [SKIP] '%s' → eigenes Schiff" % node.name)
 			continue
 
 		if not node is CharacterBody3D:
-			print("  [SKIP] '%s' → kein CharacterBody3D (ist: %s)" % [node.name, node.get_class()])
+			_dbg("  [SKIP] '%s' → kein CharacterBody3D (ist: %s)" % [node.name, node.get_class()])
 			continue
 
-		var body    := node as CharacterBody3D
-		var diff    : Vector3 = body.global_position - origin
-		var dist    : float   = diff.length()
+		var body := node as CharacterBody3D
+		var diff: Vector3 = body.global_position - origin
+		var dist: float = diff.length()
 
-		print("  [CHECK] '%s' | dist=%.1f | radius=%.0f" % [body.name, dist, sw_data.shockwave_radius])
+		_dbg("  [CHECK] '%s' | dist=%.1f | radius=%.0f" % [body.name, dist, sw_data.shockwave_radius])
 
 		if dist <= 0.0:
-			print("    → SKIP: dist=0 (Schiff sitzt exakt auf Origin?)")
+			_dbg("    → SKIP: dist=0 (Schiff sitzt exakt auf Origin?)")
 			continue
 		if dist > sw_data.shockwave_radius:
-			print("    → AUSSERHALB Radius – kein Effekt")
+			_dbg("    → AUSSERHALB Radius – kein Effekt")
 			continue
 
-		# Linearer Falloff: nah=1.0, Rand=0.0
-		var falloff   : float   = 1.0 - (dist / sw_data.shockwave_radius)
-		var push_dir  : Vector3 = diff.normalized()
-		var push_force: float   = sw_data.shockwave_force * falloff
-		var tilt_deg  : float   = sw_data.shockwave_tilt_angle * falloff
+		var falloff: float = 1.0 - (dist / sw_data.shockwave_radius)
+		var push_dir: Vector3 = diff.normalized()
+		var push_force: float = sw_data.shockwave_force * falloff
+		var tilt_deg: float = sw_data.shockwave_tilt_angle * falloff
 
-		# Tilt + Push via MovementComponent – NUR dort, damit der Impuls
-		# nicht sofort im nächsten _physics_process()-Frame überschrieben wird.
 		var mc: MovementComponent = _find_movement_component(body)
 		if mc:
 			mc.apply_shockwave_push(push_dir * push_force)
 			mc.apply_shockwave_tilt(tilt_deg, sw_data.shockwave_recovery_time, push_dir)
-			print("    → falloff=%.2f | push=%.1f | tilt=%.1f° → via MovementComponent" % [falloff, push_force, tilt_deg])
+			_dbg("    → falloff=%.2f | push=%.1f | tilt=%.1f° → via MovementComponent" % [falloff, push_force, tilt_deg])
 		else:
-			# Fallback: body.velocity direkt (kein MC gefunden – Impuls nur 1 Frame sichtbar)
 			body.velocity += push_dir * push_force
-			print("    → falloff=%.2f | push=%.1f (Fallback: kein MC – Effekt nur 1 Frame!)" % [falloff, push_force])
+			_dbg("    → falloff=%.2f | push=%.1f (Fallback: kein MC – Effekt nur 1 Frame!)" % [falloff, push_force])
 
 		hit_count += 1
 
-	print("[SHOCKWAVE|%s] ══ Ergebnis: %d Schiff(e) getroffen ══════\n" % [ship_name, hit_count])
-
+	_dbg("══ Ergebnis: %d Schiff(e) getroffen ══════\n" % hit_count, true)
 
 func _destroy_sequence() -> void:
 	_spawn_explosion()
@@ -476,18 +463,16 @@ func _destroy_sequence() -> void:
 	if is_instance_valid(self):
 		queue_free()
 
-
 func _spawn_explosion() -> Node3D:
 	if not explosion_scene:
-		push_warning("[ShipController|%s] ❌ Keine explosion_scene zugewiesen!" % ship_name)
+		_dbg_warning("Keine explosion_scene zugewiesen!")
 		return null
 
 	var explosion: Node3D = explosion_scene.instantiate() as Node3D
 	if not explosion:
-		push_error("[ShipController|%s] ❌ instantiate() fehlgeschlagen!" % ship_name)
+		_dbg_error("instantiate() fehlgeschlagen!")
 		return null
 
-	# Position: Marker3D bevorzugen, Fallback auf ShipController-Origin
 	var spawn_pos: Vector3 = explosion_origin.global_position \
 		if explosion_origin and is_instance_valid(explosion_origin) \
 		else global_position
@@ -507,10 +492,7 @@ func _spawn_explosion() -> Node3D:
 	_start_explosion_animation(explosion)
 	return explosion
 
-
 func _start_explosion_animation(explosion: Node3D) -> void:
-	# Nur AnimationPlayer starten — der steuert alle Partikel per Keyframe.
-	# NICHT manuell emitting = true setzen, das würde die Sequenzierung zerstören.
 	var found_ap := false
 	for child in explosion.find_children("*", "AnimationPlayer", true, false):
 		var ap := child as AnimationPlayer
@@ -519,7 +501,6 @@ func _start_explosion_animation(explosion: Node3D) -> void:
 			continue
 
 		var anim: String = ""
-		# RESET ist Godots interne Referenz-Animation → überspringen
 		if ap.autoplay != "" and ap.autoplay != "RESET":
 			anim = ap.autoplay
 		else:
@@ -533,12 +514,10 @@ func _start_explosion_animation(explosion: Node3D) -> void:
 			found_ap = true
 			_dbg("AnimationPlayer '%s' gestartet: '%s'" % [ap.name, anim])
 		else:
-			push_warning("[ShipController|%s] AnimationPlayer '%s' hat keine spielbare Animation!" % [
-				ship_name, ap.name])
+			_dbg_warning("AnimationPlayer '%s' hat keine spielbare Animation!" % ap.name)
 
 	if not found_ap:
-		push_warning("[ShipController|%s] Kein AnimationPlayer in Explosion-Scene gefunden!" % ship_name)
-
+		_dbg_warning("Kein AnimationPlayer in Explosion-Scene gefunden!")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TARGETING
@@ -659,25 +638,19 @@ func _notify_attack_on(victim: Node3D) -> void:
 	if not resolver:
 		if not _resolver_missing_warned:
 			_resolver_missing_warned = true
-			push_warning("[ShipController|%s] ⚠ RelationshipResolver-Autoload nicht gefunden – Assist-Mechanik inaktiv! Prüfe Project Settings → AutoLoad." % ship_name)
+			_dbg_warning("RelationshipResolver-Autoload nicht gefunden – Assist-Mechanik inaktiv! Prüfe Project Settings → AutoLoad.")
 		return
 	if not resolver.has_method("notify_attack"):
 		if not _resolver_missing_warned:
 			_resolver_missing_warned = true
-			push_warning("[ShipController|%s] ⚠ RelationshipResolver kennt notify_attack() nicht – veraltete Version?" % ship_name)
+			_dbg_warning("RelationshipResolver kennt notify_attack() nicht – veraltete Version?")
 		return
 
-	# Debug-Ausgabe direkt vor dem Call – zeigt dass die Assist-Kette startet
-	if get_tree().root.has_node("DebugManager") and DebugManager.get_flag("ai.resolver"):
-		print("[ShipController|%s] _notify_attack_on → Resolver.notify_attack(self, '%s')" % [
-			ship_name, victim.name
-		])
+	var dm = get_tree().root.get_node_or_null("DebugManager")
+	if dm and dm.has_method("get_flag") and dm.get_flag("ai.resolver"):
+		_dbg("_notify_attack_on → Resolver.notify_attack(self, '%s')" % victim.name)
 
-	# 'self' ist der ShipController; der Resolver normalisiert ihn intern
-	# auf den äußersten "ships"-Gruppen-Ahnen (Player-CharacterBody3D bzw.
-	# AIController) und startet von dort die Ally-Propagation.
 	resolver.notify_attack(self, victim)
-
 
 func _pick_best_target_for_mount(mount: Node3D,  # FIX: Node3D statt WeaponMount
 								candidates: Array[Node3D]) -> Node3D:
@@ -733,18 +706,13 @@ func _find_model() -> Node3D:
 
 func _find_weapon_mounts() -> void:
 	weapon_mounts.clear()
-	# FIX: search_root NUR im eigenen Schiff-Subtree begrenzen.
-	# get_parent() gibt bei AIController-NPCs die World-Scene zurück →
-	# würde Mounts ALLER Schiffe einsammeln und deren Data überschreiben.
 	var search_root: Node = self
 	var _parent := get_parent()
-	if _parent and _parent != get_tree().current_scene 	and _parent != get_tree().root:
+	if _parent and _parent != get_tree().current_scene and _parent != get_tree().root:
 		search_root = _parent
 
-	print("[SC|%s] _find_weapon_mounts() | search_root='%s'" % [ship_name, search_root.name])
+	_dbg("_find_weapon_mounts() | search_root='%s'" % search_root.name)
 
-	# Alle Nodes einsammeln die die WeaponMount-API haben (duck-typing)
-	# → funktioniert unabhängig von class_name-Registrierung
 	for child in search_root.find_children("*", "Node3D", true, false):
 		if not child.has_method("get_weapon_type"):
 			continue
@@ -753,36 +721,32 @@ func _find_weapon_mounts() -> void:
 		if not child.has_method("fire_at"):
 			continue
 
-		# Bereits in der Liste?
 		if weapon_mounts.has(child):
 			continue
 
 		weapon_mounts.append(child)
 
-		# Meta setzen wenn es ein echter WeaponMount ist
 		if child is WeaponMount:
 			child.set_meta("ship_parent", self)
 
-		print("[SC|%s]   ✓ Mount gefunden: '%s' [%s] | type=%s | ready=%s" % [
-			ship_name,
+		_dbg("  ✓ Mount gefunden: '%s' [%s] | type=%s | ready=%s" % [
 			child.name,
 			child.get_class(),
 			WeaponMount.WeaponType.keys()[child.get_weapon_type()],
 			child.is_ready_to_fire()
 		])
 
-	print("[SC|%s] weapon_mounts gesamt: %d | davon Torpedos: %d" % [
-		ship_name,
+	_dbg("weapon_mounts gesamt: %d | davon Torpedos: %d" % [
 		weapon_mounts.size(),
 		weapon_mounts.filter(func(m): return m.get_weapon_type() == WeaponMount.WeaponType.TORPEDO).size()
 	])
 
 	if weapon_mounts.is_empty():
-		push_warning("[ShipController] Keine WeaponMounts gefunden!")
+		_dbg_warning("Keine WeaponMounts gefunden!")
 		return
 
-	# Weapon-Data aus ShipController-Inspector auf Mounts anwenden
 	_apply_weapon_data_to_mounts()
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # WEAPON DATA SETUP (Override-Pattern)
@@ -803,18 +767,16 @@ func _apply_weapon_data_to_mounts() -> void:
 		return
 
 	var bwd: BeamWeaponData = ship_data.beam_weapon_data
-	var tpd: TorpedoData    = ship_data.torpedo_data
-	# BoltWeaponData ist optional – nur Schiffe mit WingDisruptorMount brauchen es.
-	# duck-typing via get() damit ShipData-Ressourcen ohne das Feld keinen Fehler werfen.
+	var tpd: TorpedoData = ship_data.torpedo_data
 	var bld: BoltWeaponData = ship_data.get("bolt_weapon_data") as BoltWeaponData \
 		if "bolt_weapon_data" in ship_data else null
 
-	print("\n[SC|%s] ══════ WEAPON DATA RESOLVE ══════" % ship_name)
-	print("  ship_data path  : %s" % ship_data.resource_path)
-	print("  zentrale Quellen:")
-	print("    beam_weapon_data: %s" % (bwd.weapon_name if bwd else "❌ NULL"))
-	print("    bolt_weapon_data: %s" % (bld.weapon_name if bld else "— (kein WingDisruptor)"))
-	print("    torpedo_data    : %s" % (tpd.torpedo_name if tpd else "❌ NULL"))
+	_dbg("══════ WEAPON DATA RESOLVE ══════", true)
+	_dbg("  ship_data path  : %s" % ship_data.resource_path, true)
+	_dbg("  zentrale Quellen:", true)
+	_dbg("    beam_weapon_data: %s" % (bwd.weapon_name if bwd else "❌ NULL"), true)
+	_dbg("    bolt_weapon_data: %s" % (bld.weapon_name if bld else "— (kein WingDisruptor)"), true)
+	_dbg("    torpedo_data    : %s" % (tpd.torpedo_name if tpd else "❌ NULL"), true)
 
 	for mount in weapon_mounts:
 		var wtype: WeaponMount.WeaponType = mount.get_weapon_type()
@@ -824,8 +786,6 @@ func _apply_weapon_data_to_mounts() -> void:
 				_resolve_beam_data(mount, bwd)
 
 			WeaponMount.WeaponType.DISRUPTOR:
-				# WingDisruptorMount erkennen wir am bolt_weapon_data_override-Feld.
-				# Klassischer WeaponMount (Strahl-Disruptor) hat weapon_data_override.
 				if "bolt_weapon_data_override" in mount:
 					_resolve_bolt_data(mount, bld)
 				else:
@@ -834,8 +794,7 @@ func _apply_weapon_data_to_mounts() -> void:
 			WeaponMount.WeaponType.TORPEDO:
 				_resolve_torpedo_data(mount, tpd)
 
-	print("[SC|%s] ══════════════════════════════════\n" % ship_name)
-
+	_dbg("══════════════════════════════════", true)
 
 ## Setzt mount.weapon_data – Override hat Priorität vor zentralem Wert.
 func _resolve_beam_data(mount: Node, central: BeamWeaponData) -> void:
@@ -959,20 +918,21 @@ func are_weapons_ready(weapon_type: WeaponMount.WeaponType = -1) -> bool:
 	return false
 
 func print_weapons_status() -> void:
-	print("\n═══ %s WEAPONS STATUS ═══" % ship_name)
+	_dbg("\n═══ %s WEAPONS STATUS ═══" % ship_name, true)
 	var status := get_weapons_status()
-	print("  Beams:    %d/%d" % [status["beams"]["ready"],   status["beams"]["total"]])
-	print("  Torpedos: %d/%d" % [status["torpedos"]["ready"], status["torpedos"]["total"]])
-	print("  Hull:     %.0f / %.0f" % [hull_hp, max_hull_hp])
+	_dbg("  Beams:    %d/%d" % [status["beams"]["ready"], status["beams"]["total"]], true)
+	_dbg("  Torpedos: %d/%d" % [status["torpedos"]["ready"], status["torpedos"]["total"]], true)
+	_dbg("  Hull:     %.0f / %.0f" % [hull_hp, max_hull_hp], true)
 	if shield_data:
-		print("  Shield:   %.0f / %.0f" % [shield_data.current_strength, shield_data.max_strength])
+		_dbg("  Shield:   %.0f / %.0f" % [shield_data.current_strength, shield_data.max_strength], true)
 	for mount in weapon_mounts:
-		print("    %-20s [%-10s] state=%-12s" % [
+		_dbg("    %-20s [%-10s] state=%-12s" % [
 			mount.name,
 			WeaponMount.MountPosition.keys()[mount.get_mount_position()],
 			mount.get_weapon_state()
-		])
-	print("═══════════════════════════════════\n")
+		], true)
+	_dbg("═══════════════════════════════════\n", true)
+
 
 func _setup_collision_layers() -> void:
 	if not ship_data:
@@ -999,10 +959,26 @@ func _register_faction_group() -> void:
 	add_to_group(FactionSystem.get_group_name(ship_data.faction))
 	_dbg("Gruppen: ships + %s" % FactionSystem.get_group_name(ship_data.faction))
 
-func _dbg(msg: String) -> void:
-	if show_debug:
+func _dbg(msg: String, force: bool = false) -> void:
+	# Prüfe 1: Lokaler Export im Inspector
+	var is_local_debug := show_debug
+	
+	# Prüfe 2: Globaler DebugManager (falls vorhanden)
+	var is_global_debug := false
+	var dm = get_tree().root.get_node_or_null("DebugManager")
+	if dm and dm.has_method("get_flag"):
+		is_global_debug = dm.get_flag(debug_category)
+	
+	# Ausgabe wenn einer der beiden aktiv ist ODER force=true
+	if force or is_local_debug or is_global_debug:
 		print("[ShipController|%s] %s" % [ship_name, msg])
 
+func _dbg_error(msg: String) -> void:
+	printerr("[ShipController|%s] ❌ %s" % [ship_name, msg])
+
+
+func _dbg_warning(msg: String) -> void:
+	push_warning("[ShipController|%s] ⚠️ %s" % [ship_name, msg])
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CLOAK-SYSTEM API
@@ -1072,7 +1048,6 @@ func _dbg_cloak(msg: String) -> void:
 		flag_active = dm.get_flag("cloak.setup")
 	if show_debug or flag_active:
 		print("[ShipController|Cloak|%s] %s" % [ship_name, msg])
-
 
 ## Toggle-Trigger für Player-Input und externe Quellen.
 ## Returns false wenn das Schiff nicht tarnen kann oder Toggle ignoriert wurde.
@@ -1150,3 +1125,4 @@ func set_shields_cloak_offline(offline: bool) -> void:
 		if shield_system._mesh_instance:
 			shield_system._mesh_instance.visible = true
 		_dbg("🛡️ Schilde online (Cloak Ende, Regen-Delay aktiv)")
+		

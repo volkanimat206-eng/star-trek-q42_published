@@ -1,75 +1,141 @@
 // res://shaders/damage_shader.gdshader
 //
-// Damage-Shader für Schiffshüllen.
+// Hüllen-Damage-Shader für romulanischen Warbird.
+// Basiert auf dem auto-generierten Shader aus dem StandardMaterial3D
+// (Convert to ShaderMaterial) — alle Original-Properties (Albedo, Emission,
+// Roughness, Normal Map etc.) werden 1:1 übernommen.
 //
-// Was er macht:
-//   • Renderet das Schiff bei damage_amount = 0.0 IDENTISCH zum bisherigen
-//     StandardMaterial3D (Albedo + Emission + Normal-Map).
-//   • Bei steigendem damage_amount (0..1) blendet zunehmend Schadens-Look
-//     darüber ein:
-//       - Albedo wird in Schadenszonen dunkler/rußig
-//       - zusätzliche Heat-Glow-Emission (rot/orange), die die original-
-//         farbliche Emission (z.B. romulanisches Grün) NICHT überschreibt
-//       - Roughness steigt in Schadenszonen (matter, verkohlt)
-//       - leichte Normal-Map-Verzerrung für aufgerissene Hüllenoptik
-//   • Schadens-VERTEILUNG kommt aus einer prozeduralen Noise-Maske, plus
-//     Edge-Detection (Hüllenkanten werden zuerst beschädigt — physikalisch
-//     plausibel, da exponiert).
+// Bei damage_amount = 0.0  →  Schiff sieht IDENTISCH aus wie vorher.
+// Bei damage_amount > 0.0  →  Verkohlte Bereiche, Heat-Glow, mattere Hülle.
 //
-// AAA-Trick:
-//   Wir SCHADEN nicht die Hülle ersetzen, wir MODIFIZIEREN sie lokal.
-//   Damit sieht das Schiff bei damage = 0 exakt aus wie vorher und wird
-//   progressiv "verletzt" — nicht plötzlich ausgetauscht.
+// Original-Header vom Auto-Convert (für Nachvollziehbarkeit):
+//   shader_type spatial;
+//   render_mode blend_mix, depth_draw_opaque, cull_disabled, ...;
 
 shader_type spatial;
-render_mode blend_mix, depth_draw_opaque, cull_back, diffuse_burley, specular_schlick_ggx;
+render_mode blend_mix, depth_draw_opaque, cull_disabled, diffuse_burley, specular_schlick_ggx, depth_prepass_alpha;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BASIS-TEXTUREN  (vom alten StandardMaterial3D übernommen)
+// ORIGINAL UNIFORMS (1:1 vom Auto-Converter übernommen)
 // ─────────────────────────────────────────────────────────────────────────────
-uniform sampler2D albedo_texture   : source_color, filter_linear_mipmap, repeat_enable;
-uniform sampler2D emission_texture : source_color, filter_linear_mipmap, repeat_enable;
-uniform sampler2D normal_texture   : hint_normal,  filter_linear_mipmap, repeat_enable;
-
-uniform vec4  albedo_color           : source_color = vec4(1.0, 1.0, 1.0, 1.0);
-uniform float roughness              : hint_range(0.0, 1.0) = 0.76;
-uniform float metallic               : hint_range(0.0, 1.0) = 0.0;
-uniform float normal_scale           : hint_range(-2.0, 2.0) = 1.0;
-uniform float emission_energy        : hint_range(0.0, 16.0) = 1.0;
+uniform vec4      albedo                  : source_color;
+uniform sampler2D texture_albedo          : source_color, filter_linear_mipmap, repeat_enable;
+uniform ivec2     albedo_texture_size;
+uniform float     point_size              : hint_range(0.1, 128.0, 0.1);
+uniform float     roughness               : hint_range(0.0, 1.0);
+uniform sampler2D texture_metallic        : hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform vec4      metallic_texture_channel;
+uniform sampler2D texture_roughness       : hint_roughness_r, filter_linear_mipmap, repeat_enable;
+uniform float     specular                : hint_range(0.0, 1.0, 0.01);
+uniform float     metallic                : hint_range(0.0, 1.0, 0.01);
+uniform sampler2D texture_emission        : source_color, hint_default_black, filter_linear_mipmap, repeat_enable;
+uniform vec4      emission                : source_color;
+uniform float     emission_energy         : hint_range(0.0, 100.0, 0.01);
+uniform sampler2D texture_normal          : hint_roughness_normal, filter_linear_mipmap, repeat_enable;
+uniform float     normal_scale            : hint_range(-16.0, 16.0);
+uniform vec3      uv1_scale;
+uniform vec3      uv1_offset;
+uniform vec3      uv2_scale;
+uniform vec3      uv2_offset;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DAMAGE-PARAMETER
+// DAMAGE UNIFORMS (neu hinzugefügt)
 // ─────────────────────────────────────────────────────────────────────────────
-// Hauptregler: 0.0 = heile Hülle (sieht aus wie vorher), 1.0 = maximal beschädigt.
-// Wird vom ShipController jeden Frame gesetzt (siehe Phase-1-Patch).
-uniform float damage_amount          : hint_range(0.0, 1.0) = 0.0;
+// Hauptregler: 0.0 = heile Hülle, 1.0 = maximal beschädigt.
+// Wird vom ShipController jeden Frame gesetzt.
+uniform float     damage_amount           : hint_range(0.0, 1.0) = 0.0;
 
-// Wie stark sich Schaden bei niedrigem damage_amount schon zeigt.
-// Hohe Werte = Schaden erscheint früh (sensible Hülle).
-// Niedrige Werte = lange "ganz", dann schnell zerstört.
-uniform float damage_threshold       : hint_range(0.0, 1.0) = 0.15;
+// Wie früh Schaden anfängt sichtbar zu werden.
+// Hoch (0.3) = sensible Hülle, früh sichtbar. Niedrig (0.05) = lange "ganz".
+uniform float     damage_threshold        : hint_range(0.0, 1.0) = 0.15;
 
-// Wie scharf die Schadens-Kante ist (kleinere Werte = härter, größere = weicher).
-uniform float damage_edge_softness   : hint_range(0.01, 0.5) = 0.20;
+// Schärfe der Schadenskante. Klein = harte Kante, groß = weicher Übergang.
+uniform float     damage_edge_softness    : hint_range(0.01, 0.5) = 0.20;
 
-// Skalierung der prozeduralen Noise-Maske. Höhere Werte = feinere Schadens-
-// Strukturen, niedrigere = großflächige Bereiche.
-uniform float damage_noise_scale     : hint_range(1.0, 50.0) = 12.0;
+// Skalierung der prozeduralen Schadens-Maske auf der Hülle.
+// Hoch = feine Detail-Strukturen, niedrig = großflächige Bereiche.
+uniform float     damage_noise_scale      : hint_range(1.0, 50.0) = 12.0;
 
 // Farben für die Schadenszonen
-uniform vec3  burn_color_dark        : source_color = vec3(0.05, 0.02, 0.01);  // verkohlter Rand
-uniform vec3  burn_color_glow        : source_color = vec3(1.0, 0.4, 0.1);     // glühender Kern
-uniform float burn_glow_energy       : hint_range(0.0, 8.0) = 2.0;
+uniform vec3      burn_color_dark         : source_color = vec3(0.05, 0.02, 0.01);
+uniform vec3      burn_color_glow         : source_color = vec3(1.0, 0.4, 0.1);
+uniform float     burn_glow_energy        : hint_range(0.0, 8.0) = 2.0;
 
-// Wieviel die Damage-Bereiche die Hüllen-Roughness erhöhen
-uniform float damage_roughness_boost : hint_range(0.0, 1.0) = 0.6;
+// Wieviel Roughness in Damage-Zonen draufkommt
+uniform float     damage_roughness_boost  : hint_range(0.0, 1.0) = 0.6;
 
-// Wieviel die Damage-Bereiche die Normal-Map verzerren (aufgerissen wirken)
-uniform float damage_normal_disturb  : hint_range(0.0, 2.0) = 0.8;
+// Wieviel die Normal-Map in Damage-Zonen verzerrt wird (aufgerissen)
+uniform float     damage_normal_disturb   : hint_range(0.0, 2.0) = 0.8;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HEAT-GLOW PULSATION
+// ─────────────────────────────────────────────────────────────────────────────
+// Pulsationsstärke. 0 = aus (statischer Glow), 1 = volle Modulation
+// (Glow schwingt zwischen 0% und 100% der eingestellten Energie).
+// Empfehlung: 0.4–0.7 für lebendigen Look ohne Stroboskop-Effekt.
+uniform float     pulse_amplitude         : hint_range(0.0, 1.0) = 0.5;
+
+// Pulsationsgeschwindigkeit in Hz (volle Pulse pro Sekunde).
+// 0.5 Hz = ruhig brennend, 2 Hz = nervös flackernd, 5+ Hz = elektrisch zuckend.
+uniform float     pulse_speed_hz          : hint_range(0.0, 10.0) = 1.5;
+
+// Asynchrone Pulsation: 0 = alle Heat-Zonen pulsieren synchron (gleichmäßiger
+// Atmen-Effekt), 1 = jede Zone pulsiert mit eigener Phase (chaotischer,
+// wirkt wie viele unabhängige Brände). Mischwerte gehen weich ineinander über.
+uniform float     pulse_async_amount      : hint_range(0.0, 1.0) = 0.7;
+
+// Sekundär-Flicker: schneller, kleiner Zufalls-Wackler über dem Haupt-Puls.
+// 0 = aus, 1 = volle Stärke. Macht den Glow „elektrisch" statt nur atmend.
+uniform float     pulse_flicker_amount    : hint_range(0.0, 1.0) = 0.25;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INNER HULL — PIPES (Aufgerissene Hülle, Engineering-Innenleben sichtbar)
+// ─────────────────────────────────────────────────────────────────────────────
+// Master-Switch. Bei 0 bleibt der Burn-Glow wie gehabt (kein Loch).
+// Bei 1 werden in den Heat-Zonen Löcher mit Pipes-Innenstruktur sichtbar.
+uniform float     inner_hull_amount       : hint_range(0.0, 1.0) = 1.0;
+
+// Wo greift der Innen-Look? Smoothstep-Schwelle in der heat_mask.
+// 0.5 = ab mittlerer Heat-Intensität wird's zum Loch
+// 0.7 = nur die heißesten Bereiche werden Löcher (selten, dramatisch)
+// 0.3 = fast überall wo es brennt, wird's auch zum Loch
+uniform float     inner_hull_threshold    : hint_range(0.1, 0.9) = 0.55;
+
+// Albedo-Verdunklung im Loch (0 = pechschwarz, 1 = keine Verdunklung)
+uniform float     inner_hull_darkness     : hint_range(0.0, 1.0) = 0.30;
+
+// Pipes-Skalierung: wieviele Pipes pro Modell-Einheit
+// Hoch = feines, dichtes Pipework. Niedrig = wenige große Rohre
+uniform float     inner_grid_scale        : hint_range(1.0, 80.0) = 25.0;
+
+// Pipe-Dicke (0..1 = anteilig der Zellen-Breite)
+uniform float     inner_pipe_thickness    : hint_range(0.02, 0.5) = 0.12;
+
+// Mischverhältnis horizontale vs. vertikale Pipes:
+//   0.0 = nur horizontale (parallele Leitungen, EPS-Conduit-Look)
+//   0.5 = beide gleich stark (Gitter-Look)
+//   1.0 = nur vertikale
+uniform float     inner_pipe_orientation  : hint_range(0.0, 1.0) = 0.3;
+
+// Farbe der Pipes (statisches Metall/Bronze)
+uniform vec3      inner_pipe_color        : source_color = vec3(0.4, 0.25, 0.10);
+
+// Glow der Pipes (heiß glühende Plasmaleitungen) — ADDITIV emittiert
+uniform vec3      inner_pipe_glow_color   : source_color = vec3(1.0, 0.5, 0.2);
+uniform float     inner_pipe_glow_energy  : hint_range(0.0, 8.0) = 1.5;
+
+// Parallax-Stärke. 0 = keine Tiefen-Verschiebung, 0.05 = "schwach" (empfohlen),
+// 0.15 = stark. Höhere Werte können bei flachen Blickwinkeln Artefakte zeigen.
+uniform float     inner_parallax_depth    : hint_range(0.0, 0.3) = 0.05;
+
+// Pipes-Flackern: wie stark sie unabhängig vom Burn-Glow flackern.
+// 0 = synchron mit Glow (Pipes pulsieren wie der Glow)
+// 1 = komplett unabhängiges Stromnetz-Flackern
+uniform float     inner_grid_flicker_independence : hint_range(0.0, 1.0) = 0.4;
 
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HASH-NOISE  (kompakte 2D-Noise ohne externe Texture)
+// HELPER: HASH-NOISE (kompakt, ohne externe Texture)
 // ─────────────────────────────────────────────────────────────────────────────
 float hash21(vec2 p) {
 	p = fract(p * vec2(123.34, 456.21));
@@ -77,23 +143,49 @@ float hash21(vec2 p) {
 	return fract(p.x * p.y);
 }
 
-// Smooth Value Noise — interpolierte Hash-Werte an den 4 Eckpunkten der Zelle.
-// Liefert weiche, organische Flecken-Muster (gut für Schadens-Verteilung).
+// 3D-Hash für Welt-Raum-Noise (verhindert Symmetrie durch UV-Mirroring)
+float hash31(vec3 p) {
+	p = fract(p * vec3(123.34, 456.21, 789.13));
+	p += dot(p, p.yzx + 45.32);
+	return fract(p.x * p.y * p.z);
+}
+
 float value_noise(vec2 p) {
 	vec2 i = floor(p);
 	vec2 f = fract(p);
-	vec2 u = f * f * (3.0 - 2.0 * f); // Smoothstep-Interpolation
-
+	vec2 u = f * f * (3.0 - 2.0 * f);
 	float a = hash21(i + vec2(0.0, 0.0));
 	float b = hash21(i + vec2(1.0, 0.0));
 	float c = hash21(i + vec2(0.0, 1.0));
 	float d = hash21(i + vec2(1.0, 1.0));
-
 	return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
 }
 
-// Fractal Brownian Motion — schichtet mehrere Noise-Oktaven für Detail.
-// Macht die Schadens-Maske natürlicher (große Brände + kleine Sprenkel).
+// 3D-Value-Noise — interpoliert zwischen 8 Eckpunkten eines Würfels.
+// Nötig, weil UV-Mapping bei Schiffen oft links/rechts gespiegelt ist
+// und 2D-Noise dadurch zwingend symmetrisch wirkt. Im Welt-Raum gibt es
+// diese Symmetrie nicht.
+float value_noise_3d(vec3 p) {
+	vec3 i = floor(p);
+	vec3 f = fract(p);
+	vec3 u = f * f * (3.0 - 2.0 * f);
+
+	float a = hash31(i + vec3(0.0, 0.0, 0.0));
+	float b = hash31(i + vec3(1.0, 0.0, 0.0));
+	float c = hash31(i + vec3(0.0, 1.0, 0.0));
+	float d = hash31(i + vec3(1.0, 1.0, 0.0));
+	float e = hash31(i + vec3(0.0, 0.0, 1.0));
+	float f1 = hash31(i + vec3(1.0, 0.0, 1.0));
+	float g = hash31(i + vec3(0.0, 1.0, 1.0));
+	float h = hash31(i + vec3(1.0, 1.0, 1.0));
+
+	return mix(
+		mix(mix(a, b, u.x), mix(c, d, u.x), u.y),
+		mix(mix(e, f1, u.x), mix(g, h, u.x), u.y),
+		u.z
+	);
+}
+
 float fbm(vec2 p) {
 	float v = 0.0;
 	float a = 0.5;
@@ -105,79 +197,250 @@ float fbm(vec2 p) {
 	return v;
 }
 
+float fbm_3d(vec3 p) {
+	float v = 0.0;
+	float a = 0.5;
+	for (int i = 0; i < 4; i++) {
+		v += a * value_noise_3d(p);
+		p *= 2.0;
+		a *= 0.5;
+	}
+	return v;
+}
+
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FRAGMENT
+// VARYINGS — vom Vertex- in den Fragment-Shader
+// ─────────────────────────────────────────────────────────────────────────────
+// Modell-lokale Position. Für die Damage-Maske im 3D-Raum statt UV-Raum.
+// Vorteile gegenüber UV-Sampling:
+//   1) Keine Symmetrie durch UV-Mirroring (links/rechts unterschiedliche Flecken)
+//   2) Konsistente Schadens-Skalierung über das ganze Schiff
+//   3) Funktioniert auch auf Modellen ohne UVs
+varying vec3 v_model_pos;
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VERTEX (Original + Position-Passthrough)
+// ─────────────────────────────────────────────────────────────────────────────
+void vertex() {
+	UV = UV * uv1_scale.xy + uv1_offset.xy;
+	v_model_pos = VERTEX;  // Modell-Raum-Position für Damage-Maske
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FRAGMENT (Original + Damage-Layer)
 // ─────────────────────────────────────────────────────────────────────────────
 void fragment() {
-	vec2 uv = UV;
+	vec2 base_uv = UV;
 
-	// ── 1) Basis-Materialdaten lesen ────────────────────────────────────────
-	vec4 base_albedo = texture(albedo_texture,   uv) * albedo_color;
-	vec3 base_emiss  = texture(emission_texture, uv).rgb * emission_energy;
-	vec3 base_normal = texture(normal_texture,   uv).rgb * 2.0 - 1.0;
+	// ── ORIGINAL: Basis-Materialdaten lesen ─────────────────────────────────
+	vec4 albedo_tex = texture(texture_albedo, base_uv);
+	vec3 base_albedo = albedo.rgb * albedo_tex.rgb;
 
-	// ── 2) Damage-Maske bauen ───────────────────────────────────────────────
-	// Zwei Noise-Schichten unterschiedlicher Skalierung kombiniert: die große
-	// Skalierung definiert "Schadensregionen", die kleine fügt Detail hinzu.
-	float n_large = fbm(uv * damage_noise_scale * 0.5);
-	float n_small = fbm(uv * damage_noise_scale * 2.0);
+	float metallic_tex = dot(texture(texture_metallic, base_uv), metallic_texture_channel);
+	float base_metallic = metallic_tex * metallic;
+
+	vec4 roughness_texture_channel = vec4(1.0, 0.0, 0.0, 0.0);
+	float roughness_tex = dot(texture(texture_roughness, base_uv), roughness_texture_channel);
+	float base_roughness = roughness_tex * roughness;
+
+	vec3 base_normal_map = texture(texture_normal, base_uv).rgb;
+
+	vec3 emission_tex = texture(texture_emission, base_uv).rgb;
+	vec3 base_emission = (emission.rgb + emission_tex) * emission_energy;
+
+	float base_alpha = albedo.a * albedo_tex.a;
+
+	// ── DAMAGE-MASKE BAUEN (Welt-/Modell-Raum, nicht UV-Raum) ───────────────
+	// Sampling im Modell-Raum verhindert UV-Mirroring-Symmetrie. Der Faktor
+	// 0.05 skaliert von Modell-Einheiten (oft Meter) auf brauchbare Noise-
+	// Frequenzen — größere Werte = feinere Patches.
+	vec3 noise_pos = v_model_pos * damage_noise_scale * 0.05;
+
+	// Zwei Schichten: groß-skalierte Schadensregionen + feines Detail
+	float n_large = fbm_3d(noise_pos * 0.5);
+	float n_small = fbm_3d(noise_pos * 2.0);
 	float noise_combined = n_large * 0.7 + n_small * 0.3;
 
-	// Schaden-Cutoff: bei damage_amount = 0 wird nichts geschädigt; bei
-	// damage_amount = 1 fast die ganze Hülle. damage_threshold steuert wie
-	// früh der Schaden anfängt sichtbar zu werden.
-	// remap so dass damage_amount = 0 → cutoff = 1.0 (nichts darunter)
-	//                damage_amount = 1 → cutoff = damage_threshold (fast alles drüber)
-	float cutoff = mix(1.0 + damage_edge_softness, damage_threshold, damage_amount);
+	// Cutoff-Mapping (FIX gegenüber vorheriger Version):
+	//   damage_amount = 0.0 → cutoff sehr hoch → smoothstep liefert 0 (keine Schäden)
+	//   damage_amount = 1.0 → cutoff niedrig    → smoothstep liefert 1 fast überall
+	// noise_combined liegt typisch in [0.2 .. 0.8]. Wir wollen, dass damage_amount
+	// linear durch diesen Wertebereich + Edge-Softness wandert.
+	//
+	// Der vorherige Bug: `mix(1.0 + edge, threshold, dmg)` ließ den Cutoff bei
+	// dmg=0.7 unter den noise-Median fallen, was die smoothstep-Maske kippte.
+	float low_end  = damage_threshold;                       // bei dmg=1.0 (sehr früh, fast alles)
+	float high_end = 1.0 - damage_threshold + damage_edge_softness;  // bei dmg=0.0 (über dem Noise-Maximum)
+	float cutoff   = mix(high_end, low_end, damage_amount);
 
-	// Smoothstep gibt weiche Übergänge an der Schadensgrenze
-	float damage_mask = smoothstep(cutoff, cutoff - damage_edge_softness, noise_combined);
+	// Smoothstep: Pixel wird beschädigt, wenn noise > cutoff.
+	float damage_mask = smoothstep(cutoff, cutoff + damage_edge_softness, noise_combined);
 
 	// Sicherheit: bei damage_amount ≈ 0 muss die Maske exakt 0 sein
 	damage_mask *= step(0.001, damage_amount);
 
-	// ── 3) Heat-Zonen (innere, glühende Bereiche der Schadenszonen) ─────────
-	// In den Bereichen, wo die Damage-Maske am stärksten ist, glüht es noch.
-	// Das simuliert frische, heiße Brände innerhalb der verkohlten Zonen.
+	// Heat-Zonen: wo die Maske am stärksten ist, glüht es noch
 	float heat_mask = smoothstep(0.6, 1.0, damage_mask) * damage_amount;
 
-	// ── 4) Albedo modifizieren ──────────────────────────────────────────────
-	// In Damage-Zonen: Mix von der ursprünglichen Albedo zu burn_color_dark.
-	// In Heat-Zonen: heller, glühender Kern.
-	vec3 damaged_albedo = mix(base_albedo.rgb, burn_color_dark, damage_mask);
-	damaged_albedo      = mix(damaged_albedo, burn_color_glow, heat_mask);
+	// ── HEAT-GLOW PULSATION ─────────────────────────────────────────────────
+	// TIME ist eine eingebaute Godot-Uniform: Sekunden seit Shader-Start.
+	// Wir bauen einen Puls-Faktor zwischen (1.0 - amplitude) und 1.0:
+	//   pulse_amplitude = 0   → factor immer 1.0 (statisch)
+	//   pulse_amplitude = 1   → factor schwingt 0..1 (komplettes An/Aus)
+	//
+	// Synchroner Anteil: alle Pixel pulsieren mit derselben Phase
+	float t          = TIME * pulse_speed_hz * TAU;  // TAU = 2π, ein voller Zyklus pro Sekunde-Hz
+	float pulse_sync = (sin(t) + 1.0) * 0.5;         // [0..1] sinusförmig
 
-	ALBEDO = damaged_albedo;
+	// Asynchroner Anteil: Phase wird durch die Modell-Position verschoben.
+	// Damit pulsiert jede Stelle der Hülle leicht anders → wirkt wie viele
+	// einzelne Brände statt eines synchronen Atmens.
+	float phase_offset = dot(v_model_pos, vec3(0.13, 0.21, 0.17));
+	float pulse_async  = (sin(t + phase_offset) + 1.0) * 0.5;
 
-	// ── 5) Emission ─────────────────────────────────────────────────────────
-	// Romulanisches Grün (oder welche Original-Emission auch immer) bleibt
-	// erhalten; Heat-Glow kommt ADDITIV dazu — überschreibt nicht.
-	vec3 heat_emission = burn_color_glow * burn_glow_energy * heat_mask;
-	EMISSION = base_emiss + heat_emission;
+	// Synchron/Asynchron mischen
+	float pulse_main = mix(pulse_sync, pulse_async, pulse_async_amount);
 
-	// ── 6) Roughness ────────────────────────────────────────────────────────
-	// In Damage-Zonen wird die Hülle matter (verkohlt, rauher).
-	ROUGHNESS = clamp(roughness + damage_mask * damage_roughness_boost, 0.0, 1.0);
+	// Sekundär-Flicker: schneller, kleinerer Zufalls-Wackler.
+	// Macht aus „atmen" ein „elektrisch zucken" — gut für schwere Schäden.
+	float flicker_t  = TIME * pulse_speed_hz * 8.0;  // 8x schneller
+	float flicker    = value_noise_3d(v_model_pos * 5.0 + vec3(flicker_t, 0.0, 0.0));
+	pulse_main       = mix(pulse_main, pulse_main * flicker, pulse_flicker_amount);
 
-	// ── 7) Metallic (unverändert übernommen) ────────────────────────────────
-	METALLIC = metallic;
+	// Final-Faktor: bei amplitude=0.5 schwingt es zwischen 0.5 und 1.0
+	float pulse_factor = 1.0 - pulse_amplitude + pulse_amplitude * pulse_main;
 
-	// ── 8) Normal-Map — leicht aufgerissen in Damage-Zonen ──────────────────
-	// Die Normal-Map wird in Damage-Zonen mit einem zusätzlichen Noise-
-	// Vector überlagert. Effekt: die Hülle sieht dort "geknittert"/aufgerissen
-	// aus, statt nur farblich verändert.
-	vec2 disturb_uv  = uv * damage_noise_scale * 3.0;
+	// Pulse auf die Heat-Maske anwenden — damit pulsieren ALBEDO-Glow und
+	// EMISSION-Glow gemeinsam (sonst wirkt es disjoint).
+	float heat_mask_pulsed = heat_mask * pulse_factor;
+
+	// ── INNER HULL — PIPES ──────────────────────────────────────────────────
+	// Wo die heat_mask einen kritischen Schwellwert überschreitet, wechseln
+	// wir vom „glühende Brandfläche"-Look zum „aufgerissenen Loch mit
+	// Innenstruktur"-Look. Das ist der Engineering-Bay-Effekt.
+
+	// Inner-Hull-Maske: 0 außerhalb der Heat-Zone, 1 in der Tiefe der Hitze
+	float inner_mask = smoothstep(inner_hull_threshold, 1.0, damage_mask) * inner_hull_amount;
+
+	// Parallax-UV — basierend auf View-Direction-Schiefe.
+	// VIEW im Fragment-Shader ist der Vektor von Pixel zur Kamera (View-Space).
+	// Wir nehmen die x/y-Komponenten als 2D-Verschiebung, gewichtet mit
+	// inner_parallax_depth.
+	// Tangenten-Raum-Parallax wäre genauer (TBN-Matrix), aber für unseren
+	// "leichte Tiefe simulieren"-Use-Case reicht der View-Space-Approximations-
+	// Trick — visuell überzeugend bei niedrigen Parallax-Werten.
+	vec2 parallax_offset = VIEW.xy * inner_parallax_depth;
+	vec3 pipes_pos = v_model_pos + vec3(parallax_offset.x, parallax_offset.y, 0.0);
+
+	// Pipes-Pattern generieren.
+	// Strategie: zwei orthogonale 1D-Linien-Sets, gemischt nach Orientierung.
+	//
+	// Prinzip pro Achse:
+	//   1) Modell-Position skalieren mit inner_grid_scale → Zellen-Koordinaten
+	//   2) fract() → Position innerhalb der Zelle (0..1)
+	//   3) abs(fract - 0.5) → Distanz zum Zellen-Zentrum
+	//   4) smoothstep(thickness/2, thickness/2 + edge, distance) → Pipe ja/nein
+	float pipe_thick_half = inner_pipe_thickness * 0.5;
+	float pipe_aa         = 0.02;  // Anti-Alias-Kante
+
+	// Horizontale Pipes (entlang der Modell-X-Achse, also im Y-Z-Plane verteilt).
+	// Wir pickenden Y als „Verlauf-Achse" → Linien laufen in X-Richtung.
+	float h_cell    = fract(pipes_pos.y * inner_grid_scale * 0.05);
+	float h_dist    = abs(h_cell - 0.5);
+	float h_pipe    = 1.0 - smoothstep(pipe_thick_half, pipe_thick_half + pipe_aa, h_dist);
+
+	// Vertikale Pipes (Querverbindungen entlang der Z-Achse)
+	float v_cell    = fract(pipes_pos.z * inner_grid_scale * 0.05);
+	float v_dist    = abs(v_cell - 0.5);
+	float v_pipe    = 1.0 - smoothstep(pipe_thick_half, pipe_thick_half + pipe_aa, v_dist);
+
+	// Mischen — bei orientation = 0.3 dominieren horizontale Pipes (Star-Trek
+	// EPS-Konduit-Look), aber Querverbindungen sind noch erkennbar
+	float pipes_pattern = mix(h_pipe, v_pipe, inner_pipe_orientation);
+	// Wenn beide Gleichgewicht (0.5) → Gitter-Look durch max() statt mix()
+	pipes_pattern = mix(pipes_pattern, max(h_pipe, v_pipe), step(0.49, inner_pipe_orientation) * step(inner_pipe_orientation, 0.51));
+
+	// Pipes-Flicker: synchron oder asynchron zum Burn-Glow
+	// pulse_main ist unsere bereits berechnete Glow-Welle (aus dem heat_pulse-Block)
+	float pipes_async_phase = dot(v_model_pos, vec3(0.41, 0.13, 0.27)) * 2.7;
+	float pipes_async_pulse = (sin(t * 1.3 + pipes_async_phase) + 1.0) * 0.5;
+	float pipes_pulse_value = mix(pulse_main, pipes_async_pulse, inner_grid_flicker_independence);
+
+	// Flicker-Faktor für Pipes (kleinere Schwankung als Glow, sonst stört's):
+	// bei pulse=0 sind Pipes 70% sichtbar, bei pulse=1 voll sichtbar
+	float pipes_visibility = 0.7 + 0.3 * pipes_pulse_value;
+
+	// Heat-Mask-Pulsed schon für Glow-Modulation berechnet — Pipes nutzen
+	// inner_mask separat, damit sie im "Loch" auch dann sichtbar bleiben wenn
+	// der Glow gerade in einer dunklen Pulse-Phase ist.
+
+	// ── ALBEDO MODIFIZIEREN ─────────────────────────────────────────────────
+	vec3 final_albedo = mix(base_albedo, burn_color_dark, damage_mask);
+	final_albedo      = mix(final_albedo, burn_color_glow, heat_mask_pulsed);
+
+	// Inner-Hull-Loch: an inner_mask-Stellen wird das Pixel deutlich
+	// dunkler (= Loch-Tiefe), aber wo Pipes liegen, scheint das Pipe-
+	// Material durch (= sichtbares Innenleben).
+	//
+	//   inner_dark_color = Loch-Boden (sehr dunkel, kein Albedo)
+	//   pipes_pattern    = wo Pipes sind: 1, sonst 0
+	//   inner_pipe_color = Material der Pipes
+	vec3 inner_dark_color = final_albedo * inner_hull_darkness;
+	vec3 inner_with_pipes = mix(inner_dark_color, inner_pipe_color, pipes_pattern * pipes_visibility);
+
+	// Final auf inner_mask (also nur in Heat-Tiefen) reinmischen
+	final_albedo = mix(final_albedo, inner_with_pipes, inner_mask);
+
+	ALBEDO = final_albedo;
+
+	// ── METALLIC (unverändert) ──────────────────────────────────────────────
+	METALLIC = base_metallic;
+	SPECULAR = specular;
+
+	// ── ROUGHNESS — in Damage-Zonen mattter ─────────────────────────────────
+	ROUGHNESS = clamp(base_roughness + damage_mask * damage_roughness_boost, 0.0, 1.0);
+
+	// ── NORMAL — in Damage-Zonen leicht aufgerissen ─────────────────────────
+	// Wir entpacken die Normal-Map (von [0..1] zu [-1..1]), addieren Noise-
+	// Verzerrung in Damage-Zonen, packen wieder ein.
+	// Wichtig: Disturb-Sampling AUCH im Modell-Raum, sonst würde die Verzerrung
+	// die Spiegelsymmetrie wieder einführen.
+	vec3 unpacked_normal = base_normal_map * 2.0 - 1.0;
+
+	vec3 disturb_pos = v_model_pos * damage_noise_scale * 0.15;
 	vec3 disturb_n   = vec3(
-		value_noise(disturb_uv) * 2.0 - 1.0,
-		value_noise(disturb_uv + vec2(13.7, 7.3)) * 2.0 - 1.0,
+		value_noise_3d(disturb_pos) * 2.0 - 1.0,
+		value_noise_3d(disturb_pos + vec3(13.7, 7.3, 21.1)) * 2.0 - 1.0,
 		1.0
 	);
-	disturb_n        = normalize(disturb_n);
+	disturb_n = normalize(disturb_n);
 
-	vec3 final_normal = mix(base_normal, base_normal + disturb_n * damage_normal_disturb, damage_mask);
-	final_normal      = normalize(final_normal);
-	final_normal.xy  *= normal_scale;
+	vec3 final_normal_unpacked = mix(
+		unpacked_normal,
+		unpacked_normal + disturb_n * damage_normal_disturb,
+		damage_mask
+	);
+	final_normal_unpacked = normalize(final_normal_unpacked);
 
-	NORMAL_MAP = final_normal * 0.5 + 0.5;
+	NORMAL_MAP = final_normal_unpacked * 0.5 + 0.5;
+	NORMAL_MAP_DEPTH = normal_scale;
+
+	// ── EMISSION — Original + additiv Heat-Glow (pulsierend) ───────────────
+	// Romulanisches Grün (oder welche Original-Emission auch immer) bleibt
+	// erhalten; Heat-Glow kommt ADDITIV dazu — überschreibt nicht.
+	// heat_mask_pulsed sorgt dafür dass der Glow zeitlich pulsiert.
+	vec3 heat_emission = burn_color_glow * burn_glow_energy * heat_mask_pulsed;
+
+	// Pipe-Glow: nur an Pipe-Stellen IM LOCH leuchtend (Plasma-Konduits).
+	// Multiplikation mit inner_mask sorgt dafür dass die Pipes nur in der
+	// Loch-Tiefe glühen, nicht außerhalb.
+	vec3 pipe_emission = inner_pipe_glow_color * inner_pipe_glow_energy * pipes_pattern * pipes_visibility * inner_mask;
+
+	EMISSION = base_emission + heat_emission + pipe_emission;
+
+	// ── ALPHA (unverändert) ─────────────────────────────────────────────────
+	ALPHA *= base_alpha;
 }

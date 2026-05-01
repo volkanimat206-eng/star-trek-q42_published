@@ -1,4 +1,4 @@
-[gd_resource type="VisualShader" load_steps=41 format=3 uid="uid://bgw4kuftspumc"]
+[gd_resource type="VisualShader" format=3 uid="uid://bgw4kuftspumc"]
 
 [ext_resource type="Texture2D" uid="uid://cjna01d34ggs" path="res://assets/effects/explosion_tut/T_VFX_Noise_44xainv.png" id="1_eudx8"]
 [ext_resource type="Texture2D" uid="uid://ik82rvu6fhs0" path="res://assets/effects/explosion_tut/T_cloudy_noise_211c.png" id="2_tncl2"]
@@ -26,14 +26,14 @@ texture = SubResource("NoiseTexture2D_jl4vn")
 texture_type = 1
 
 [sub_resource type="VisualShaderNodeFrame" id="VisualShaderNodeFrame_526gh"]
-size = Vector2(544, 122)
+size = Vector2(576, 495.00003)
 title = "Dark Base Color"
 tint_color_enabled = true
 tint_color = Color(0.422575, 0.47265625, 0.24371338, 0.75)
 attached_nodes = PackedInt32Array(2, 3)
 
 [sub_resource type="VisualShaderNodeFrame" id="VisualShaderNodeFrame_qu2el"]
-size = Vector2(1004, 962)
+size = Vector2(1036, 1403)
 title = "Emissive Bright Color"
 tint_color_enabled = true
 tint_color = Color(0.8984375, 0.41763306, 0.41763306, 0.75)
@@ -48,7 +48,7 @@ texture = ExtResource("1_eudx8")
 linked_parent_graph_frame = 17
 
 [sub_resource type="VisualShaderNodeFrame" id="VisualShaderNodeFrame_0len8"]
-size = Vector2(644, 402)
+size = Vector2(676, 678)
 title = "Cloud Dissolver"
 attached_nodes = PackedInt32Array(14, 15, 18)
 
@@ -171,145 +171,6 @@ operator = 2
 input_name = "time"
 
 [resource]
-code = "shader_type spatial;
-render_mode blend_add, depth_draw_opaque, depth_test_default, cull_back, diffuse_lambert, specular_schlick_ggx;
-
-uniform vec2 Cloud_Speed;
-uniform sampler2D tex_vtx_5 : source_color;
-uniform float Cloud_Intensity : hint_range(0.0, 2.0);
-uniform sampler2D tex_frg_2;
-uniform sampler2D tex_frg_3 : source_color;
-uniform sampler2D tex_frg_14;
-uniform sampler2D depth_tex_frg_21 : hint_depth_texture;
-uniform vec4 Explosion_color : source_color = vec4(0.818695, 0.303532, 0.000000, 1.000000);
-uniform sampler2D tex_frg_11 : source_color;
-
-
-
-void vertex() {
-// Input:2
-	vec3 n_out2p0 = VERTEX;
-
-
-// Input:3
-	vec3 n_out3p0 = NORMAL;
-
-
-// Input:9
-	float n_out9p0 = TIME;
-
-
-// Vector2Parameter:12
-	vec2 n_out12p0 = Cloud_Speed;
-
-
-// VectorOp:10
-	vec2 n_out10p0 = vec2(n_out9p0) * n_out12p0;
-
-
-// UVFunc:8
-	vec2 n_in8p1 = vec2(1.00000, 1.00000);
-	vec2 n_out8p0 = n_out10p0 * n_in8p1 + UV;
-
-
-// Texture2D:5
-	vec4 n_out5p0 = texture(tex_vtx_5, n_out8p0);
-	float n_out5p1 = n_out5p0.r;
-
-
-// FloatParameter:11
-	float n_out11p0 = Cloud_Intensity;
-
-
-// FloatOp:7
-	float n_out7p0 = n_out5p1 * n_out11p0;
-
-
-// VectorOp:6
-	vec3 n_out6p0 = n_out3p0 * vec3(n_out7p0);
-
-
-// VectorOp:4
-	vec3 n_out4p0 = n_out2p0 + n_out6p0;
-
-
-// Output:0
-	VERTEX = n_out4p0;
-
-
-}
-
-void fragment() {
-// Texture2D:2
-	vec4 n_out2p0 = texture(tex_frg_2, UV);
-	float n_out2p1 = n_out2p0.r;
-
-
-// Texture2D:3
-	vec4 n_out3p0 = texture(tex_frg_3, vec2(n_out2p1));
-
-
-// Texture2D:14
-	vec4 n_out14p0 = texture(tex_frg_14, UV);
-	float n_out14p1 = n_out14p0.r;
-
-
-// SmoothStep:15
-	float n_in15p0 = 0.00000;
-	float n_in15p1 = 1.00000;
-	float n_out15p0 = smoothstep(n_in15p0, n_in15p1, n_out14p1);
-
-
-	float n_out21p0;
-// ProximityFade:21
-	float n_in21p0 = 3.00000;
-	{
-		float __depth_tex = texture(depth_tex_frg_21, SCREEN_UV).r;
-		vec4 __depth_world_pos = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, __depth_tex, 1.0);
-		__depth_world_pos.xyz /= __depth_world_pos.w;
-		n_out21p0 = clamp(1.0 - smoothstep(__depth_world_pos.z + n_in21p0, __depth_world_pos.z, VERTEX.z), 0.0, 1.0);
-	}
-
-
-// FloatOp:20
-	float n_out20p0 = n_out15p0 * n_out21p0;
-
-
-// ColorParameter:4
-	vec4 n_out4p0 = Explosion_color;
-
-
-// FloatConstant:6
-	float n_out6p0 = 20.000000;
-
-
-// VectorOp:5
-	vec3 n_out5p0 = vec3(n_out4p0.xyz) * vec3(n_out6p0);
-
-
-// Texture2D:11
-	vec4 n_out11p0 = texture(tex_frg_11, UV);
-	float n_out11p1 = n_out11p0.r;
-
-
-// SmoothStep:9
-	float n_in9p0 = 0.00000;
-	float n_in9p1 = 1.00000;
-	float n_out9p0 = smoothstep(n_in9p0, n_in9p1, n_out11p1);
-
-
-// VectorOp:8
-	vec3 n_out8p0 = n_out5p0 * vec3(n_out9p0);
-
-
-// Output:0
-	ALBEDO = vec3(n_out3p0.xyz);
-	ALPHA = n_out20p0;
-	EMISSION = n_out8p0;
-
-
-}
-"
 modes/blend = 1
 nodes/vertex/0/position = Vector2(900, 100)
 nodes/vertex/2/node = SubResource("VisualShaderNodeInput_o8tw3")
