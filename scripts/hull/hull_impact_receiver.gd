@@ -43,6 +43,15 @@ class_name HullImpactReceiver
 @export_group("Performance")
 @export var max_decals: int = 20
 
+@export_group("Decal VFX")
+## Verfügbare Partikel-Effekte (Funken, kleine Flammen, Rauch, Embers)
+@export var vfx_scenes: Array[PackedScene] = []
+
+@export_subgroup("VFX Settings")
+@export_range(0.0, 1.0) var vfx_spawn_chance_base: float = 0.35     # Basis-Chance
+@export_range(0.0, 1.0) var vfx_spawn_chance_max: float = 0.85      # bei 100% Schaden
+@export var vfx_max_per_decal: int = 2
+
 @export_group("Spawn Behavior")
 ## Sekunden zwischen Spawn-Versuchen bei MINIMALEM Schaden (1%).
 @export var slow_spawn_interval: float = 4.0
@@ -243,20 +252,20 @@ func _spawn_damage_decal() -> void:
 	var pos: Vector3 = hit["position"]
 	var normal: Vector3 = hit["normal"]
 
-	# ── Permanent-Modus: Limit erreicht? → nichts mehr spawnen ─────────────
+	# Permanent-Modus: Limit erreicht → nichts mehr spawnen
 	if decals_permanent and _active_decals.size() >= max_decals:
 		if debug_spawn:
 			print("[HIR] Permanent-Modus: Max Decals (%d) erreicht → kein neuer Spawn" % max_decals)
 		return
 
-	# ── FIFO nur im temporären Modus ───────────────────────────────────────
+	# FIFO nur im temporären Modus
 	if not decals_permanent:
 		if _active_decals.size() >= max_decals:
 			var oldest: Decal = _active_decals.pop_front()
 			if is_instance_valid(oldest):
 				oldest.queue_free()
 
-	# ── Zufällige Decal-Szene auswählen (sicher) ───────────────────────────
+	# ── Zufällige Decal-Szene auswählen ─────────────────────────────────────
 	if damage_decal_scenes.is_empty():
 		push_warning("[HIR] Keine damage_decal_scenes zugewiesen!")
 		return
@@ -275,20 +284,20 @@ func _spawn_damage_decal() -> void:
 
 	# ── Positionierung & Sichtbarkeit ─────────────────────────────────────
 	var offset_distance := 0.65
-	
 	decal.global_position = pos + normal * offset_distance
 	decal.global_basis = _basis_from_normal(normal)
 
-	# Größe
 	var size_factor: float = lerp(min_decal_size, max_decal_size, damage_level)
 	decal.size = Vector3(size_factor, decal_thickness, size_factor)
 
-	# Sichtbarkeits-Optimierungen
 	decal.sorting_offset = 2.0
 	decal.cull_mask = 1
 	decal.distance_fade_enabled = false
 	decal.albedo_mix = 1.0
 	decal.modulate = Color(1.25, 1.12, 0.95, 1.0)
+
+	# ── VFX spawnen ───────────────────────────────────────────────────────
+	_spawn_decal_vfx(decal, damage_level)
 
 	# ── Lifetime Handling ─────────────────────────────────────────────────
 	if decal.has_method("initialize"):
@@ -304,7 +313,40 @@ func _spawn_damage_decal() -> void:
 	if debug_spawn:
 		var mode = "PERMANENT" if decals_permanent else "temporary"
 		print("[HIR] %s Decal Spawn | Type=%s | size=%.1f" % [mode, chosen_scene.resource_path.get_file(), size_factor])
-			
+		
+		
+
+func _spawn_decal_vfx(decal: Decal, damage_level: float) -> void:
+	if vfx_scenes.is_empty() or not is_instance_valid(decal):
+		return
+
+	var spawn_chance: float = lerp(vfx_spawn_chance_base, vfx_spawn_chance_max, damage_level)
+	if randf() > spawn_chance:
+		return
+
+	var num_effects: int = 1
+	if damage_level > 0.65:
+		num_effects = randi_range(1, min(vfx_max_per_decal, 2))
+
+	for i in range(num_effects):
+		var vfx_scene: PackedScene = vfx_scenes[randi() % vfx_scenes.size()]
+		var vfx_instance: Node3D = vfx_scene.instantiate()
+
+		var anchor: Node3D = Node3D.new()
+		anchor.name = "VFX_Anchor"
+		decal.add_child(anchor)
+
+		anchor.position = Vector3(
+			randf_range(-0.4, 0.4),
+			randf_range(0.05, 0.7),
+			randf_range(-0.4, 0.4)
+		)
+
+		var scale_factor: float = lerp(0.8, 1.6, damage_level)
+		anchor.scale = Vector3.ONE * scale_factor
+
+		anchor.add_child(vfx_instance)
+
 # ─────────────────────────────────────────────────────────────────────────────
 # CORE: RANDOM SURFACE SAMPLING
 # ─────────────────────────────────────────────────────────────────────────────

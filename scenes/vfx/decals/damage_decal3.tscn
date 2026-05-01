@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://i3ehpv2bp11j"]
+
+[ext_resource type="Script" uid="uid://cv8ssjphhqg23" path="res://scripts/vfx/damage_decal.gd" id="3_fw37a"]
+
+[node name="DamageDecal" type="Decal" unique_id=531655209]
+size = Vector3(2, 1, 2)
+emission_energy = 0.0
+upper_fade = 0.7386847
+lower_fade = 0.27037525
+distance_fade_begin = 80.0
+distance_fade_length = 20.0
+script = ExtResource("3_fw37a")
