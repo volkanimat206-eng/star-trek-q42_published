@@ -34,7 +34,7 @@ class_name HullDamageVisualizer
 ## Maximaler damage_amount-Wert, der je auf den Shader gesetzt wird.
 ## Bei voller Hüllen-Zerstörung ist das der "Maximum-Look".
 ## Empfehlung: 0.65 — höher wirkt visuell überfrachtet (zu großflächig).
-@export_range(0.0, 1.0, 0.01) var damage_visual_cap: float = 0.65
+@export_range(0.0, 1.0, 0.01) var damage_visual_cap: float = 0.6
 
 ## Beschleunigungs-Exponent der Damage-Kurve.
 ##   1.0 = linear (HP-Verlust direkt proportional zum visuellen Schaden)
