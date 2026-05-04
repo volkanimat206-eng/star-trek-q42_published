@@ -11,6 +11,7 @@ fire_duration = 1.0
 fade_out_time = 0.2
 trail_spawn_interval = 0.1
 trail_fade_out_time = 0.05
+beam_color = Color(0.9514076, 0.50318396, 0.050708726, 1)
 beam_core_width = 10.0
 beam_glow_width = 30.0
 hull_layer = 1

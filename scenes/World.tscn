@@ -6,7 +6,7 @@
 [ext_resource type="Shader" uid="uid://by5evp7b84d2d" path="res://shaders/space_enviroment.gdshader" id="1_nrtoj"]
 [ext_resource type="Script" uid="uid://1l6a001obdvi" path="res://scripts/ships/player_controller.gd" id="3_7g83o"]
 [ext_resource type="PackedScene" uid="uid://bh1op26b8o831" path="res://scenes/ui/debug_overlay.tscn" id="4_d1c63"]
-[ext_resource type="Resource" uid="uid://mc742s2iprng" path="res://data/ships/shipdata_sovereign.tres" id="6_h1bdy"]
+[ext_resource type="Resource" uid="uid://cx67tw603fwsf" path="res://data/ships/shipdata_galaxy.tres" id="6_h1bdy"]
 [ext_resource type="PackedScene" uid="uid://dn5amvigmvgvf" path="res://scenes/ui/parallax.tscn" id="6_nrtoj"]
 [ext_resource type="Script" uid="uid://o1ayuafep8yd" path="res://scripts/ships/input_component.gd" id="6_ygioq"]
 [ext_resource type="PackedScene" uid="uid://j3ukrq2w1n7y" path="res://scenes/ui/debug_control_panel.tscn" id="11_7c4bj"]

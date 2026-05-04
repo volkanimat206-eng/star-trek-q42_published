@@ -80,7 +80,7 @@ class_name HullDamageVisualizer
 # INTERN
 # ─────────────────────────────────────────────────────────────────────────────
 var _ship_ctrl:        Node           = null
-var _hull_material:    ShaderMaterial = null
+var _hull_materials: Array[ShaderMaterial] = []
 var _accum_time:       float          = 0.0
 var _last_damage_log:  float          = -1.0   # Drossel für Debug-Logs
 
@@ -88,23 +88,33 @@ var _last_damage_log:  float          = -1.0   # Drossel für Debug-Logs
 # ─────────────────────────────────────────────────────────────────────────────
 # READY
 # ─────────────────────────────────────────────────────────────────────────────
+
+
 func _ready() -> void:
 	_resolve_ship_controller()
 	_resolve_and_clone_material()
 
 	if debug_visualizer:
-		print("[HDV|%s] ready | ship_ctrl=%s | material=%s" % [
+		# Wir prüfen, ob das Array nicht leer ist
+		var has_mat = _hull_materials.size() > 0
+		print("[HDV|%s] ready | ship_ctrl=%s | materials_found=%d" % [
 			name,
 			_ship_ctrl.name if _ship_ctrl else "—",
-			"✓ ShaderMaterial geklont" if _hull_material else "✗ FEHLT"
+			_hull_materials.size()
 		])
 
-
 func _process(delta: float) -> void:
-	if not _hull_material or not _ship_ctrl:
+	# Prüfung auf das Array statt auf die Einzelvariable
+	if _hull_materials.is_empty() or not _ship_ctrl:
 		return
 
-	# Optional gedrosselter Update
+	# Optional: Wir prüfen den Wert der ersten Oberfläche für das Log
+	var current_dmg = _hull_materials[0].get_shader_parameter("damage_amount")
+	var integrity = _ship_ctrl.get_hull_integrity()
+	
+	if current_dmg > 0.1 and integrity > 0.99:
+		print("[HDV-ALERT|%s] FEHLER: Damage ist %.2f trotz 100%% HP!" % [name, current_dmg])
+
 	if update_interval > 0.0:
 		_accum_time += delta
 		if _accum_time < update_interval:
@@ -148,21 +158,49 @@ func _resolve_ship_controller() -> void:
 ## Wir nutzen `set_surface_override_material()` statt das Mesh-Material direkt
 ## zu ändern; sonst würde die Änderung in der Mesh-Resource landen und ALLE
 ## Schiffe mit demselben Mesh wären betroffen.
+#
+#func _resolve_and_clone_material() -> void:
+	#var src_mat: Material = get_active_material(0)
+	#if not src_mat:
+		#push_warning("[HDV|%s] Surface 0 hat kein Material — Visualizer inaktiv." % name)
+		#return
+#
+	#if not (src_mat is ShaderMaterial):
+		#push_warning("[HDV|%s] Surface-0-Material ist KEIN ShaderMaterial (sondern %s) — Damage-Shader vermutlich nicht zugewiesen." % [
+			#name, src_mat.get_class()])
+		#return
+#
+	## Duplizieren → eigene Instanz pro Schiff
+	#var cloned := (src_mat as ShaderMaterial).duplicate() as ShaderMaterial
+	#set_surface_override_material(0, cloned)
+	#_hull_material = cloned
+#
+	## damage_amount IMMER auf 0 forcen nach dem Klonen.
+	## Verhindert dass ein im Inspector gespeicherter Testwert (z.B. 0.6)
+	## beim Spawn sichtbar ist — passiert weil .duplicate() den Resource-
+	## Zustand 1:1 kopiert, inklusive Test-Werten.
+	#cloned.set_shader_parameter("damage_amount", 0.0)
+
 func _resolve_and_clone_material() -> void:
-	var src_mat: Material = get_active_material(0)
-	if not src_mat:
-		push_warning("[HDV|%s] Surface 0 hat kein Material — Visualizer inaktiv." % name)
-		return
+	_hull_materials.clear()
+	
+	# Wir loopen durch ALLE Oberflächen des Meshes
+	var surface_count = get_surface_override_material_count()
+	if surface_count == 0:
+		# Falls es ein MeshInstance3D ist, nutzen wir die Mesh-Daten
+		surface_count = mesh.get_surface_count()
 
-	if not (src_mat is ShaderMaterial):
-		push_warning("[HDV|%s] Surface-0-Material ist KEIN ShaderMaterial (sondern %s) — Damage-Shader vermutlich nicht zugewiesen." % [
-			name, src_mat.get_class()])
-		return
-
-	# Duplizieren → eigene Instanz pro Schiff
-	var cloned := (src_mat as ShaderMaterial).duplicate() as ShaderMaterial
-	set_surface_override_material(0, cloned)
-	_hull_material = cloned
+	for i in range(surface_count):
+		var src_mat = get_active_material(i)
+		if src_mat is ShaderMaterial:
+			# Wir klonen für jede Oberfläche einzeln
+			var cloned = src_mat.duplicate() as ShaderMaterial
+			set_surface_override_material(i, cloned)
+			_hull_materials.append(cloned)
+			
+			# Initialer Reset für diese Oberfläche
+			cloned.set_shader_parameter("damage_amount", 0.0)
+			print("[HDV-DEBUG|%s] Surface %d resettet." % [name, i])
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -180,35 +218,37 @@ func _resolve_and_clone_material() -> void:
 ##   75 % HP-Verlust → 0.32
 ##   90 % HP-Verlust → 0.50
 ##  100 % HP-Verlust → 0.65 (Maximum)
+
 func _update_shader_parameters() -> void:
+	# 1. Berechnung der Werte (einmalig für alle Oberflächen)
 	var integrity: float = float(_ship_ctrl.get_hull_integrity())
 	var hp_loss:   float = clamp(1.0 - integrity, 0.0, 1.0)
 
-	# Beschleunigende Kurve via pow()
+	# Deine bestehende Logik für die Schadenskurve
 	var damage_curve: float = pow(hp_loss, damage_curve_exponent)
 	var damage_amt:   float = damage_curve * damage_visual_cap
 
-	_hull_material.set_shader_parameter("damage_amount", damage_amt)
+	# 2. Werte auf ALLE Materialien anwenden
+	for mat in _hull_materials:
+		mat.set_shader_parameter("damage_amount", damage_amt)
 
-	# Dynamische Pulse-Skalierung (linear gemappt von Schaden 0..cap)
-	if enable_dynamic_pulse:
-		# Normalisiere damage_amt zurück auf 0..1, da damage_visual_cap
-		# der maximale Wert ist (sonst ginge der Pulse nie auf max-Werte).
-		var pulse_norm: float = damage_amt / max(damage_visual_cap, 0.001)
+		if enable_dynamic_pulse:
+			var pulse_norm: float = damage_amt / max(damage_visual_cap, 0.001)
 
-		var p_speed:     float = lerp(pulse_speed_min,     pulse_speed_max,     pulse_norm)
-		var p_flicker:   float = lerp(pulse_flicker_min,   pulse_flicker_max,   pulse_norm)
-		var p_amplitude: float = lerp(pulse_amplitude_min, pulse_amplitude_max, pulse_norm)
+			var p_speed:     float = lerp(pulse_speed_min,     pulse_speed_max,     pulse_norm)
+			var p_flicker:   float = lerp(pulse_flicker_min,   pulse_flicker_max,   pulse_norm)
+			var p_amplitude: float = lerp(pulse_amplitude_min, pulse_amplitude_max, pulse_norm)
 
-		_hull_material.set_shader_parameter("pulse_speed_hz",       p_speed)
-		_hull_material.set_shader_parameter("pulse_flicker_amount", p_flicker)
-		_hull_material.set_shader_parameter("pulse_amplitude",      p_amplitude)
+			mat.set_shader_parameter("pulse_speed_hz",       p_speed)
+			mat.set_shader_parameter("pulse_flicker_amount", p_flicker)
+			mat.set_shader_parameter("pulse_amplitude",      p_amplitude)
 
-	# Debug-Logging mit Drossel (nur bei spürbaren Sprüngen)
+	# 3. Debug-Logging (nur einmal pro Update-Zyklus)
 	if debug_visualizer and abs(damage_amt - _last_damage_log) > 0.05:
-		print("[HDV|%s] hp_loss=%.2f → damage_amount=%.2f" % [name, hp_loss, damage_amt])
+		print("[HDV|%s] hp_loss=%.2f → damage_amount=%.2f (Surfaces: %d)" % [
+			name, hp_loss, damage_amt, _hull_materials.size()
+		])
 		_last_damage_log = damage_amt
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # OPTIONAL PUBLIC API
@@ -217,7 +257,8 @@ func _update_shader_parameters() -> void:
 ## Debug-Panels oder manuelle Tests, ohne auf den nächsten Frame zu warten.
 func force_update() -> void:
 	_accum_time = 999.0  # ensures _update_shader_parameters runs next frame
-	if _hull_material and _ship_ctrl:
+	# Prüfung auf das Array statt Einzelvariable
+	if not _hull_materials.is_empty() and _ship_ctrl:
 		_update_shader_parameters()
 
 
@@ -225,14 +266,19 @@ func force_update() -> void:
 ## Für Debug-Tools nützlich, die einen bestimmten Schadens-Look testen wollen
 ## ohne das Schiff tatsächlich zu beschießen.
 func set_damage_amount_override(value: float) -> void:
-	if not _hull_material:
+	if _hull_materials.is_empty():
 		return
-	_hull_material.set_shader_parameter("damage_amount", clamp(value, 0.0, damage_visual_cap))
+	
+	# Wir setzen den Wert für jede einzelne Oberfläche
+	for mat in _hull_materials:
+		mat.set_shader_parameter("damage_amount", clamp(value, 0.0, damage_visual_cap))
 
 
 ## Setzt den Schaden komplett zurück (Reparatur). Macht aus dem Schiff
 ## visuell wieder eine heile Hülle, unabhängig vom HP-Wert.
 func reset_visual() -> void:
-	if not _hull_material:
+	if _hull_materials.is_empty():
 		return
-	_hull_material.set_shader_parameter("damage_amount", 0.0)
+		
+	for mat in _hull_materials:
+		mat.set_shader_parameter("damage_amount", 0.0)

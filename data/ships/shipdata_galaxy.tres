@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="ShipData" format=3 uid="uid://cx67tw603fwsf"]
+
+[ext_resource type="Script" uid="uid://bfs0pr5hru0du" path="res://resources/data/ship_data.gd" id="1_qml2o"]
+[ext_resource type="Resource" uid="uid://cxj1fnk6rck4q" path="res://data/weapons/weapondata_phaser_federation_long.tres" id="1_ya1gn"]
+[ext_resource type="Resource" uid="uid://b3o7rd6nga3hv" path="res://resources/cloak_data_galaxy.tres" id="2_ajvs0"]
+[ext_resource type="Resource" uid="uid://donuw2mpvdgbq" path="res://resources/shockwavedata_galaxy.tres" id="2_monl4"]
+[ext_resource type="Resource" uid="uid://b2bygbhomalgh" path="res://resources/cb_federation.tres" id="2_ywyxo"]
+[ext_resource type="Resource" uid="uid://bpyx6ivvnos7h" path="res://data/hulls/hulldata_galaxy.tres" id="3_ajvs0"]
+[ext_resource type="Resource" uid="uid://dfjpup7m6ym7l" path="res://resources/shipstats_galaxy.tres" id="3_f0g0a"]
+[ext_resource type="Resource" uid="uid://c4ejexsxa8lvb" path="res://data/shields/shielddata_galaxy.tres" id="5_0ruxk"]
+[ext_resource type="Resource" uid="uid://cjsweerflmsa4" path="res://data/weapons/weapondata_photon_torpedo.tres" id="8_f3xrf"]
+
+[resource]
+script = ExtResource("1_qml2o")
+ship_name = "Galaxy"
+weapon_target_mask = 35
+stats = ExtResource("3_f0g0a")
+shockwave_data = ExtResource("2_monl4")
+shield = ExtResource("5_0ruxk")
+hull = ExtResource("3_ajvs0")
+combat_behavior = ExtResource("2_ywyxo")
+beam_weapon_data = ExtResource("1_ya1gn")
+torpedo_data = ExtResource("8_f3xrf")
+ship_scene_path = "uid://b7frrp27nugtb"
+cloak_data = ExtResource("2_ajvs0")
+metadata/_custom_type_script = "uid://bfs0pr5hru0du"

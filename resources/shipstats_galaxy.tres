@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="ShipStats" format=3 uid="uid://dfjpup7m6ym7l"]
+
+[ext_resource type="Script" uid="uid://58o82yj1pb0x" path="res://scripts/ships/ship_stats.gd" id="1_6swku"]
+
+[resource]
+script = ExtResource("1_6swku")
+max_speed = 325.0
+acceleration = 70.0
+friction = 50.0
+metadata/_custom_type_script = "uid://58o82yj1pb0x"

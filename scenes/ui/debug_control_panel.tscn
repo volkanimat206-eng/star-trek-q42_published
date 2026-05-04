@@ -6,6 +6,7 @@
 [ext_resource type="Resource" uid="uid://b4sv0jlqsx88l" path="res://data/ships/shipddata_birdofprey.tres" id="4_1nfr7"]
 [ext_resource type="Resource" uid="uid://2wv7algyk0vd" path="res://data/ships/shipdata_warbird.tres" id="5_t24vc"]
 [ext_resource type="Script" uid="uid://dl237a4lvdrku" path="res://scripts/ui/sliders/slider_enviroment_music.gd" id="6_1nfr7"]
+[ext_resource type="Resource" uid="uid://cx67tw603fwsf" path="res://data/ships/shipdata_galaxy.tres" id="6_j20uj"]
 [ext_resource type="PackedScene" uid="uid://cfix7c1145p7n" path="res://scenes/ai/ai_controller.tscn" id="6_t24vc"]
 [ext_resource type="Script" uid="uid://bo2fcga65wkqr" path="res://scripts/ui/sliders/slider_sfx.gd" id="7_t24vc"]
 
@@ -33,7 +34,7 @@ bg_color = Color(0.5529412, 0.84313726, 1, 1)
 [node name="DebugControlPanel" type="CanvasLayer" unique_id=1651575783 node_paths=PackedStringArray("debug_flags_node", "panel", "title_bar", "close_button", "ship_list_container", "spawn_button", "despawn_button", "spawn_count_label", "faction_list_container", "rep_reset_button", "reputation_label", "reputation_list", "reputation_reset_button", "ki_patrol_button", "ki_attack_button", "ki_list_container", "flags_list", "reset_flags_button", "spawn_bar", "spawn_content", "npc_bar", "npc_content", "faction_bar", "faction_content", "reputation_bar", "reputation_content", "sound_bar", "sound_content")]
 layer = 100
 script = ExtResource("1_kvtvj")
-spawn_ship_datas = Array[ExtResource("2_8jptv")]([ExtResource("3_8gwfh"), ExtResource("4_1nfr7"), ExtResource("5_t24vc")])
+spawn_ship_datas = Array[ExtResource("2_8jptv")]([ExtResource("3_8gwfh"), ExtResource("4_1nfr7"), ExtResource("5_t24vc"), ExtResource("6_j20uj")])
 spawn_offset_radius = 200.0
 ai_controller_scene = ExtResource("6_t24vc")
 toggle_key = null

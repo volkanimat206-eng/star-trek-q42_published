@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://bfs0pr5hru0du" path="res://resources/data/ship_data.gd" id="1_1gvea"]
 [ext_resource type="Resource" uid="uid://b6n04wg0u8ed0" path="res://resources/cb_romulan.tres" id="1_tc3tj"]
 [ext_resource type="Resource" uid="uid://b21bcmdemxfrd" path="res://data/weapons/weapondata_disruptor_warbird.tres" id="1_vhxj6"]
+[ext_resource type="Resource" uid="uid://6rl427mgs4q6" path="res://resources/cloak_data_warbird.tres" id="2_rnpkg"]
 [ext_resource type="Resource" uid="uid://c6tnwl2jj7gba" path="res://data/hulls/hulldata_warbird.tres" id="2_tc3tj"]
 [ext_resource type="Resource" uid="uid://c5khhte4n1xop" path="res://data/shields/shielddata_warbird.tres" id="3_io4k8"]
 [ext_resource type="Resource" uid="uid://kf11q0d5ch3g" path="res://resources/shipstats_warbird.tres" id="4_vhxj6"]
@@ -22,4 +23,6 @@ combat_behavior = ExtResource("1_tc3tj")
 beam_weapon_data = ExtResource("1_vhxj6")
 torpedo_data = ExtResource("7_b4gfp")
 ship_scene_path = "uid://bbp54awc821bn"
+can_cloak = true
+cloak_data = ExtResource("2_rnpkg")
 metadata/_custom_type_script = "uid://bfs0pr5hru0du"

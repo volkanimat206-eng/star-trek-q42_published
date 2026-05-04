@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="ShockwaveData" format=3 uid="uid://donuw2mpvdgbq"]
+
+[ext_resource type="Script" uid="uid://bouhgwo0on3nc" path="res://resources/data/shockwave_data.gd" id="1_j0tnt"]
+
+[resource]
+script = ExtResource("1_j0tnt")
+metadata/_custom_type_script = "uid://bouhgwo0on3nc"

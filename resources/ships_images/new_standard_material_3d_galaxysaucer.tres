@@ -1,0 +1,22 @@
+[gd_resource type="StandardMaterial3D" format=3 uid="uid://djlrd4yccqbkj"]
+
+[ext_resource type="Texture2D" uid="uid://co14qu7f2c5w6" path="res://assets/ships/federation_galaxy_class/GalaxyClass_08_-_Default_diffuse.png" id="1_k6t01"]
+[ext_resource type="Texture2D" uid="uid://drmptudb282bw" path="res://assets/ships/federation_galaxy_class/GalaxyClass_08_-_Default_emissive.png" id="2_58q22"]
+[ext_resource type="Texture2D" uid="uid://dl1s5djitym7b" path="res://assets/ships/federation_galaxy_class/GalaxyClass_08_-_Default_specularGlossiness_4.png" id="3_04max"]
+[ext_resource type="Texture2D" uid="uid://cipi7pn7ru8v4" path="res://assets/ships/federation_galaxy_class/GalaxyClass_08_-_Default_normal.png" id="4_0b4uf"]
+
+[resource]
+resource_name = "08_-_Default"
+cull_mode = 2
+albedo_texture = ExtResource("1_k6t01")
+metallic_texture = ExtResource("3_04max")
+metallic_texture_channel = 2
+roughness_texture = ExtResource("3_04max")
+roughness_texture_channel = 1
+emission_enabled = true
+emission = Color(1, 1, 1, 1)
+emission_energy_multiplier = 1.5
+emission_operator = 1
+emission_texture = ExtResource("2_58q22")
+normal_enabled = true
+normal_texture = ExtResource("4_0b4uf")

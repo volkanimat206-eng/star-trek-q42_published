@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="CloakData" format=3 uid="uid://6rl427mgs4q6"]
+
+[ext_resource type="Script" uid="uid://dq5py42u2ije5" path="res://resources/data/cloak_data.gd" id="1_eexcl"]
+
+[resource]
+script = ExtResource("1_eexcl")
+metadata/_custom_type_script = "uid://dq5py42u2ije5"
