@@ -1,75 +1,48 @@
 # res://scripts/hull_damage_visualizer.gd
 #
-# Aufgabe (Single Responsibility):
-#   Liest jeden Frame den Hüllen-Schaden vom ShipController und setzt die
-#   passenden Shader-Parameter am Hüllen-Material des Schiffs.
-#
-# Was es NICHT macht (bewusst):
-#   • Spawnt KEINE Decals  → das macht HullImpactReceiver
-#   • Spawnt KEINE Partikel → kommt in Phase 2 (separates Skript)
-#   • Berührt KEINE anderen Schiff-Systeme
-#
-# Anhängen an: den MeshInstance3D mit dem Damage-Shader-Material.
-# Bei Mehrfach-Surfaces (z.B. Hülle + Fenster): nur einmal an den Knoten
-# hängen — das Skript adressiert intern Surface 0 (= Hülle).
-#
-# Architektur-Notiz: das Skript dupliziert das Material EINMAL in _ready().
-# Damit hat jedes Schiff eine eigene Material-Instanz und Schaden auf Schiff A
-# beeinflusst nicht Schiff B (klassische "Material Sharing"-Falle bei
-# instanzierten .tscn-Szenen).
+# ARCHITEKTUR:
+#   Hängt am MeshModel-Knoten. Findet rekursiv alle MeshInstance3D-Kinder
+#   mit Damage-Shader und klont ihre Materials.
+#   HP-Polling via _process(), Todessequenz via AnimationPlayer.
 
-extends MeshInstance3D
+@tool
+extends Node
 class_name HullDamageVisualizer
 
 # ─────────────────────────────────────────────────────────────────────────────
 # EXPORTS
 # ─────────────────────────────────────────────────────────────────────────────
+@export_group("Damage Configuration")
+@export var damage_parameters: DamageParameters
+
 @export_group("Ship Reference")
-## ShipController-Referenz für HP-Polling. Wenn leer, wird automatisch im
-## Eltern-Baum gesucht (geht durch Vorfahren bis ein "ShipController"-class_name
-## gefunden wird oder ein Knoten mit get_hull_integrity()-Methode).
 @export var ship_controller_path: NodePath
 
-@export_group("Damage Mapping")
-## Maximaler damage_amount-Wert, der je auf den Shader gesetzt wird.
-## Bei voller Hüllen-Zerstörung ist das der "Maximum-Look".
-## Empfehlung: 0.65 — höher wirkt visuell überfrachtet (zu großflächig).
-@export_range(0.0, 1.0, 0.01) var damage_visual_cap: float = 0.6
+@export_group("Mesh Discovery")
+@export var damage_shader: Shader = null
 
-## Beschleunigungs-Exponent der Damage-Kurve.
-##   1.0 = linear (HP-Verlust direkt proportional zum visuellen Schaden)
-##   2.5 = beschleunigend (lange wenig sichtbar, dann schnell schlimmer) [DEFAULT]
-##   4.0 = stark beschleunigend (fast nichts bis 80%, dann brutal)
-## Höhere Werte = dramatischere Endphase, weniger frühe Schäden.
-@export_range(1.0, 6.0, 0.1) var damage_curve_exponent: float = 2.5
+@export_group("Damage Mapping")
+@export_range(0.5, 1.0, 0.01) var damage_visual_cap: float = 0.65
+@export_range(0.0, 6.0, 0.1)  var damage_curve_exponent: float = 2.5
 
 @export_group("Dynamic Pulse Scaling")
-## Wenn aktiv: Pulse-Geschwindigkeit, Flicker und Amplitude wachsen mit dem
-## Schaden. Bei wenig Schaden ruhig brennend, bei kritisch nervös zuckend.
-## Wenn aus: die Pulse-Werte aus dem Inspector des ShaderMaterials werden
-## nicht überschrieben (statisch).
 @export var enable_dynamic_pulse: bool = true
+@export_range(0.0, 10.0, 0.1)  var pulse_speed_min: float = 0.8
+@export_range(0.0, 10.0, 0.1)  var pulse_speed_max: float = 3.5
+@export_range(0.0, 1.0,  0.01) var pulse_flicker_min: float = 0.0
+@export_range(0.0, 1.0,  0.01) var pulse_flicker_max: float = 0.6
+@export_range(0.0, 1.0,  0.01) var pulse_amplitude_min: float = 0.3
+@export_range(0.0, 1.0,  0.01) var pulse_amplitude_max: float = 0.7
 
-## Pulse-Geschwindigkeit bei minimalem Schaden (Hz).
-@export_range(0.0, 10.0, 0.1) var pulse_speed_min: float = 0.8
-## Pulse-Geschwindigkeit bei maximalem Schaden (Hz).
-@export_range(0.0, 10.0, 0.1) var pulse_speed_max: float = 3.5
-
-## Flicker-Stärke bei minimalem Schaden (0..1).
-@export_range(0.0, 1.0, 0.01) var pulse_flicker_min: float = 0.0
-## Flicker-Stärke bei maximalem Schaden.
-@export_range(0.0, 1.0, 0.01) var pulse_flicker_max: float = 0.6
-
-## Pulse-Amplitude bei minimalem Schaden.
-@export_range(0.0, 1.0, 0.01) var pulse_amplitude_min: float = 0.3
-## Pulse-Amplitude bei maximalem Schaden.
-@export_range(0.0, 1.0, 0.01) var pulse_amplitude_max: float = 0.7
+@export_group("Death Sequence")
+## Animation-Resource (.tres) für die Todessequenz. Pro Schiffsklasse eine eigene zuweisen.
+@export var death_animation: Animation = null
+## Pfad zum AnimationPlayer (relativ zu diesem Node, also Geschwister unter MeshModel).
+@export var animation_player_path: NodePath = NodePath("../AnimationPlayer")
+## Name unter dem die Animation im AnimationPlayer registriert wird.
+@export var death_animation_name: String = "death_sequence"
 
 @export_group("Performance")
-## Update-Intervall in Sekunden. Default 0 = jeden Frame.
-## Höhere Werte (z.B. 0.1) sparen ggf. Performance bei vielen Schiffen,
-## machen Pulse-Übergänge aber etwas hakeliger. 0.05 ist ein guter Kompromiss
-## bei sehr vielen Schiffen gleichzeitig.
 @export_range(0.0, 0.5, 0.01) var update_interval: float = 0.0
 
 @export_group("Debug")
@@ -77,43 +50,87 @@ class_name HullDamageVisualizer
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# SIGNAL
+# ─────────────────────────────────────────────────────────────────────────────
+signal death_sequence_finished
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # INTERN
 # ─────────────────────────────────────────────────────────────────────────────
-var _ship_ctrl:        Node           = null
-var _hull_materials: Array[ShaderMaterial] = []
-var _accum_time:       float          = 0.0
-var _last_damage_log:  float          = -1.0   # Drossel für Debug-Logs
+var _ship_ctrl: Node = null
+var _anim_player: AnimationPlayer = null
+var _death_active: bool = false
+
+class _MaterialEntry:
+	var mesh_instance: MeshInstance3D
+	var surface_index: int
+	var material: ShaderMaterial
+
+var _entries: Array[_MaterialEntry] = []
+var _accum_time: float = 0.0
+var _last_damage_log: float = -1.0
+var _initialized: bool = false
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # READY
 # ─────────────────────────────────────────────────────────────────────────────
-
-
 func _ready() -> void:
+	if debug_visualizer:
+		print("[HDV|%s] _ready()" % name)
 	_resolve_ship_controller()
-	_resolve_and_clone_material()
+	_resolve_animation_player()
+	call_deferred("_initialize")
+
+
+func _initialize() -> void:
+	if _initialized:
+		return
+	_initialized = true
+
+	_discover_meshes_recursive(self)
+	_register_death_animation()
 
 	if debug_visualizer:
-		# Wir prüfen, ob das Array nicht leer ist
-		var has_mat = _hull_materials.size() > 0
-		print("[HDV|%s] ready | ship_ctrl=%s | materials_found=%d" % [
-			name,
-			_ship_ctrl.name if _ship_ctrl else "—",
-			_hull_materials.size()
+		var sname: String = _ship_ctrl.name if _ship_ctrl else "—"
+		print("[HDV|%s] ready | ship='%s' | entries=%d | anim=%s" % [
+			name, sname, _entries.size(),
+			_anim_player.name if _anim_player else "—"
 		])
+		for e in _entries:
+			print("  • '%s' surface_%d → mat_id=%d" % [
+				e.mesh_instance.name, e.surface_index, e.material.get_instance_id()
+			])
 
+	## Signal-Verbindung zum ShipController (falls noch nicht verbunden)
+	#if _ship_ctrl and _ship_ctrl.has_signal("ship_destroyed"):
+		#if not _ship_ctrl.ship_destroyed.is_connected(_on_ship_destroyed):
+			#_ship_ctrl.ship_destroyed.connect(_on_ship_destroyed)
+
+
+func _on_ship_destroyed() -> void:
+	start_death_sequence()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PROCESS
+# ─────────────────────────────────────────────────────────────────────────────
 func _process(delta: float) -> void:
-	# Prüfung auf das Array statt auf die Einzelvariable
-	if _hull_materials.is_empty() or not _ship_ctrl:
+	# Editor-Vorschau
+	if Engine.is_editor_hint():
+		if damage_parameters:
+			if _entries.is_empty():
+				_initialize()
+			_update_shader_parameters()
 		return
 
-	# Optional: Wir prüfen den Wert der ersten Oberfläche für das Log
-	var current_dmg = _hull_materials[0].get_shader_parameter("damage_amount")
-	var integrity = _ship_ctrl.get_hull_integrity()
-	
-	if current_dmg > 0.1 and integrity > 0.99:
-		print("[HDV-ALERT|%s] FEHLER: Damage ist %.2f trotz 100%% HP!" % [name, current_dmg])
+	# Während der Todessequenz übernimmt der AnimationPlayer
+	if _death_active:
+		return
+
+	if _entries.is_empty() or not _ship_ctrl:
+		return
 
 	if update_interval > 0.0:
 		_accum_time += delta
@@ -125,14 +142,8 @@ func _process(delta: float) -> void:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# SHIP-CONTROLLER AUFLÖSUNG
+# AUFLÖSUNGEN
 # ─────────────────────────────────────────────────────────────────────────────
-## Sucht den ShipController in dieser Reihenfolge:
-##   1) Explizit gesetzter ship_controller_path
-##   2) Vorfahren-Suche: gehe Eltern-Baum nach oben, nimm ersten Knoten mit
-##      get_hull_integrity()-Methode
-## Damit das Skript ohne Inspector-Setup funktioniert, solange es irgendwo
-## unter einem ShipController hängt.
 func _resolve_ship_controller() -> void:
 	if not ship_controller_path.is_empty():
 		_ship_ctrl = get_node_or_null(ship_controller_path)
@@ -143,142 +154,277 @@ func _resolve_ship_controller() -> void:
 	while n:
 		if n.has_method("get_hull_integrity"):
 			_ship_ctrl = n
+			if debug_visualizer:
+				print("[HDV|%s] ship_ctrl: '%s'" % [name, n.name])
 			return
 		n = n.get_parent()
 
-	push_warning("[HDV|%s] Kein ShipController mit get_hull_integrity() gefunden → Visualizer inaktiv." % name)
+	push_warning("[HDV|%s] Kein ShipController mit get_hull_integrity() gefunden." % name)
+
+
+func _resolve_animation_player() -> void:
+	if not animation_player_path.is_empty():
+		var node := get_node_or_null(animation_player_path)
+		if node is AnimationPlayer:
+			_anim_player = node as AnimationPlayer
+			if debug_visualizer:
+				print("[HDV|%s] AnimationPlayer: '%s'" % [name, _anim_player.name])
+			return
+
+	# Fallback: Geschwister suchen
+	var parent := get_parent()
+	if parent:
+		for child in parent.get_children():
+			if child is AnimationPlayer:
+				_anim_player = child as AnimationPlayer
+				if debug_visualizer:
+					print("[HDV|%s] AnimationPlayer (fallback): '%s'" % [name, _anim_player.name])
+				return
+
+	push_warning("[HDV|%s] Kein AnimationPlayer gefunden." % name)
+
+
+func _register_death_animation() -> void:
+	if not _anim_player or not death_animation:
+		return
+
+	var lib: AnimationLibrary
+	if _anim_player.has_animation_library(""):
+		lib = _anim_player.get_animation_library("")
+	else:
+		lib = AnimationLibrary.new()
+		_anim_player.add_animation_library("", lib)
+
+	if lib.has_animation(death_animation_name):
+		lib.remove_animation(death_animation_name)
+	lib.add_animation(death_animation_name, death_animation)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# MATERIAL-KLONEN (Anti-Sharing)
+# MESH-DISCOVERY
 # ─────────────────────────────────────────────────────────────────────────────
-## Adressiert Surface 0 und dupliziert das ShaderMaterial. Damit hat jedes
-## Schiff eine eigene Instanz — Schaden an Schiff A färbt Schiff B nicht mit.
-##
-## Wir nutzen `set_surface_override_material()` statt das Mesh-Material direkt
-## zu ändern; sonst würde die Änderung in der Mesh-Resource landen und ALLE
-## Schiffe mit demselben Mesh wären betroffen.
-#
-#func _resolve_and_clone_material() -> void:
-	#var src_mat: Material = get_active_material(0)
-	#if not src_mat:
-		#push_warning("[HDV|%s] Surface 0 hat kein Material — Visualizer inaktiv." % name)
-		#return
-#
-	#if not (src_mat is ShaderMaterial):
-		#push_warning("[HDV|%s] Surface-0-Material ist KEIN ShaderMaterial (sondern %s) — Damage-Shader vermutlich nicht zugewiesen." % [
-			#name, src_mat.get_class()])
-		#return
-#
-	## Duplizieren → eigene Instanz pro Schiff
-	#var cloned := (src_mat as ShaderMaterial).duplicate() as ShaderMaterial
-	#set_surface_override_material(0, cloned)
-	#_hull_material = cloned
-#
-	## damage_amount IMMER auf 0 forcen nach dem Klonen.
-	## Verhindert dass ein im Inspector gespeicherter Testwert (z.B. 0.6)
-	## beim Spawn sichtbar ist — passiert weil .duplicate() den Resource-
-	## Zustand 1:1 kopiert, inklusive Test-Werten.
-	#cloned.set_shader_parameter("damage_amount", 0.0)
+func _discover_meshes_recursive(node: Node) -> void:
+	if node is MeshInstance3D:
+		_process_mesh_instance(node as MeshInstance3D)
+	for child in node.get_children():
+		_discover_meshes_recursive(child)
 
-func _resolve_and_clone_material() -> void:
-	_hull_materials.clear()
-	
-	# Wir loopen durch ALLE Oberflächen des Meshes
-	var surface_count = get_surface_override_material_count()
-	if surface_count == 0:
-		# Falls es ein MeshInstance3D ist, nutzen wir die Mesh-Daten
-		surface_count = mesh.get_surface_count()
 
-	for i in range(surface_count):
-		var src_mat = get_active_material(i)
-		if src_mat is ShaderMaterial:
-			# Wir klonen für jede Oberfläche einzeln
-			var cloned = src_mat.duplicate() as ShaderMaterial
-			set_surface_override_material(i, cloned)
-			_hull_materials.append(cloned)
-			
-			# Initialer Reset für diese Oberfläche
-			cloned.set_shader_parameter("damage_amount", 0.0)
-			print("[HDV-DEBUG|%s] Surface %d resettet." % [name, i])
+func _process_mesh_instance(mi: MeshInstance3D) -> void:
+	if not mi.mesh:
+		return
+
+	for i in range(mi.mesh.get_surface_count()):
+		var src_mat: Material = _get_surface_material_robust(mi, i)
+		if not src_mat or not src_mat is ShaderMaterial:
+			continue
+
+		var sm: ShaderMaterial = src_mat as ShaderMaterial
+
+		if damage_shader and sm.shader != damage_shader:
+			continue
+
+		if not _has_damage_parameter(sm):
+			continue
+
+		var cloned: ShaderMaterial = sm.duplicate() as ShaderMaterial
+		mi.set_surface_override_material(i, cloned)
+		cloned.set_shader_parameter("damage_amount", 0.0)
+
+		var entry := _MaterialEntry.new()
+		entry.mesh_instance = mi
+		entry.surface_index = i
+		entry.material = cloned
+		_entries.append(entry)
+
+		if debug_visualizer:
+			print("[HDV|%s]   ✓ '%s' surface_%d cloned" % [name, mi.name, i])
+
+
+func _get_surface_material_robust(mi: MeshInstance3D, idx: int) -> Material:
+	var m: Material = mi.get_surface_override_material(idx)
+	if m:
+		return m
+	if mi.mesh and idx < mi.mesh.get_surface_count():
+		m = mi.mesh.surface_get_material(idx)
+		if m:
+			return m
+	return mi.material_override
+
+
+func _has_damage_parameter(sm: ShaderMaterial) -> bool:
+	if not sm.shader:
+		return false
+	for u in sm.shader.get_shader_uniform_list():
+		if u.name == "damage_amount":
+			return true
+	return false
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CORE-LOGIK: HP → SHADER-PARAMETER
+# CORE-LOGIK: HP + RESOURCE → SHADER
 # ─────────────────────────────────────────────────────────────────────────────
-## Berechnet den damage_amount aus der Hüllen-Quote und setzt alle Shader-
-## Parameter. Wird jeden Frame (oder per Intervall) aufgerufen.
-##
-## Mapping-Kurve: pow(hp_loss, exponent) * cap
-##   hp_loss = 1.0 - get_hull_integrity()
-##
-## Kurven-Beispiele bei exponent = 2.5 und cap = 0.65:
-##   30 % HP-Verlust → 0.03 (kaum sichtbar)
-##   50 % HP-Verlust → 0.09
-##   75 % HP-Verlust → 0.32
-##   90 % HP-Verlust → 0.50
-##  100 % HP-Verlust → 0.65 (Maximum)
-
 func _update_shader_parameters() -> void:
-	# 1. Berechnung der Werte (einmalig für alle Oberflächen)
-	var integrity: float = float(_ship_ctrl.get_hull_integrity())
-	var hp_loss:   float = clamp(1.0 - integrity, 0.0, 1.0)
+	if _death_active:
+		return
 
-	# Deine bestehende Logik für die Schadenskurve
-	var damage_curve: float = pow(hp_loss, damage_curve_exponent)
-	var damage_amt:   float = damage_curve * damage_visual_cap
+	if not damage_parameters:
+		return
 
-	# 2. Werte auf ALLE Materialien anwenden
-	for mat in _hull_materials:
-		mat.set_shader_parameter("damage_amount", damage_amt)
+	# 1. Schadenswert aus HP berechnen
+	var final_damage_amount: float = 0.0
+	if Engine.is_editor_hint():
+		final_damage_amount = damage_parameters.damage_amount
+	else:
+		if _ship_ctrl:
+			var integrity: float = float(_ship_ctrl.get_hull_integrity())
+			#var hp_loss: float   = clamp(0.0 - integrity, 0.0, 1.0)
+			#final_damage_amount  = pow(hp_loss, damage_curve_exponent)
 
-		if enable_dynamic_pulse:
-			var pulse_norm: float = damage_amt / max(damage_visual_cap, 0.001)
+	# 2. Dynamisches Pulse-Scaling
+	var dyn_pulse_speed: float = damage_parameters.pulse_speed_hz
+	var dyn_flicker: float     = damage_parameters.pulse_flicker_amount
+	var dyn_amplitude: float   = damage_parameters.pulse_amplitude
 
-			var p_speed:     float = lerp(pulse_speed_min,     pulse_speed_max,     pulse_norm)
-			var p_flicker:   float = lerp(pulse_flicker_min,   pulse_flicker_max,   pulse_norm)
-			var p_amplitude: float = lerp(pulse_amplitude_min, pulse_amplitude_max, pulse_norm)
+	if enable_dynamic_pulse:
+		var t: float = clamp(final_damage_amount / max(damage_visual_cap, 0.001), 0.0, 1.0)
+		dyn_pulse_speed = lerp(pulse_speed_min, pulse_speed_max, t)
+		dyn_flicker     = lerp(pulse_flicker_min, pulse_flicker_max, t)
+		dyn_amplitude   = lerp(pulse_amplitude_min, pulse_amplitude_max, t)
 
-			mat.set_shader_parameter("pulse_speed_hz",       p_speed)
-			mat.set_shader_parameter("pulse_flicker_amount", p_flicker)
-			mat.set_shader_parameter("pulse_amplitude",      p_amplitude)
+	# 3. Parameter auf alle gefundenen Materialien schreiben
+	for entry in _entries:
+		var mat: ShaderMaterial = entry.material
+		if not is_instance_valid(mat):
+			continue
 
-	# 3. Debug-Logging (nur einmal pro Update-Zyklus)
-	if debug_visualizer and abs(damage_amt - _last_damage_log) > 0.05:
-		print("[HDV|%s] hp_loss=%.2f → damage_amount=%.2f (Surfaces: %d)" % [
-			name, hp_loss, damage_amt, _hull_materials.size()
+		# Core
+		mat.set_shader_parameter("damage_amount",        final_damage_amount)
+		mat.set_shader_parameter("cloak_alpha",          damage_parameters.cloak_alpha)
+		mat.set_shader_parameter("damage_threshold",     damage_parameters.damage_threshold)
+		mat.set_shader_parameter("damage_edge_softness", damage_parameters.damage_edge_softness)
+		mat.set_shader_parameter("damage_noise_scale",   damage_parameters.damage_noise_scale)
+
+		# Burn Colors
+		mat.set_shader_parameter("burn_color_dark",         damage_parameters.burn_color_dark)
+		mat.set_shader_parameter("burn_color_char",         damage_parameters.burn_color_char)
+		mat.set_shader_parameter("burn_color_glow",         damage_parameters.burn_color_glow)
+		mat.set_shader_parameter("burn_color_molten_outer", damage_parameters.burn_color_molten)
+		mat.set_shader_parameter("burn_color_molten_inner", damage_parameters.burn_color_molten_core)
+
+		# Molten & Effects
+		mat.set_shader_parameter("burn_glow_energy",       damage_parameters.burn_glow_energy)
+		mat.set_shader_parameter("burn_molten_energy",     damage_parameters.burn_molten_energy)
+		mat.set_shader_parameter("damage_roughness_boost", damage_parameters.damage_roughness_boost)
+		mat.set_shader_parameter("damage_normal_disturb",  damage_parameters.damage_normal_disturb)
+
+		# Cracks
+		mat.set_shader_parameter("crack_amount",         damage_parameters.crack_amount)
+		mat.set_shader_parameter("crack_scale",          damage_parameters.crack_scale)
+		mat.set_shader_parameter("crack_width",          damage_parameters.crack_width)
+		mat.set_shader_parameter("crack_glow_intensity", damage_parameters.crack_glow_intensity)
+
+		# Phaser-Schneise
+		mat.set_shader_parameter("phaser_amount",        damage_parameters.streak_amount)
+		mat.set_shader_parameter("phaser_direction",     damage_parameters.streak_direction)
+		mat.set_shader_parameter("phaser_length",        damage_parameters.streak_stretch)
+		mat.set_shader_parameter("phaser_width",         damage_parameters.streak_scale * 0.05)
+		mat.set_shader_parameter("phaser_edge_softness", damage_parameters.streak_threshold)
+
+		# Crater Rim
+		mat.set_shader_parameter("rim_width",       damage_parameters.rim_width)
+		mat.set_shader_parameter("rim_glow_energy", damage_parameters.rim_glow_energy)
+
+		# Heat Pulse (dynamisch)
+		mat.set_shader_parameter("pulse_amplitude",      dyn_amplitude)
+		mat.set_shader_parameter("pulse_speed_hz",       dyn_pulse_speed)
+		mat.set_shader_parameter("pulse_async_amount",   damage_parameters.pulse_async_amount)
+		mat.set_shader_parameter("pulse_flicker_amount", dyn_flicker)
+
+		# Inner Hull Pipes
+		mat.set_shader_parameter("inner_hull_amount",               damage_parameters.inner_hull_amount)
+		mat.set_shader_parameter("inner_hull_threshold",            damage_parameters.inner_hull_threshold)
+		mat.set_shader_parameter("inner_hull_darkness",             damage_parameters.inner_hull_darkness)
+		mat.set_shader_parameter("inner_grid_scale",                damage_parameters.inner_grid_scale)
+		mat.set_shader_parameter("inner_pipe_thickness",            damage_parameters.inner_pipe_thickness)
+		mat.set_shader_parameter("inner_pipe_orientation",          damage_parameters.inner_pipe_orientation)
+		mat.set_shader_parameter("inner_pipe_color",                damage_parameters.inner_pipe_color)
+		mat.set_shader_parameter("inner_pipe_glow_color",           damage_parameters.inner_pipe_glow_color)
+		mat.set_shader_parameter("inner_pipe_glow_energy",          damage_parameters.inner_pipe_glow_energy)
+		mat.set_shader_parameter("inner_parallax_depth",            damage_parameters.inner_parallax_depth)
+		mat.set_shader_parameter("inner_grid_flicker_independence",
+								 damage_parameters.inner_grid_flicker_independence)
+
+	if not Engine.is_editor_hint() and debug_visualizer \
+			and abs(final_damage_amount - _last_damage_log) > 0.05:
+		_last_damage_log = final_damage_amount
+		print("[HDV|%s] damage_amount=%.3f" % [name, final_damage_amount])
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DEATH SEQUENCE
+# ─────────────────────────────────────────────────────────────────────────────
+
+func start_death_sequence() -> void:
+	if _death_active:
+		return
+
+	# Sofort einfrieren — kein weiterer _process()-Frame schreibt mehr in den Shader
+	_death_active = true
+	set_process(false)
+
+	if debug_visualizer:
+		print("[HDV|%s] start_death_sequence() | anim=%s | has_anim=%s" % [
+			name,
+			_anim_player.name if _anim_player else "—",
+			str(death_animation != null)
 		])
-		_last_damage_log = damage_amt
+
+	if not _anim_player or not death_animation:
+		if debug_visualizer:
+			print("[HDV|%s] Kein AnimationPlayer oder keine Animation — Sequenz ohne Anim." % name)
+		death_sequence_finished.emit()
+		return
+
+	if not _anim_player.animation_finished.is_connected(_on_death_animation_finished):
+		_anim_player.animation_finished.connect(_on_death_animation_finished, CONNECT_ONE_SHOT)
+
+	_anim_player.play(death_animation_name)
+
+
+func _on_death_animation_finished(anim_name: String) -> void:
+	if anim_name != death_animation_name:
+		return
+	if debug_visualizer:
+		print("[HDV|%s] Todesanimation beendet." % name)
+	death_sequence_finished.emit()
+
 
 # ─────────────────────────────────────────────────────────────────────────────
-# OPTIONAL PUBLIC API
+# ÖFFENTLICHE API
 # ─────────────────────────────────────────────────────────────────────────────
-## Erzwingt einen sofortigen Update (ignoriert update_interval). Nützlich für
-## Debug-Panels oder manuelle Tests, ohne auf den nächsten Frame zu warten.
 func force_update() -> void:
-	_accum_time = 999.0  # ensures _update_shader_parameters runs next frame
-	# Prüfung auf das Array statt Einzelvariable
-	if not _hull_materials.is_empty() and _ship_ctrl:
+	_accum_time = 999.0
+	if not _entries.is_empty() and _ship_ctrl:
 		_update_shader_parameters()
 
 
-## Setzt damage_amount manuell (überschreibt HP-basierte Berechnung für 1 Frame).
-## Für Debug-Tools nützlich, die einen bestimmten Schadens-Look testen wollen
-## ohne das Schiff tatsächlich zu beschießen.
 func set_damage_amount_override(value: float) -> void:
-	if _hull_materials.is_empty():
-		return
-	
-	# Wir setzen den Wert für jede einzelne Oberfläche
-	for mat in _hull_materials:
-		mat.set_shader_parameter("damage_amount", clamp(value, 0.0, damage_visual_cap))
+	for entry in _entries:
+		if is_instance_valid(entry.material):
+			entry.material.set_shader_parameter("damage_amount",
+												clamp(value, 0.0, damage_visual_cap))
 
 
-## Setzt den Schaden komplett zurück (Reparatur). Macht aus dem Schiff
-## visuell wieder eine heile Hülle, unabhängig vom HP-Wert.
 func reset_visual() -> void:
-	if _hull_materials.is_empty():
-		return
-		
-	for mat in _hull_materials:
-		mat.set_shader_parameter("damage_amount", 0.0)
+	_death_active = false
+	set_process(true)
+	for entry in _entries:
+		if is_instance_valid(entry.material):
+			entry.material.set_shader_parameter("damage_amount", 0.0)
+
+
+func force_rebuild() -> void:
+	_entries.clear()
+	_initialized = false
+	_initialize()

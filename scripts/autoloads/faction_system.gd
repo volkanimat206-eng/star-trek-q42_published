@@ -354,14 +354,18 @@ func are_hostile(node_a: Node, node_b: Node) -> bool:
 	var b_is_player: bool = _is_player_node(node_b)
 
 	if a_is_player or b_is_player:
-		var npc_faction: int = fb if a_is_player else fa
-		var hostile: bool = is_hostile_to_player(npc_faction as ShipData.Faction)
+		# WICHTIG: Symmetrische Prüfung — beide Fraktionen werden berücksichtigt.
+		# Frühere Version ignorierte die Spieler-Fraktion und nahm immer
+		# Federation-Regeln an. Jetzt: is_faction_pair_hostile(fa, fb) prüft
+		# die tatsächliche Konstellation, egal ob der Spieler Klingone spielt.
+		var hostile: bool = is_faction_pair_hostile(fa, fb)
 
 		if debug_hostile:
-			var disp: ReputationSystem.Disposition = ReputationSystem.get_disposition(npc_faction as ShipData.Faction)
-			print("[FactionSystem]   → Player-Kanal: %s ist %s → hostile=%s" % [
-				ShipData.Faction.keys()[npc_faction],
-				ReputationSystem.Disposition.keys()[disp],
+			var player_faction: int = fa if a_is_player else fb
+			var npc_faction_dbg: int = fb if a_is_player else fa
+			print("[FactionSystem]   → Player-Kanal: Spieler=%s vs NPC=%s → hostile=%s" % [
+				ShipData.Faction.keys()[player_faction] if player_faction >= 0 else "?",
+				ShipData.Faction.keys()[npc_faction_dbg] if npc_faction_dbg >= 0 else "?",
 				hostile
 			])
 		return hostile

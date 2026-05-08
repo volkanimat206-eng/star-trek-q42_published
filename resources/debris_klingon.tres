@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ExplosionDebrisData" format=3 uid="uid://bv6jm8vtgu2ix"]
+
+[ext_resource type="Script" uid="uid://bsu6lxsg62fsd" path="res://resources/data/explosion_debris_data.gd" id="1_sy7vj"]
+[ext_resource type="PackedScene" uid="uid://c5cvegii78i07" path="res://scenes/vfx/debris_3d.tscn" id="1_u2lf1"]
+
+[resource]
+script = ExtResource("1_sy7vj")
+debris_scene = ExtResource("1_u2lf1")
+count = 20
+spawn_delay = 2.0
+min_torque = 2.8
+max_torque = 6.7
+metadata/_custom_type_script = "uid://bsu6lxsg62fsd"

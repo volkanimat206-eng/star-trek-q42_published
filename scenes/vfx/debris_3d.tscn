@@ -1,0 +1,43 @@
+[gd_scene format=3 uid="uid://c5cvegii78i07"]
+
+[ext_resource type="Script" uid="uid://csaoso2qgeedy" path="res://scripts/vfx/debris_3d.gd" id="1_debris"]
+
+[sub_resource type="PrismMesh" id="PrismMesh_swphe"]
+size = Vector3(2, 2, 2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_genao"]
+size = Vector3(2, 2, 2)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_swphe"]
+top_radius = 2.0
+bottom_radius = 1.0
+height = 3.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_default"]
+albedo_color = Color(0.45, 0.45, 0.5, 1)
+metallic = 0.7
+roughness = 0.5
+
+[sub_resource type="BoxMesh" id="BoxMesh_default"]
+size = Vector3(0.4, 0.4, 0.4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_default"]
+size = Vector3(0.4, 0.4, 0.4)
+
+[node name="Debris" type="RigidBody3D" unique_id=1333913416]
+mass = 0.3
+gravity_scale = 0.0
+linear_damp = 0.5
+angular_damp = 1.0
+script = ExtResource("1_debris")
+lifetime = 5.0
+fade_time = 2.0
+mesh_variants = Array[Mesh]([SubResource("PrismMesh_swphe"), SubResource("BoxMesh_genao"), SubResource("CylinderMesh_swphe")])
+glowing_initial = true
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=868632700]
+material_override = SubResource("StandardMaterial3D_default")
+mesh = SubResource("BoxMesh_default")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=2116963792]
+shape = SubResource("BoxShape3D_default")

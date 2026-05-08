@@ -16,7 +16,27 @@ const BASE_SIZE: float = 1.0
 var _shockwave: GPUParticles3D = null
 var _factor:    float          = 1.0
 
-func initialize(ship_size: float, shockwave_delay: float = 0.0) -> void:
+
+# ─────────────────────────────────────────────────────────────────────────────
+# INITIALIZE
+# ─────────────────────────────────────────────────────────────────────────────
+
+## Wird vom ShipController nach add_child() aufgerufen.
+##
+## ship_size:       Größenfaktor des Schiffs (1.0 = Standard, BoP klein, Sovereign groß)
+## shockwave_delay: Verzögerung des Shockwave-Bursts in Sekunden
+## debris_data:     Optional — Trümmer-Konfiguration (Resource).
+##                  null = kein Debris-Burst.
+## debris_color:    Optional — Faction-Tint für die Trümmer.
+##                  Color.WHITE = neutral grau (Default).
+##
+## Beide Debris-Parameter werden vom ShipController durchgereicht. So können
+## verschiedene Schiffe dieselbe Explosions-Scene nutzen aber eigene Trümmer
+## bekommen (z.B. rotglühende Klingonen-Hülle vs. graue Föderation).
+func initialize(ship_size: float,
+				shockwave_delay: float = 0.0,
+				debris_data: ExplosionDebrisData = null,
+				debris_color: Color = Color.WHITE) -> void:
 	var variation: float = randf_range(1.0 - size_range, 1.0 + size_range)
 	_factor = clampf((ship_size / BASE_SIZE) * variation, 0.5, 20.0)
 	scale   = Vector3.ONE * _factor
@@ -29,7 +49,12 @@ func initialize(ship_size: float, shockwave_delay: float = 0.0) -> void:
 		_play_sound_delayed(audio_data.explosion_sound,       audio_data.explosion_volume_db,    audio_data.explosion_delay)
 		_play_sound_delayed(audio_data.explosion_sound_layer2, audio_data.layer2_volume_db,      audio_data.layer2_delay)
 		_play_sound_delayed(audio_data.shockwave_sound,       audio_data.shockwave_volume_db,    audio_data.shockwave_sound_delay)
-		
+
+	# Debris-Burst — nur wenn Resource gesetzt UND scene drin
+	if debris_data and debris_data.debris_scene:
+		_spawn_debris_delayed(debris_data, debris_color)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # AUDIO
 # ─────────────────────────────────────────────────────────────────────────────
@@ -80,6 +105,54 @@ func _apply_spatialization(player: AudioStreamPlayer3D) -> void:
 		player.unit_size         = 1.0 / max(0.1, audio_data.distance_attenuation_strength)
 
 	player.attenuation_filter_cutoff_hz = audio_data.attenuation_filter_cutoff_hz
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DEBRIS
+# ─────────────────────────────────────────────────────────────────────────────
+
+func _spawn_debris_delayed(debris_data: ExplosionDebrisData, debris_color: Color) -> void:
+	# Delay: Debris kommt erst nach dem Fireball-Peak raus, nicht im Feuerball
+	# „versteckt".
+	if debris_data.spawn_delay > 0.0:
+		await get_tree().create_timer(debris_data.spawn_delay).timeout
+
+	# Self könnte schon weg sein wenn der ShipController die Explosion gefreed
+	# hat bevor der Delay abgelaufen ist.
+	if not is_instance_valid(self) or not is_inside_tree():
+		return
+
+	# Skalierung mit Schiffsgröße
+	var count: int = debris_data.count
+	if debris_data.scale_count_with_ship_size:
+		count = int(ceilf(float(debris_data.count) * _factor))
+
+	var min_force: float = debris_data.min_force
+	var max_force: float = debris_data.max_force
+	if debris_data.scale_force_with_ship_size:
+		# Force linear mit factor — größeres Schiff = mehr Wumms
+		min_force *= _factor
+		max_force *= _factor
+
+	# WICHTIG: world = current_scene, NICHT self!
+	# Der ExplosionEffect wird vom ShipController gefreed wenn die Animation
+	# durch ist (~6s). Debris haben aber eigenes lifetime (~5s) und müssen
+	# unabhängig leben. Deshalb landen sie direkt unter current_scene.
+	var world: Node = get_tree().current_scene
+	if not world:
+		return
+
+	Debris3D.spawn_burst(
+		debris_data.debris_scene,
+		world,
+		global_position,
+		count,
+		debris_color,
+		min_force,
+		max_force,
+		debris_data.min_torque,
+		debris_data.max_torque
+	)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

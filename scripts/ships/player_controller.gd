@@ -14,7 +14,15 @@ extends CharacterBody3D
 
 # ===== EXPORTS =====
 ## Weise hier die .tres-Datei des Spielerschiffs zu (z.B. ship_sovereign.tres).
-@export var ship_data: ShipData
+## Setter: wird bei Inspector-Wechsel zur Laufzeit aufgerufen → Fraktion + Schiff
+## werden sofort aktualisiert ohne Neustart.
+@export var ship_data: ShipData:
+	set(value):
+		ship_data = value
+		if is_inside_tree():
+			_update_faction_groups()
+			# Schiff neu instanziieren wenn ship_data zur Laufzeit gewechselt wird
+			_instantiate_ship()
 
 @export_group("Auto-Fire")
 @export var auto_fire_action: String = "auto_fire"
@@ -54,9 +62,7 @@ var _last_auto_fire_block_log: float = 0.0
 # ─────────────────────────────────────────────────────────────────────────────
 
 func _ready() -> void:
-	# ── WICHTIG ── diese beiden Zeilen MÜSSEN da sein!
-	add_to_group("ships")
-	add_to_group(FactionSystem.get_group_name(ship_data.faction))
+	_update_faction_groups()
 
 	_dbg("[PLAYER DEBUG] Gruppen: " + str(get_groups()))
 	_dbg("[PLAYER DEBUG] ship_data vorhanden? " + str(ship_data != null))
@@ -101,6 +107,26 @@ func _ready() -> void:
 # ─────────────────────────────────────────────────────────────────────────────
 # SCHIFF INSTANZIIEREN
 # ─────────────────────────────────────────────────────────────────────────────
+
+## Aktualisiert Fraktions-Gruppen des PlayerControllers.
+## Wird bei _ready() und bei ship_data-Wechsel aufgerufen.
+## Warum hier UND im ShipController?
+##   PlayerController ist der physische Körper (CharacterBody3D) im Spiel.
+##   FactionSystem._is_player_node() erkennt ihn über GROUP_PLAYER.
+##   ShipController trägt ship_data → get_faction_of() liest daraus.
+##   Beide müssen synchron sein.
+func _update_faction_groups() -> void:
+	# Alte Fraktions-Gruppe entfernen
+	for g in get_groups():
+		if g.begins_with("faction_"):
+			remove_from_group(g)
+	# Gruppen neu setzen
+	add_to_group("ships")
+	add_to_group("player")
+	if ship_data:
+		add_to_group(FactionSystem.get_group_name(ship_data.faction))
+	_dbg("Gruppen aktualisiert: %s" % str(get_groups()))
+
 
 func _instantiate_ship() -> void:
 	_dbg("_instantiate_ship() → %s" % ship_data.ship_scene_path)

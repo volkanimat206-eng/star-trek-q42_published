@@ -99,10 +99,34 @@ func are_hostile(a: Node3D, b: Node3D) -> bool:
 
 
 func _compute_hostile(a: Node3D, b: Node3D) -> bool:
+	# ── SAME-FACTION-SHIELD (ganz oben, schützt VOR allen Overrides) ────────
+	# Gleiche Fraktion = nie hostile. Weder Aggro-Override noch
+	# Reputation-Override dürfen das durchbrechen.
+	#
+	# Begründung: Wenn der Spieler als Klingone unterwegs ist und seine
+	# Klingon-Reputation aus alten Federation-Tagen bei -60 liegt, soll
+	# der Klingon-NPC ihn nicht als Feind sehen. Ähnlich: kurze
+	# Aggro-Spikes durch Stray-Hits zwischen Allies sollen nicht zu
+	# Dauerfeindseligkeit zwischen gleicher Fraktion führen.
+	#
+	# Beachte: das ist NICHT identisch mit Friendly-Fire-Tolerierung —
+	# wenn der Spieler aktiv auf seine eigene Fraktion schießt, kann
+	# (und soll) das Reputation/Standing-System ihn auf eine andere
+	# Fraktion umflaggen. Solange die Fraktion aber gleich ist, gilt:
+	# kein Hostile.
+	var fa_early: Variant = _get_faction(a)
+	var fb_early: Variant = _get_faction(b)
+	if fa_early != null and fb_early != null and int(fa_early) == int(fb_early):
+		_dbg("SAME-FACTION → FRIENDLY: %s ↔ %s (faction=%d)" \
+			% [a.name, b.name, int(fa_early)])
+		return false
+
 	var a_is_player: bool = _is_player(a)
 	var b_is_player: bool = _is_player(b)
 
 	# ── Aggro überschreibt alles andere (in BEIDE Richtungen prüfen) ────────
+	# Greift jetzt nur noch bei UNTERSCHIEDLICHEN Fraktionen — Same-Faction
+	# wurde oben schon abgefangen.
 	if _has_aggro(a, b) or _has_aggro(b, a):
 		_dbg("AGGRO → HOSTILE: %s ↔ %s" % [a.name, b.name])
 		return true
@@ -112,6 +136,8 @@ func _compute_hostile(a: Node3D, b: Node3D) -> bool:
 		return _baseline_hostile(a, b)
 
 	# ── Player involviert: baseline + Rep-Override ──────────────────────────
+	# Rep-Override greift nur bei verschiedenen Fraktionen (Same-Faction
+	# wurde oben abgefangen) — der Override darf also unbeschränkt feuern.
 	var npc: Node3D = b if a_is_player else a
 	var npc_faction_val: Variant = _get_faction(npc)
 	if npc_faction_val == null:

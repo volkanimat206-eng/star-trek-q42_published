@@ -2,5 +2,11 @@
 
 [ext_resource type="Script" uid="uid://bu0c6t8wvhy5y" path="res://scripts/hull/damage_smoke_plume.gd" id="1_smkplm"]
 
-[node name="DamageSmokePlume" type="Node3D"]
+[node name="DamageSmokePlume" type="Node3D" unique_id=1509922919]
 script = ExtResource("1_smkplm")
+smoke_amount_max = 120
+smoke_lifetime = 2.0
+smoke_velocity_min = 1.0
+smoke_velocity_max = 2.0
+ember_lifetime = 1.0
+ember_color = Color(1, 0.32086813, 0.15170373, 1)

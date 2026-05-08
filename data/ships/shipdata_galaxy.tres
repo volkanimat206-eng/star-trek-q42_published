@@ -22,5 +22,6 @@ combat_behavior = ExtResource("2_ywyxo")
 beam_weapon_data = ExtResource("1_ya1gn")
 torpedo_data = ExtResource("8_f3xrf")
 ship_scene_path = "uid://b7frrp27nugtb"
+can_cloak = true
 cloak_data = ExtResource("2_ajvs0")
 metadata/_custom_type_script = "uid://bfs0pr5hru0du"

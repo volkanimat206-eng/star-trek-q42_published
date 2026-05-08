@@ -38,6 +38,12 @@ signal ship_destroyed()
 ## Verzögerung in Sekunden bevor die Shockwave ausgelöst wird.
 ## Nutze diese um die Welle mit dem Höhepunkt der WindUp-Animation zu synchronisieren.
 @export var shockwave_delay: float = 0.0
+## Trümmer-Konfiguration als Resource. Eine .tres pro Schiffsklasse oder
+## Faction. Leer lassen = kein Debris-Burst.
+@export var debris_data: ExplosionDebrisData = null
+## Faction-Tint für die Trümmer (multiplikativ auf Material-Farbe).
+## Color.WHITE = keine Tönung (Default).
+@export var debris_color_tint: Color = Color.WHITE
 
 @export_group("Hit Reaction")
 ## Unter diesem Hüll-Integritätswert (0.0–1.0) reagiert das Schiff auf Treffer.
@@ -57,6 +63,9 @@ signal ship_destroyed()
 ## CloakComponent für dieses Schiff. Im Inspector zuweisen — Node unter ShipController.
 ## Nicht zugewiesen = Schiff kann nicht tarnen (kein Fehler, nur kein Cloak).
 @export var cloak_component: CloakComponent
+
+@export_group("Effects")
+@export var thruster_vfx: Node3D
 
 # ===== INTERN =====
 var weapon_mounts: Array = [] # WeaponMount + WingDisruptorMount
@@ -359,18 +368,24 @@ func _on_ship_destroyed() -> void:
 	_is_alive = false
 	_dbg("💥 SCHIFF ZERSTÖRT: %s" % ship_name)
 
-	# FIX: Sofort aus ALLEN Gruppen entfernen damit Targeting-Scans das Schiff
-	# während des destruction_delay nicht mehr finden ("enemy", "ships", Fraktions-Gruppe etc.)
+	# 1. SHADER-VISUALISIERUNG (Zerfall des Schiffs-Modells)
+	var visualizer: HullDamageVisualizer = null
+	for child in find_children("*", "HullDamageVisualizer", true, false):
+		visualizer = child as HullDamageVisualizer
+		break
+
+	if visualizer:
+		_dbg("✅ HullDamageVisualizer gefunden: '%s'" % visualizer.name)
+		visualizer.start_death_sequence()
+	else:
+		_dbg("⚠️ Kein HullDamageVisualizer gefunden — kein visueller Zerfall")
+
+	# 3. AUFRÄUMEN & SIGNALE
 	for group in get_groups():
 		remove_from_group(group)
 
 	ship_destroyed.emit()
-
-	# Explosion startet sofort – unabhängig vom shockwave_delay.
 	_destroy_sequence()
-
-	# Shockwave läuft PARALLEL zur Explosion.
-	# _trigger_shockwave_delayed() ist async, blockiert _destroy_sequence() nicht.
 	_trigger_shockwave_delayed()
 
 
@@ -463,34 +478,31 @@ func _destroy_sequence() -> void:
 	if is_instance_valid(self):
 		queue_free()
 
-func _spawn_explosion() -> Node3D:
+func _spawn_explosion() -> void:
 	if not explosion_scene:
-		_dbg_warning("Keine explosion_scene zugewiesen!")
-		return null
+		return
 
-	var explosion: Node3D = explosion_scene.instantiate() as Node3D
-	if not explosion:
-		_dbg_error("instantiate() fehlgeschlagen!")
-		return null
+	var e := explosion_scene.instantiate() as Node3D
+	get_parent().add_child(e)
 
-	var spawn_pos: Vector3 = explosion_origin.global_position \
-		if explosion_origin and is_instance_valid(explosion_origin) \
-		else global_position
+	# Spawn-Position: Marker3D wenn gesetzt, sonst ShipController-Origin
+	if explosion_origin and is_instance_valid(explosion_origin):
+		e.global_position = explosion_origin.global_position
+		_dbg("🚀 Explosion an Marker3D-Position gespawnt")
+	else:
+		e.global_position = global_position
 
-	var spawn_parent: Node = get_parent() if get_parent() else get_tree().current_scene
-	spawn_parent.add_child(explosion)
-	explosion.global_position = spawn_pos
+	# initialize() übernimmt Skalierung, Partikel-Scaling, Shockwave-Delay
+	# und Debris-Burst — kein manuelles e.scale mehr nötig.
+	if e.has_method("initialize"):
+		e.initialize(explosion_size, shockwave_delay, debris_data, debris_color_tint)
+		_dbg("🚀 Explosion.initialize(size=%.1f, sw_delay=%.2fs)" % [explosion_size, shockwave_delay])
+	else:
+		# Fallback: Explosion-Scene hat kein initialize() (altes Format)
+		e.scale = Vector3.ONE * explosion_size
+		push_warning("[ShipController|%s] ExplosionEffect hat kein initialize() — nur Node-Scale gesetzt." % ship_name)
 
-	_dbg("Explosion bei %s | Size: %.2f" % [
-		("Marker '%s'" % explosion_origin.name) if explosion_origin else "Origin-Fallback",
-		explosion_size
-	])
-
-	if explosion.has_method("initialize"):
-		explosion.initialize(explosion_size, shockwave_delay)
-
-	_start_explosion_animation(explosion)
-	return explosion
+	_start_explosion_animation(e)
 
 func _start_explosion_animation(explosion: Node3D) -> void:
 	var found_ap := false
@@ -1125,4 +1137,3 @@ func set_shields_cloak_offline(offline: bool) -> void:
 		if shield_system._mesh_instance:
 			shield_system._mesh_instance.visible = true
 		_dbg("🛡️ Schilde online (Cloak Ende, Regen-Delay aktiv)")
-		

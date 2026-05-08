@@ -95,10 +95,20 @@ var _state: State = State.IDLE
 @export var cloak_data: CloakData
 
 @export_group("Cloak – Meshes")
-## Die MeshInstance3D-Nodes die beim Cloaken transparent werden.
-## Direkt im Inspector zuweisen — verhindert dass das falsche Mesh erwischt wird.
-## Mehrere Meshes können zugewiesen werden (z.B. Hülle, Brücke, Triebwerke).
-## Leer lassen = automatische Suche vom Root-Node (Fallback, weniger sicher).
+## Wurzel-Node unter dem ALLE MeshInstance3D rekursiv gesammelt werden.
+## Typischerweise der "Model"-Node des Schiffs (direktes Kind des Ship-Roots).
+## Leer lassen → automatische Suche ab _ship_root (funktioniert immer als Fallback).
+## Vorteil gegenüber target_meshes: neue Meshes im Model werden automatisch erfasst,
+## ohne den Inspector anpassen zu müssen.
+@export var mesh_root: Node3D = null
+
+## Meshes die NICHT getarnt werden sollen (z.B. ShieldMesh ist bereits hartcodiert
+## ausgeschlossen, aber hier können weitere Ausnahmen definiert werden).
+## Leer lassen = nur ShieldMesh wird ausgeschlossen.
+@export var exclude_meshes: Array[MeshInstance3D] = []
+
+## [DEPRECATED] Wird ignoriert wenn mesh_root gesetzt ist.
+## Nur noch vorhanden für Rückwärtskompatibilität mit alten Szenen.
 @export var target_meshes: Array[MeshInstance3D] = []
 
 ## Minimaler Alpha-Wert wenn das Schiff voll getarnt ist.
@@ -407,17 +417,10 @@ func _on_decloak_complete(emergency: bool) -> void:
 func _snapshot_original_colors() -> void:
 	_original_colors.clear()
 
-	var mesh_instances: Array[MeshInstance3D] = []
-	if target_meshes.size() > 0:
-		for m in target_meshes:
-			if is_instance_valid(m):
-				mesh_instances.append(m)
-	elif _ship_root:
-		mesh_instances = _find_all_mesh_instances(_ship_root)
+	# _collect_meshes() liefert bereits gefilterte Liste (ShieldMesh + exclude_meshes raus)
+	var mesh_instances: Array[MeshInstance3D] = _collect_meshes()
 
 	for mesh in mesh_instances:
-		if mesh.name == "ShieldMesh":
-			continue
 		var surface_count: int = mesh.mesh.get_surface_count() if mesh.mesh else 0
 		for i in range(surface_count):
 			var base_mat: Material = mesh.mesh.surface_get_material(i)
@@ -430,9 +433,13 @@ func _snapshot_original_colors() -> void:
 				continue
 			if source_mat is StandardMaterial3D:
 				_original_colors.append((source_mat as StandardMaterial3D).albedo_color)
+			elif source_mat is ShaderMaterial:
+				# ShaderMaterial hat keine albedo_color — Color.WHITE als Platzhalter.
+				# _apply_alpha_to_materials erkennt ShaderMaterial und nutzt
+				# cloak_alpha statt albedo_color, der Platzhalter wird nie genutzt.
+				_original_colors.append(Color.WHITE)
 			else:
-				# Nicht-Standard Material (ShaderMaterial etc.) — wir können die
-				# Farbe nicht zuverlässig auslesen, behalten weißen Default als Marker.
+				# Unbekannter Typ — Platzhalter damit color_idx synchron bleibt.
 				_original_colors.append(Color.WHITE)
 
 	_dbg("📷 Originalfarben gesichert: %d Einträge" % _original_colors.size())
@@ -449,28 +456,20 @@ func _initialize_materials() -> void:
 	if _materials_initialized:
 		return
 
-	# EXPLIZIT: target_meshes aus dem Inspector nutzen wenn gesetzt.
-	# FALLBACK: automatische Suche vom Root-Node (weniger sicher).
-	var mesh_instances: Array[MeshInstance3D] = []
-	if target_meshes.size() > 0:
-		for m in target_meshes:
-			if is_instance_valid(m):
-				mesh_instances.append(m)
-		_dbg("🎯 Nutze %d explizit zugewiesene Meshes aus dem Inspector" % mesh_instances.size())
-	elif _ship_root:
-		mesh_instances = _find_all_mesh_instances(_ship_root)
-		_dbg("🔍 Fallback: %d Meshes per Auto-Suche gefunden" % mesh_instances.size())
-	else:
-		_dbg("⚠ _initialize_materials: kein _ship_root und keine target_meshes!")
+	# _collect_meshes() liefert exakt dieselbe Reihenfolge wie _snapshot_original_colors
+	# → color_idx bleibt synchron. KRITISCH: Reihenfolge nie ändern!
+	var mesh_instances: Array[MeshInstance3D] = _collect_meshes()
+	if mesh_instances.is_empty():
+		_dbg("⚠ _initialize_materials: _collect_meshes() lieferte 0 Meshes!")
 		return
+
+	_dbg("🎯 Nutze %d Meshes aus dem Inspector" % mesh_instances.size())
 
 	# Separater Index für die Snapshot-Farben — wir überspringen Surfaces ohne
 	# Material, daher kann der Surface-Index abweichen.
 	var color_idx: int = 0
 
 	for mesh in mesh_instances:
-		if mesh.name == "ShieldMesh":
-			continue
 
 		var surface_count: int = mesh.mesh.get_surface_count() if mesh.mesh else 0
 
@@ -543,22 +542,32 @@ func _fade_to(target_alpha: float, duration: float, on_complete: Callable) -> vo
 					if i < _original_colors.size():
 						sm.albedo_color = _original_colors[i]
 					sm.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+				elif mat is ShaderMaterial:
+					# cloak_alpha auf 1.0 zurücksetzen — Shader ist wieder voll sichtbar
+					(mat as ShaderMaterial).set_shader_parameter("cloak_alpha", 1.0)
 		on_complete.call()
 	)
 
 
 ## Wird von tween_method pro Frame aufgerufen — setzt alpha auf allen Materials.
 ## Behält Original-RGB bei und setzt nur den Alpha-Kanal — kein Farbverlust.
+## Unterstützt StandardMaterial3D (albedo_color.a) UND ShaderMaterial (cloak_alpha uniform).
 func _apply_alpha_to_materials(alpha: float) -> void:
 	_cloak_alpha = alpha
 	for i in range(_cached_materials.size()):
 		var mat: Material = _cached_materials[i]
-		if not mat is StandardMaterial3D:
-			continue
-		var sm: StandardMaterial3D = mat as StandardMaterial3D
-		# Original-RGB aus Snapshot, nur Alpha aus dem aktuellen Fade-Wert
-		var base: Color = _original_colors[i] if i < _original_colors.size() else sm.albedo_color
-		sm.albedo_color = Color(base.r, base.g, base.b, alpha)
+
+		if mat is StandardMaterial3D:
+			var sm: StandardMaterial3D = mat as StandardMaterial3D
+			# Original-RGB aus Snapshot, nur Alpha aus dem aktuellen Fade-Wert
+			var base: Color = _original_colors[i] if i < _original_colors.size() else sm.albedo_color
+			sm.albedo_color = Color(base.r, base.g, base.b, alpha)
+
+		elif mat is ShaderMaterial:
+			# Shader muss uniform cloak_alpha : hint_range(0.0, 1.0) = 1.0 haben.
+			# Kein Fallback nötig: set_shader_parameter ist ein No-Op wenn die
+			# Uniform nicht existiert — kein Fehler, nur kein visueller Effekt.
+			(mat as ShaderMaterial).set_shader_parameter("cloak_alpha", alpha)
 
 	# Debug bei markanten Alpha-Werten
 	if show_debug:
@@ -737,18 +746,62 @@ func _set_collision_active(active: bool) -> void:
 		_dbg("⚛️ HullCollision Layer-1 = %s" % active)
 
 
-## Liefert die relevanten Meshes — aus Inspector oder Auto-Suche.
-func _get_target_meshes() -> Array[MeshInstance3D]:
-	var result: Array[MeshInstance3D] = []
-	if target_meshes.size() > 0:
+## Zentrale Mesh-Sammlung — wird von _snapshot_original_colors UND
+## _initialize_materials genutzt. Einheitliche Iterationsreihenfolge ist
+## KRITISCH damit color_idx in beiden Funktionen synchron bleibt.
+##
+## Priorität:
+##   1. mesh_root gesetzt → alle MeshInstance3D rekursiv darunter
+##   2. target_meshes gesetzt (legacy) → diese Liste direkt
+##   3. Fallback → _ship_root rekursiv durchsuchen
+##
+## ShieldMesh und exclude_meshes werden immer herausgefiltert.
+func _collect_meshes() -> Array[MeshInstance3D]:
+	var candidates: Array[MeshInstance3D] = []
+
+	if is_instance_valid(mesh_root):
+		# Primärer Pfad: mesh_root definiert den Suchraum explizit
+		candidates = _find_all_mesh_instances(mesh_root)
+		_dbg("🌳 mesh_root='%s' → %d Mesh-Kandidaten" % [mesh_root.name, candidates.size()])
+	elif target_meshes.size() > 0:
+		# Legacy-Pfad: explizite Liste aus dem Inspector
 		for m in target_meshes:
-			if is_instance_valid(m) and m.name != "ShieldMesh":
-				result.append(m)
+			if is_instance_valid(m):
+				candidates.append(m)
+		_dbg("🎯 target_meshes (legacy): %d Kandidaten" % candidates.size())
 	elif _ship_root:
-		for m in _find_all_mesh_instances(_ship_root):
-			if m.name != "ShieldMesh":
-				result.append(m)
+		# Fallback: gesamten Ship-Root durchsuchen
+		candidates = _find_all_mesh_instances(_ship_root)
+		_dbg("🔍 Fallback _ship_root='%s' → %d Kandidaten" % [_ship_root.name, candidates.size()])
+	else:
+		_dbg("⚠ _collect_meshes: kein mesh_root, kein target_meshes, kein _ship_root!")
+		return []
+
+	# Ausschluss-Filter: ShieldMesh immer, exclude_meshes aus Inspector
+	var result: Array[MeshInstance3D] = []
+	for m in candidates:
+		if m.name == "ShieldMesh":
+			continue
+		if _is_excluded(m):
+			_dbg("  ⛔ '%s' ausgeschlossen (exclude_meshes)" % m.name)
+			continue
+		result.append(m)
+
 	return result
+
+
+## Prüft ob ein Mesh in der exclude_meshes-Liste ist.
+func _is_excluded(mesh: MeshInstance3D) -> bool:
+	for excl in exclude_meshes:
+		if is_instance_valid(excl) and excl == mesh:
+			return true
+	return false
+
+
+## [COMPAT] Liefert dieselben Meshes wie _collect_meshes — wird von
+## _set_original_meshes_visible genutzt.
+func _get_target_meshes() -> Array[MeshInstance3D]:
+	return _collect_meshes()
 
 
 ## Blendet Original-Meshes komplett aus/ein (für NPC-Modus mit min_alpha=0).

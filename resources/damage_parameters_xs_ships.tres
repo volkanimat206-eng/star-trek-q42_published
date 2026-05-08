@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="DamageParameters" format=3 uid="uid://cdpep2sakodcf"]
+
+[ext_resource type="Script" uid="uid://bdjiira4i3je7" path="res://scripts/vfx/damage_parameters.gd" id="1_4q4ca"]
+
+[resource]
+script = ExtResource("1_4q4ca")
+damage_amount = 0.5
+damage_threshold = 0.1
+damage_noise_scale = 30.0
+burn_color_dark = Color(0, 0, 0, 1)
+burn_color_char = Color(0, 0, 0, 1)
+burn_color_glow = Color(0, 0, 0, 1)
+burn_color_molten = Color(1, 0.011764706, 0, 1)
+burn_color_molten_core = Color(1, 0.92156863, 0.54901963, 1)
+molten_core_falloff = 0.8
+burn_glow_energy = 6.0
+burn_molten_energy = 15.0
+crack_scale = 0.0
+crack_width = 0.0
+crack_glow_intensity = 0.0
+streak_amount = 0.3
+streak_stretch = 1.0
+streak_scale = 15.0
+streak_threshold = 0.3
+rim_width = 0.0
+metadata/_custom_type_script = "uid://bdjiira4i3je7"

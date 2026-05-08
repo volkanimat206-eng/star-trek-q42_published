@@ -54,12 +54,12 @@ angle_min = 1.0728835e-05
 angle_max = 360.00003
 spread = 90.0
 angular_velocity_min = -90.000015
-angular_velocity_max = 89.999985
+angular_velocity_max = 179.99998
 radial_velocity_min = -3.0000222
 radial_velocity_max = -2.2351742e-05
 gravity = Vector3(0, 0, 0)
-scale_min = 2.0
-scale_max = 2.0
+scale_min = 4.0
+scale_max = 4.0
 scale_curve = SubResource("CurveTexture_8sghf")
 color_initial_ramp = SubResource("GradientTexture1D_d7ndn")
 emission_curve = SubResource("CurveTexture_2xe56")
@@ -104,7 +104,7 @@ point_count = 3
 curve = SubResource("Curve_yfdta")
 
 [sub_resource type="Curve" id="Curve_0jpt5"]
-_data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(0.40123454, 0.5992601), 0.1129041, 0.1129041, 0, 0, Vector2(0.6234568, 0.81565964), 0.17908934, 0.17908934, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+_data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(0.44281524, 1), 0.620671, 0.620671, 0, 0, Vector2(0.5923754, 1), -0.47839054, -0.47839054, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
 point_count = 4
 
 [sub_resource type="CurveTexture" id="CurveTexture_bjuy5"]
@@ -116,12 +116,14 @@ emission_sphere_radius = 0.2
 angle_min = -319.6
 angle_max = 153.70001
 spread = 0.0
+angular_velocity_min = -90.000015
+angular_velocity_max = 89.999985
 radial_velocity_min = -3.0000222
 radial_velocity_max = -2.2351742e-05
 gravity = Vector3(0, 0, 0)
 damping_max = 10.0
-scale_min = 2.0
-scale_max = 2.0
+scale_min = 4.0
+scale_max = 4.0
 scale_curve = SubResource("CurveTexture_bjuy5")
 color = Color(0.427493, 0.42749307, 0.42749307, 1)
 color_initial_ramp = SubResource("GradientTexture1D_wc23w")
@@ -148,14 +150,18 @@ angle_min = 1.0728835e-05
 angle_max = 90.000015
 direction = Vector3(0, 0, 0)
 spread = 0.0
+angular_velocity_min = -1.6093254e-05
+angular_velocity_max = 19.999983
 radial_velocity_min = -2.2351742e-05
 radial_velocity_max = -2.2351742e-05
 gravity = Vector3(0, 0, 0)
+radial_accel_min = -2.2351742e-06
+radial_accel_max = -2.2351742e-06
 tangential_accel_min = -2.2351742e-06
 tangential_accel_max = 0.99999774
 damping_max = 6.0000005
-scale_min = 2.0
-scale_max = 10.0
+scale_min = 6.0
+scale_max = 6.0
 scale_curve = SubResource("CurveTexture_bjuy5")
 color_initial_ramp = SubResource("GradientTexture1D_wc23w")
 alpha_curve = SubResource("CurveTexture_y1du8")
@@ -192,8 +198,8 @@ gravity = Vector3(0, 0, 0)
 tangential_accel_min = -2.2351742e-06
 tangential_accel_max = 0.99999774
 damping_max = 6.0000005
-scale_min = 2.0
-scale_max = 10.0
+scale_min = 6.0
+scale_max = 6.0
 scale_curve = SubResource("CurveTexture_bjuy5")
 color_initial_ramp = SubResource("GradientTexture1D_wc23w")
 alpha_curve = SubResource("CurveTexture_y1du8")
@@ -273,21 +279,21 @@ albedo_texture = ExtResource("5_hd7i2")
 albedo_texture_force_srgb = true
 
 [sub_resource type="Curve" id="Curve_0vo88"]
-_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(0.14150944, 1), -5.192951e-07, -5.192951e-07, 0, 0, Vector2(0.6949686, 0), -5.213111, 0.0, 0, 0]
-point_count = 3
+_data = [Vector2(0, 1), 0.0, -2.6142015, 0, 0, Vector2(1, 0), -0.42531812, 0.0, 0, 0]
+point_count = 2
 
 [sub_resource type="CurveTexture" id="CurveTexture_dgy4w"]
 curve = SubResource("Curve_0vo88")
 
 [sub_resource type="Gradient" id="Gradient_d6750"]
-offsets = PackedFloat32Array(0, 0.61986303, 0.8938356)
-colors = PackedColorArray(0.3854925, 0.38549247, 0.38549247, 1, 0.3854925, 0.38549247, 0.38549247, 1, 0, 0, 0, 1)
+offsets = PackedFloat32Array(0, 0.26984128, 1)
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0.29206347, 1, 1, 1, 0)
 
 [sub_resource type="GradientTexture1D" id="GradientTexture1D_022s6"]
 gradient = SubResource("Gradient_d6750")
 
 [sub_resource type="Curve" id="Curve_4pfye"]
-_data = [Vector2(0, 0), 0.0, 0.6516393, 0, 0, Vector2(0.2578616, 1), 0.0, 0.0, 0, 0, Vector2(0.99999, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+_data = [Vector2(0, 0), 0.0, 0.6516393, 0, 0, Vector2(0.2521994, 1), 0.0, 0.0, 0, 0, Vector2(0.99999, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
 point_count = 4
 
 [sub_resource type="CurveTexture" id="CurveTexture_hxxib"]
@@ -295,8 +301,8 @@ curve = SubResource("Curve_4pfye")
 
 [sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_hswh6"]
 gravity = Vector3(0, 0, 0)
-scale_min = 3.0
-scale_max = 3.0
+scale_min = 2.0
+scale_max = 2.0
 scale_curve = SubResource("CurveTexture_hxxib")
 color_ramp = SubResource("GradientTexture1D_022s6")
 alpha_curve = SubResource("CurveTexture_dgy4w")
@@ -411,32 +417,32 @@ size = Vector2(0.4, 2)
 length = 6.0
 tracks/0/type = "value"
 tracks/0/imported = false
-tracks/0/enabled = true
-tracks/0/path = NodePath("Windup2:emitting")
+tracks/0/enabled = false
+tracks/0/path = NodePath("Shockwave2:emitting")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0),
+"times": PackedFloat32Array(1.0333333),
 "transitions": PackedFloat32Array(1),
 "update": 1,
 "values": [true]
 }
 tracks/1/type = "value"
 tracks/1/imported = false
-tracks/1/enabled = true
-tracks/1/path = NodePath("Fire2:emitting")
+tracks/1/enabled = false
+tracks/1/path = NodePath("Stars:emitting")
 tracks/1/interp = 1
 tracks/1/loop_wrap = true
 tracks/1/keys = {
-"times": PackedFloat32Array(1),
+"times": PackedFloat32Array(1.0333333),
 "transitions": PackedFloat32Array(1),
 "update": 1,
 "values": [true]
 }
 tracks/2/type = "value"
 tracks/2/imported = false
-tracks/2/enabled = true
-tracks/2/path = NodePath("Smoke2:emitting")
+tracks/2/enabled = false
+tracks/2/path = NodePath("Smoke3:emitting")
 tracks/2/interp = 1
 tracks/2/loop_wrap = true
 tracks/2/keys = {
@@ -445,93 +451,9 @@ tracks/2/keys = {
 "update": 1,
 "values": [true]
 }
-tracks/3/type = "value"
-tracks/3/imported = false
-tracks/3/enabled = true
-tracks/3/path = NodePath("Spark3:emitting")
-tracks/3/interp = 1
-tracks/3/loop_wrap = true
-tracks/3/keys = {
-"times": PackedFloat32Array(1),
-"transitions": PackedFloat32Array(1),
-"update": 1,
-"values": [true]
-}
-tracks/4/type = "value"
-tracks/4/imported = false
-tracks/4/enabled = true
-tracks/4/path = NodePath("Spark4:emitting")
-tracks/4/interp = 1
-tracks/4/loop_wrap = true
-tracks/4/keys = {
-"times": PackedFloat32Array(1),
-"transitions": PackedFloat32Array(1),
-"update": 1,
-"values": [true]
-}
-tracks/5/type = "value"
-tracks/5/imported = false
-tracks/5/enabled = true
-tracks/5/path = NodePath("OmniLight3D:omni_range")
-tracks/5/interp = 1
-tracks/5/loop_wrap = true
-tracks/5/keys = {
-"times": PackedFloat32Array(0, 1, 2),
-"transitions": PackedFloat32Array(2.7320821, 1, 0.29730177),
-"update": 0,
-"values": [1.0, 10.0, 1.0]
-}
-tracks/6/type = "value"
-tracks/6/imported = false
-tracks/6/enabled = true
-tracks/6/path = NodePath("Shockwave:emitting")
-tracks/6/interp = 1
-tracks/6/loop_wrap = true
-tracks/6/keys = {
-"times": PackedFloat32Array(1),
-"transitions": PackedFloat32Array(1),
-"update": 1,
-"values": [true]
-}
-tracks/7/type = "value"
-tracks/7/imported = false
-tracks/7/enabled = true
-tracks/7/path = NodePath("Shockwave2:emitting")
-tracks/7/interp = 1
-tracks/7/loop_wrap = true
-tracks/7/keys = {
-"times": PackedFloat32Array(0.5),
-"transitions": PackedFloat32Array(1),
-"update": 1,
-"values": [true]
-}
-tracks/8/type = "value"
-tracks/8/imported = false
-tracks/8/enabled = true
-tracks/8/path = NodePath("Smoke4:emitting")
-tracks/8/interp = 1
-tracks/8/loop_wrap = true
-tracks/8/keys = {
-"times": PackedFloat32Array(1),
-"transitions": PackedFloat32Array(1),
-"update": 1,
-"values": [true]
-}
-tracks/9/type = "value"
-tracks/9/imported = false
-tracks/9/enabled = true
-tracks/9/path = NodePath("Smoke3:emitting")
-tracks/9/interp = 1
-tracks/9/loop_wrap = true
-tracks/9/keys = {
-"times": PackedFloat32Array(1),
-"transitions": PackedFloat32Array(1),
-"update": 1,
-"values": [true]
-}
 
 [sub_resource type="Animation" id="Animation_f71q1"]
-resource_name = "play"
+resource_name = "explosion_ship"
 length = 4.0
 tracks/0/type = "value"
 tracks/0/imported = false
@@ -617,11 +539,47 @@ tracks/6/keys = {
 "update": 1,
 "values": [true]
 }
+tracks/7/type = "value"
+tracks/7/imported = false
+tracks/7/enabled = false
+tracks/7/path = NodePath("Shockwave2:emitting")
+tracks/7/interp = 1
+tracks/7/loop_wrap = true
+tracks/7/keys = {
+"times": PackedFloat32Array(1.0333333),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [true]
+}
+tracks/8/type = "value"
+tracks/8/imported = false
+tracks/8/enabled = false
+tracks/8/path = NodePath("Stars:emitting")
+tracks/8/interp = 1
+tracks/8/loop_wrap = true
+tracks/8/keys = {
+"times": PackedFloat32Array(1.0333333),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [true]
+}
+tracks/9/type = "value"
+tracks/9/imported = false
+tracks/9/enabled = false
+tracks/9/path = NodePath("Smoke3:emitting")
+tracks/9/interp = 1
+tracks/9/loop_wrap = true
+tracks/9/keys = {
+"times": PackedFloat32Array(1),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [true]
+}
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_xlu0u"]
 _data = {
 &"RESET": SubResource("Animation_hd7i2"),
-&"play": SubResource("Animation_f71q1")
+&"explosion_ship": SubResource("Animation_f71q1")
 }
 
 [node name="VFX_ExplosioShip" type="Node3D" unique_id=1310931428]
@@ -632,8 +590,8 @@ audio_data = ExtResource("2_kkhwf")
 [node name="Fire2" type="GPUParticles3D" parent="." unique_id=369599519]
 material_override = SubResource("StandardMaterial3D_ywskf")
 emitting = false
-amount = 16
 amount_ratio = 0.8
+lifetime = 2.0
 one_shot = true
 explosiveness = 0.9
 fixed_fps = 0
@@ -643,7 +601,6 @@ draw_pass_1 = SubResource("QuadMesh_y1du8")
 [node name="Smoke2" type="GPUParticles3D" parent="." unique_id=13325349]
 material_override = SubResource("StandardMaterial3D_b3txn")
 emitting = false
-amount = 16
 amount_ratio = 0.8
 lifetime = 2.0
 one_shot = true
@@ -652,10 +609,10 @@ fixed_fps = 0
 process_material = SubResource("ParticleProcessMaterial_cwts3")
 draw_pass_1 = SubResource("QuadMesh_lnhgi")
 
-[node name="Smoke4" type="GPUParticles3D" parent="." unique_id=657361641]
+[node name="Stars" type="GPUParticles3D" parent="." unique_id=657361641]
 material_override = SubResource("StandardMaterial3D_kkhwf")
 emitting = false
-amount = 32
+amount = 6
 amount_ratio = 0.8
 lifetime = 2.0
 one_shot = true
@@ -721,6 +678,7 @@ draw_pass_1 = SubResource("TorusMesh_i6cp2")
 
 [node name="Windup2" type="GPUParticles3D" parent="." unique_id=1685844172]
 material_override = SubResource("StandardMaterial3D_d6750")
+emitting = false
 amount = 100
 lifetime = 2.0
 one_shot = true
@@ -731,6 +689,7 @@ draw_pass_1 = SubResource("QuadMesh_i7rxg")
 
 [node name="Explosion_Ship" type="AnimationPlayer" parent="." unique_id=1517281890]
 libraries/ = SubResource("AnimationLibrary_xlu0u")
+autoplay = &"explosion_ship"
 
 [node name="OmniLight3D" type="OmniLight3D" parent="." unique_id=1810989184]
-omni_range = 1.0
+omni_range = 0.0

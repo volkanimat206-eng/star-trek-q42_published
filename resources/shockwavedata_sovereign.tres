@@ -4,4 +4,5 @@
 
 [resource]
 script = ExtResource("1_okkpr")
+shockwave_radius = 300.0
 metadata/_custom_type_script = "uid://bouhgwo0on3nc"

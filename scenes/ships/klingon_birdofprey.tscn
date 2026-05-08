@@ -4,11 +4,14 @@
 [ext_resource type="Resource" uid="uid://b4sv0jlqsx88l" path="res://data/ships/shipddata_birdofprey.tres" id="2_r577l"]
 [ext_resource type="PackedScene" uid="uid://cy3q4vd3ojfu1" path="res://scenes/vfx/effect_explosion_ship.tscn" id="3_ag3r8"]
 [ext_resource type="Shader" uid="uid://bb0qqp3ciqtpy" path="res://shaders/damage_shader.gdshader" id="4_bq6qy"]
+[ext_resource type="Resource" uid="uid://bv6jm8vtgu2ix" path="res://resources/debris_klingon.tres" id="4_shx7j"]
 [ext_resource type="PackedScene" uid="uid://b0ps2n8bkhaie" path="res://scenes/weapon/Weapon_BeamDisruptor.tscn" id="4_xnmtx"]
 [ext_resource type="Shader" uid="uid://du5dkyik5wt31" path="res://shaders/shield.gdshader" id="5_ip1cg"]
 [ext_resource type="PackedScene" uid="uid://b55vgygqcen7v" path="res://scenes/weapon/Weapon_Mount.tscn" id="5_ks720"]
+[ext_resource type="Script" uid="uid://btc2tuwctdkls" path="res://scripts/hull/hull_damage_visualizer.gd" id="6_6dckk"]
 [ext_resource type="Script" uid="uid://drfo5i81fkhuc" path="res://scripts/combat/shield_system.gd" id="6_ip1cg"]
 [ext_resource type="Resource" uid="uid://s5no21vj7a1" path="res://data/shields/shielddata_birdofprey.tres" id="6_xnmtx"]
+[ext_resource type="Resource" uid="uid://cdpep2sakodcf" path="res://resources/damage_parameters_xs_ships.tres" id="7_cek0b"]
 [ext_resource type="Script" uid="uid://bphq1pbix7nib" path="res://scripts/combat/targeting_system.gd" id="7_ut18v"]
 [ext_resource type="Script" uid="uid://ng03p8rp1rkm" path="res://scripts/weapons/weapon_mount_bolt.gd" id="8_4xfhx"]
 [ext_resource type="Resource" uid="uid://ch5k48335xxon" path="res://resources/weapons_beam/audio_disruptor_klingon.tres" id="8_shx7j"]
@@ -42,15 +45,33 @@ shader_parameter/uv1_scale = Vector3(1, 1, 1)
 shader_parameter/uv1_offset = Vector3(0, 0, 0)
 shader_parameter/uv2_scale = Vector3(1, 1, 1)
 shader_parameter/uv2_offset = Vector3(0, 0, 0)
-shader_parameter/damage_amount = 0.6000000285
-shader_parameter/damage_threshold = 0.150000007125
+shader_parameter/damage_amount = 0.50000002375
+shader_parameter/cloak_alpha = 1.0
+shader_parameter/damage_threshold = 0.5010000237975
 shader_parameter/damage_edge_softness = 0.20300000894398
-shader_parameter/damage_noise_scale = 20.0000009025
+shader_parameter/damage_noise_scale = 39.2030018146425
 shader_parameter/burn_color_dark = Color(0.0108242, 0.004136481, 0.0024218082, 1)
-shader_parameter/burn_color_glow = Color(0.711864, 0, 0.2617278, 1)
-shader_parameter/burn_glow_energy = 2.0
+shader_parameter/burn_color_char = Color(0.12, 0.06, 0.02, 1)
+shader_parameter/burn_color_glow = Color(0, 0, 0, 1)
+shader_parameter/burn_color_molten = Color(1, 0.27620506, 0.19143105, 1)
+shader_parameter/burn_color_molten_core = Color(0.89827347, 0.92168134, 0.30353206, 1)
+shader_parameter/molten_core_falloff = 2.038000073055
+shader_parameter/burn_glow_energy = 2.914000138415
+shader_parameter/burn_molten_energy = 22.594001073215
 shader_parameter/damage_roughness_boost = 1.0
 shader_parameter/damage_normal_disturb = 2.0
+shader_parameter/crack_amount = 0.6
+shader_parameter/crack_scale = 8.0
+shader_parameter/crack_width = 0.02900000067898
+shader_parameter/crack_glow_intensity = 5.378000255455
+shader_parameter/crack_drift_amount = 0.0
+shader_parameter/streak_amount = 0.4130000196175
+shader_parameter/streak_direction = Vector3(0, 1, 1)
+shader_parameter/streak_stretch = 1.338000016055
+shader_parameter/streak_scale = 23.074001048515
+shader_parameter/streak_threshold = 0.0
+shader_parameter/rim_width = 0.0
+shader_parameter/rim_glow_energy = 2.5
 shader_parameter/pulse_amplitude = 0.5
 shader_parameter/pulse_speed_hz = 1.5
 shader_parameter/pulse_async_amount = 0.7
@@ -59,7 +80,7 @@ shader_parameter/inner_hull_amount = 1.0
 shader_parameter/inner_hull_threshold = 0.55
 shader_parameter/inner_hull_darkness = 0.3
 shader_parameter/inner_grid_scale = 80.0
-shader_parameter/inner_pipe_thickness = 0.025999999837970002
+shader_parameter/inner_pipe_thickness = 0.02599999983797
 shader_parameter/inner_pipe_orientation = 0.36800001748
 shader_parameter/inner_pipe_color = Color(0.4, 0.25, 0.1, 1)
 shader_parameter/inner_pipe_glow_color = Color(0.3608698, 0.76362824, 0.22820884, 1)
@@ -74,12 +95,66 @@ albedo_color = Color(0, 0, 0, 1)
 metallic = 1.0
 roughness = 0.331169
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_528u5"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_cek0b"]
 resource_name = "Material.006"
-cull_mode = 2
-albedo_color = Color(0.052417032, 0.16665773, 0, 1)
-metallic = 1.0
-roughness = 0.422078
+render_priority = 0
+shader = ExtResource("4_bq6qy")
+shader_parameter/albedo = Color(0.052417032, 0.16665773, 0, 1)
+shader_parameter/albedo_texture_size = Vector2i(0, 0)
+shader_parameter/point_size = 1.0
+shader_parameter/roughness = 0.422078
+shader_parameter/metallic_texture_channel = Vector4(1, 0, 0, 0)
+shader_parameter/specular = 0.5
+shader_parameter/metallic = 1.0
+shader_parameter/emission = Color(0, 0, 0, 1)
+shader_parameter/emission_energy = 0.0
+shader_parameter/normal_scale = 0.0
+shader_parameter/uv1_scale = Vector3(1, 1, 1)
+shader_parameter/uv1_offset = Vector3(0, 0, 0)
+shader_parameter/uv2_scale = Vector3(1, 1, 1)
+shader_parameter/uv2_offset = Vector3(0, 0, 0)
+shader_parameter/damage_amount = 0.0
+shader_parameter/cloak_alpha = 1.0
+shader_parameter/damage_threshold = 0.15
+shader_parameter/damage_edge_softness = 0.2
+shader_parameter/damage_noise_scale = 12.0
+shader_parameter/burn_color_dark = Color(0.04, 0.02, 0.01, 1)
+shader_parameter/burn_color_char = Color(0.12, 0.06, 0.02, 1)
+shader_parameter/burn_color_glow = Color(1, 0.45, 0.05, 1)
+shader_parameter/burn_color_molten = Color(1, 0.35, 0.05, 1)
+shader_parameter/burn_color_molten_core = Color(1, 0.92, 0.55, 1)
+shader_parameter/molten_core_falloff = 2.5
+shader_parameter/burn_glow_energy = 4.0
+shader_parameter/burn_molten_energy = 12.0
+shader_parameter/damage_roughness_boost = 0.75
+shader_parameter/damage_normal_disturb = 1.8
+shader_parameter/crack_amount = 0.6
+shader_parameter/crack_scale = 8.0
+shader_parameter/crack_width = 0.06
+shader_parameter/crack_glow_intensity = 3.0
+shader_parameter/crack_drift_amount = 0.0
+shader_parameter/streak_amount = 0.4
+shader_parameter/streak_direction = Vector3(0, 0, 1)
+shader_parameter/streak_stretch = 6.0
+shader_parameter/streak_scale = 7.0
+shader_parameter/streak_threshold = 0.15
+shader_parameter/rim_width = 0.15
+shader_parameter/rim_glow_energy = 2.5
+shader_parameter/pulse_amplitude = 0.45
+shader_parameter/pulse_speed_hz = 1.2
+shader_parameter/pulse_async_amount = 0.7
+shader_parameter/pulse_flicker_amount = 0.35
+shader_parameter/inner_hull_amount = 1.0
+shader_parameter/inner_hull_threshold = 0.55
+shader_parameter/inner_hull_darkness = 0.15
+shader_parameter/inner_grid_scale = 25.0
+shader_parameter/inner_pipe_thickness = 0.12
+shader_parameter/inner_pipe_orientation = 0.3
+shader_parameter/inner_pipe_color = Color(0.4, 0.25, 0.1, 1)
+shader_parameter/inner_pipe_glow_color = Color(1, 0.5, 0.2, 1)
+shader_parameter/inner_pipe_glow_energy = 1.5
+shader_parameter/inner_parallax_depth = 0.05
+shader_parameter/inner_grid_flicker_independence = 0.4
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_rgxsq"]
 resource_name = "Material.011"
@@ -312,7 +387,7 @@ _surfaces = [{
 "format": 34359742487,
 "index_count": 4416,
 "index_data": PackedByteArray("AAABAAIAAAADAAEAAQAEAAIAAQAFAAQABgAHAAgABgAJAAcABgAKAAkABgALAAoADAANAA4ADwAOABAADwAMAA4ADAAPABEADAARABIADAASABMAEwAUAAwADAAVAA0AFQAWAA0AFQAXABYAGAAUABkAGAAaABQAGwAaABwAHAAdABsAHQAeABsAHgAfABsAIAAhACIAIwAiACEAJAAjACEAJQAkACEAIQAmACUAJAAnACgAJAApACcAIAAqACEAKgAgACsAKgArACkAKgAsACEAKgApAC0AKgAuACwALgAvACwALgAwAC8ALQAxACoAMgAxAC0AMgAmADEAMwA0ADUAMwA2ADQANgA3ADQANgA4ADcAOAA5ADcAOAA6ADkAOwA8AD0AOwA+ADwAPwBAAEEAPwBCAEAAQwBEAEUAQwBGAEQARwBGAEgASABJAEcASQBKAEcASgBLAEcATABNAE4ATgBPAEwATgBQAE8ATgBRAFAAUgBTAFQAUwBSAFUAUgBWAFUAVwBVAFYAUwBVAFgAVwBZAFUAWQBaAFUAWQBbAFoAWQBXAFwAWQBcAF0AXgBZAF0AWABfAFMAXQBgAF4AXgBgAGEAXgBhAGIAYwBeAGIAYgBkAGMAZQBjAGQAZQBmAGMAZwBjAGYAZgBlAGgAaABYAGYAZwBmAGkAagBnAGkAagBpAGsAbABqAGsAbABrAG0AaABuAFgAbwBuAGgAbgBfAFgAcABxAF8AcgBwAF8AXwBzAHIAdAB1AHYAdwB4AHkAegB7AHwAegB9AHsAfgB9AHoAfgB/AH0AgAB/AH4AgACBAH8AggCDAIQAggCFAIMAhgCEAIMAhgCDAIcAiACEAIYAiACJAIQAigCJAIgAigCLAIkAjACLAIoAjACNAIsAjgCNAIwAjgCPAI0AkACRAJIAkACTAJEAlACTAJAAlACQAJUAlQCQAJYAlQCWAJcAlwCWAJgAlwCYAJkAmQCYAJoAmQCaAJsAmwCaAJwAmwCcAJ0AngCfAKAAoQCiAKMApAClAKYApACnAKUAqACnAKQAqACpAKcAqgCpAKgAqgCrAKkArACtAK4ArwCwALEAsgCzALQAtACzALUAsgC2ALMAtAC1ALcAuAC2ALIAtwC1ALkAuAC6ALYAtwC5ALsAvAC6ALgAuwC5AL0AvAC+ALoAuwC9AL8AwAC+ALwAvwC9AMEAwADCAL4AvwDBAMMAxADCAMAAwwDBAMUAxADGAMIAwwDFAMcAyADGAMQAxwDFAMkAyADJAMYAxwDJAMgAygDLAMwAygDNAMsAzgDKAM8AzgDPANAA0QDSANMA0QDUANIA1QDWAGAAYADXANUAYADYANcA2QDaANsA2QDcANoA3QDeAN8A3QDgAN4A4QDiAOMA4QDkAOIA5QDmAOcA5QDoAOYA6QDqAOsA6QDsAOoA7QDuAO8A7QDwAO4A8QDyAPMA8QD0APIA9QD2APcA9QD4APYA+QD6APsA+QD8APoA/QD+AP8A/QAAAf4AAQECAQMBAQEEAQIBBQEGAQcBBQEIAQYBCQEKAQsBCQEMAQoBDQEOAQ8BDQEQAQ4BEQESARMBEQEUARIBFQEWARcBFQEYARYBGQEaARsBGQEcARoBHQEeAR8BHQEgAR4BIQEiASMBIQEkASIBJQEmAScBJQEoASYBKQEqASsBKQEsASoBLQEuAS8BLQEwAS4BMQEyATMBMQE0ATIBNQE2ATcBNQE4ATYBOQE6ATsBOQE8AToBPQE+AT8BPQFAAT4BQQFCAUMBQQFEAUIBRQFGAUcBRQFIAUYBSQFKAUsBSQFMAUoBTQFOAU8BTQFQAU4BUQFSAVMBUQFUAVIBVQFWAVcBVQFYAVYBWQFaAVsBWQFcAVoBXQFeAV8BXQFgAV4BYQFiAWMBYQFkAWIBZQFmAWcBZQFoAWYBaQFqAWsBaQFsAWoBbQFuAW8BbQFwAW4BcQFyAXMBcQF0AXIBdQF2AXcBdQF4AXYBeQF6AXsBeQF8AXoBfQF+AX8BfQGAAX4BgQGCAYMBgQGEAYIBhQGGAYcBhQGIAYYBiQGKAYsBiQGMAYoBjQGOAY8BjQGQAY4BkQGSAZMBkQGUAZIBlQGWAZcBlQGYAZYBmQGaAZsBmQGcAZoBnQGeAZ8BnQGgAZ4BoQGiAaMBoQGkAaIBpQGmAacBpQGoAaYBqQGqAasBqQGsAaoBrQGuAa8BrQGwAa4BsQGyAbMBsQG0AbIBtQG2AbcBtQG4AbYBuQG6AbsBuQG8AboBvQG+Ab8BvQHAAb4BwQHCAcMBwQHEAcIBxQHGAccBxQHIAcYByQHKAcsByQHMAcoBzQHOAc8BzQHQAc4B0QHSAdMB0QHUAdIB1QHWAdcB1QHYAdYB2QHaAdsB2QHcAdoB3QHeAd8B3QHgAd4B4QHiAeMB4QHkAeIB5QHmAecB5QHoAeYB6QHqAesB6QHsAeoB7QHuAe8B7QHwAe4B8QHyAfMB8QH0AfIB9QH2AfcB9QH4AfYB+QH6AfsB+QH8AfoB/QH+Af8B/QEAAv4BAQICAgMCAQIEAgICBQIGAgcCBQIIAgYCCQIKAgsCCQIMAgoCDQIOAg8CDQIQAg4CEQISAhMCEQIUAhICFQIWAhcCFQIYAhYCGQIaAhsCGQIcAhoCHQIeAh8CHQIgAh4CIQIiAiMCIQIkAiICJQImAicCJQIoAiYCKQIqAisCKQIsAioCLQIuAi8CLQIwAi4CMQIyAjMCMQI0AjICNQI2AjcCNQI4AjYCOQI6AjsCOQI8AjoCPQI+Aj8CPQJAAj4CQQJCAkMCQQJEAkICRQJGAkcCRQJIAkYCSQJKAksCSQJMAkoCTQJOAk8CTQJQAk4CUQJSAlMCUQJUAlICVQJWAlcCVQJYAlYCWQJaAlsCXAJdAl4CXwJgAmECYgJjAmQCZQJmAmcCaAJpAmoCawJsAm0CbgJvAnACcQJyAnMCdAJ1AnYCdwJ4AnkCegJ7AnwCfQJ+An8CfwKAAn0CfwKBAoACggKDAoQChAKFAoIChQKGAoIChwKIAokCiQKKAocCigKLAocCjAKNAo4CjgKPAowCjgKQAo8CkQKSApMCkQKUApIClQKWApcClQKYApYCmQKaApsCmQKcApoCnQKeAp8CnQKgAp4CoQKiAqMCoQKkAqICpQKmAqcCpQKoAqYCqQKqAqsCqQKsAqoCrQKuAq8CrQKwAq4CsQKyArMCsQK0ArICtQK2ArcCtQK4ArYCuQK6ArsCuQK8AroCvQK+Ar8CvQLAAr4CwQLCAsMCwQLEAsICxQLGAscCxQLIAsYCyQLKAssCyQLMAsoCzQLOAs8CzQLQAs4C0QLSAtMC0QLUAtIC1QLWAtcC1QLYAtYC2QLaAtsC2QLcAtoC3QLeAt8C3QLgAt4C4QLiAuMC4QLkAuIC5QLmAucC5QLoAuYC6QLqAusC6QLsAuoC7QLuAu8C7QLwAu4C8QLyAvMC8QL0AvIC9QL2AvcC9QL4AvYC+QL6AvsC+QL8AvoC/QL+Av8CAAMBAwIDAwMEAwUDAwMGAwQDBwMIAwkDBwMKAwgDCwMMAw0DDgMPAxADEQMSAxMDEQMUAxIDFQMWAxcDGAMZAxoDGwMcAx0DGwMeAxwDHwMgAyEDIQMgAyIDIQMiAyMDHwMkAyADJQMkAx8DJQMmAyQDJwMoAykDJwMqAygDKwMsAy0DLQMsAy4DKwMvAywDLQMuAzADMQMvAysDMAMuAzIDMQMyAy8DMAMyAzEDMwM0AzUDNQM2AzMDNgM3AzMDOAM5AzMDOgM7AzwDPQM+AzwDPwNAA0EDQgNDA0QDRQNGA0cDRwNIA0UDRwNJA0gDRwNKA0sDRwNMA00DTgNPA1ADUQNSA1MDVANVA1YDVwNYA1kDWQNaA1cDWgNbA1cDXANdA1cDXgNfA1cDYANhA2IDYwNkA2UDZgNnA2gDaQNqA2sDawNsA20DawNuA28DcANxA3IDcANzA3QDcAN1A3YDdwN4A3kDegN7A3wDfQN+A38DfQOAA34DfwN+A4EDfwOBA4IDgwOCA4EDgwOBA4QDhQOCA4MDhQOGA4IDhwOIA4UDhwOJA4gDiQOKA4gDiQOLA4oDhQOIA4wDhQOMA40DjQOOA4UDjQOPA44DjAOPA40DjAOQA48DkQOSA5MDkQOUA5IDlQOTA5IDlgOTA5UDlgOXA5MDmAOXA5YDmAOZA5cDmgOZA5gDmgObA5kDmQObA5wDmQOcA50DlQOSA54DngOSA58DngOfA6ADoAOfA6EDoAOhA6IDowOgA6IDowOiA6QDlQOlA6YDlQOnA6UDqAOpA6oDqgOrA6gDqgOsA6sDqAOrA60DqAOtA64DrAOvA7ADrAOxA68DsgOxA7MDsgOzA7QDrgO1A6gDqAO1A6kDtQO2A6kDrgO3A7UDtQO4A7YDtwO4A7UDtwO5A7gDugO7A7wDugO9A7sDvgO9A7oDvgO/A70DwAO7A8EDwAPCA7sDwwPCA8ADwwPEA8IDxQPGA8cDxQPIA8YDyQPKA8sDyQPMA8oDzAPNA8oDzAPOA80DygPPA9ADygPQA9EDywPKA9ED0QPQA9IDywPRA9MD0QPSA9MD0wPUA8sD0wPSA9QD1QPWA9cD1QPYA9YD2APZA9YD2APaA9kD2wPcA90D2wPeA9wD3gPfA9wD3gPgA98D3APfA+ED3QPcA+ID3APhA+ID4gPhA+MD3QPiA+QD4gPjA+UD5APiA+UD5APlA+YD5wPoA+kD5wPqA+gD6wPnA+kD6QPoA+wD6wPpA+0D6QPsA+4D7QPpA+4D7gPsA+8D7QPuA/AD7gPvA/ED8APuA/ED8QPvA/ID8APxA/MD8QPyA/QD8wPxA/QD8wP0A/UD9gP3A/gD9gP5A/cD+gP7A/wD+gP9A/sD/gP/AwAE/wMBBAAEAAQBBAIEAAQCBP4D/wMDBAEEBAQDBP8D/gMEBP8DBAQFBAME/gMGBAcE/gMHBAgECAQEBP4DCAQHBAkECAQKBAQECAQJBAoECgQLBAQECgQJBAsEDAQNBA4EDAQPBA0EEAQOBA0EEAQNBBEEEQQNBBIEEQQSBBMEFAQRBBUEFAQVBBYEFwQYBBkEGQQaBBcEGQQbBBoEGAQbBBkEFwQcBBgEGAQdBBsEHAQdBBgEHAQeBB0EHwQgBCEEHwQiBCAEIQQgBCMEIQQjBCQEJQQmBCcEJQQoBCYEKQQqBCsEKQQsBCoELQQuBC8ELQQwBC4ELwQuBDEELwQxBDIEMwQ0BDUENAQ2BDUENAQ3BDYENQQ2BDgENQQ4BDMEMwQ5BDQEMwQ6BDsEPAQ5BDMEMwQ7BDwEPAQ9BDkEPQQ+BDkEPQQ/BD4EPAQ/BD0EPAQ7BD8EQAQ/BDsEQARBBD8EQgRDBEQEQwRFBEYEQwRGBEcERARDBEcEQgRIBEMERARHBEkESQRKBEQESQRLBEoERARMBEIERARNBEwEQgRMBE4EQgROBEgESARPBFAESARQBFEEUgRTBFQEUgRVBFMEVQRWBFMEVQRXBFYEWARZBFoEWARbBFkEWgRZBFwEWgRcBF0EWQReBFwEWQRfBF4EWwRfBFkEWwRgBF8EYQRiBGMEYQRkBGIEZQRhBGMEZQRjBGYEZwRoBGkEZwRqBGgEaQRoBGsEaQRrBGwEaARtBGsEaARuBG0EagRuBGgEagRvBG4EcARxBHIEcARzBHEEcwR0BHEEcwR1BHQEdgR3BHgEdgR5BHcEeQR6BHcEeQR7BHoEfAR9BH4EfAR/BH0EgASBBIIEgASDBIEEhASFBIYEhASHBIUEiASJBIoEiASLBIwEiASMBI0EjQSMBI4EjQSPBIgEiQSIBI8EkASKBIkEkASRBIoEjgSSBJMEiQSUBJAEjgSTBJUEiQSPBJYEiQSWBJQElwSQBJQEkASXBJgEmQSVBJMEmASXBJoEmASaBJsElwScBJoElwSUBJ0ElwSdBJwEnQSUBJ4EngSUBJYEnwSZBKAEoQSdBJ4EnwSiBJkEnQShBKMEnQSjBJwEnASjBKQEoQSlBKMEpQSkBKMEngSmBKEEoQSnBKUEqASmBJ4EqASpBKYEpgSpBKoEqwSoBJ4EqwSsBKgEngSWBKsEqwStBKwEoQSmBK4EpgSqBK4EoQSuBKcErwSuBKoErwSnBK4ErwSqBLAErwSwBLEEsgSrBJYEqwSyBK0EsgSWBI8EswStBLIEswS0BK0EsgSPBLUEsgS1BLMEjQS1BI8EswS2BLQEtwS1BI0EtwSNBI4ElQS3BI4EtQS3BLgEswS1BLgElQS5BLcEuAS3BLkEuAS6BLMEswS6BLYEugS4BLsEvAS2BLoEugS7BLwEvAS9BLYEvgS9BLwEuAS5BL8EvwS7BLgEvgS8BMAEwAS8BLsEwQS+BMAEwQTCBL4EwQSxBMIEwQTDBLEErwSxBMMEwQTEBMMExQSvBMMExQTDBMQErwTFBKcEpwTFBMYExATGBMUEpwTGBKUEwQTHBMQExwTBBMAEyASlBMYEpQTIBKQExATJBMYEyATGBMkEygTEBMcEygTJBMQExwTABMsEywTKBMcEwAS7BMsEpATIBMwEyATJBMwEzQTJBMoEzQTMBMkEywTOBMoEzQTKBM4EywS7BM8EywTPBM4EvwTPBLsE0ATOBM8EvwTQBM8EzQTOBNAEzATNBNEE0QTNBNAEvwTSBNAE0QTQBNIE0gS/BLkEzATRBNMEpATMBNME1ATRBNIE0gS5BNUE1ATSBNUE1QS5BJUE1QSVBJkEogTVBJkEogTUBNUE1gTRBNQEogTWBNQE1gTTBNEE1wSkBNME1wTTBNYEnASkBNcEnATXBNgE2ATXBNYEnATYBJoEmgTYBNkE2ATWBNoE2QTYBNoEogTaBNYE2QTaBJ8E2gSiBJ8E2wTcBN0E3gTbBN8E3gTgBNsE4ATeBOEE4ATiBNsE4gTcBNsE4wTdBNwE4wTkBN0E4gTlBNwE3ATmBOME3ATlBOYE4ATnBOIE4AToBOcE4AThBOgE5wTpBOIE6QTlBOIE5wTqBOkE6gTnBOgE6QTrBOUE6gTsBOkE7ATrBOkE7ATtBOsE6gTuBOwE6wTtBO8E6gTwBO4E8QTlBOsE6wTvBPEE8QTmBOUE8gTxBO8E8gTvBPME8gTzBPQE8QTyBPUE9QTmBPEE8gT0BPYE9QTyBPYE9wT2BPQE9wT0BPgE9wT4BPkE9gT3BPoE9wT5BPsE+gT3BPsE+QT8BPsE+QT9BPwE+gT7BP4E/AT+BPsE/AT9BP8E9gT6BAAF9QT2BAAFAQUABfoE/gQBBfoE9QQABQIFAQUCBQAF9QQCBQMFAwUEBfUE9QQEBeYEAgUFBQMFAwUGBQQFBQUGBQMFBwXmBAQFBwUEBQYFBwXjBOYECAXjBAcFCQUIBQcFBwUGBQkFCQUKBQgFCwUJBQYFCwUMBQkFCwUGBQ0FBQUNBQYFDAULBQ4FDAUOBQ8FCwUNBRAFCwUQBQ4FDQUFBREFDQURBRAFEgUPBQ4FEAUSBQ4FEwUPBRIFEwUUBQ8FEAUVBRIFEQUVBRAFEgUWBRMFEgUVBRYFEQUXBRUFBQUYBREFGAUXBREFGQUVBRcFGQUWBRUFFgUaBRMFEwUaBRsF4QQbBRoF4QQcBRsFGgXoBOEEFgUdBRoFGgUdBegEHgUWBRkFHgUdBRYFHwXoBB0FHwUdBR4F6gToBB8FHgUZBSAFFwUgBRkFHwUhBeoE6gQhBfAEHgUiBR8FIQUfBSIFHgUgBSMFHgUjBSIFJAXwBCEFIQUiBSQFJAUlBfAEJAX/BCUFJAUmBf8EJgUkBSIF/AT/BCYFJwUiBSMFJgUiBScFJgUoBfwEJgUnBSgF/AQoBf4EJwUpBSgFKQX+BCgFJwUjBSoFJwUqBSkFIwUgBSoFKgUgBSsFKgUrBSkFFwUrBSAFGAUrBRcFGAUpBSsFKQUsBf4EGAUsBSkF/gQsBQEFLQUsBRgFLQUBBSwFBQUtBRgFLQUCBQEFAgUtBQUFLgUvBTAFLgUxBS8FMgUxBS4FLwUzBTAFLwU0BTMFMwU0BTUFMwU1BTYFNwU2BTUFNwU1BTgFNwU4BTkFNwU5BToFOwU8BT0FOwU+BTwFOwU/BT4FOwVABT8FQQU/BUAFQQVCBT8FQQVDBUIFQQVEBUMFRQVDBUQFRQVGBUMFRwVGBUUFRwVFBUgFSQVKBUsFSQVMBUoFSQVNBUwFSQVOBU0FTwVNBU4FTwVQBU0FUQVQBU8FUQVPBVIFUwVRBVIFUwVUBVEFVQVWBVcFVQVYBVYFWQVYBVUFWQVVBVoFWwVZBVoFWwVcBVkFWwVdBVwFWwVeBV0FXwVdBV4FXwVgBV0FYQViBWMFYQVkBWIFYQVlBWQFYQVmBWUFZwVlBWYFZwVoBWUFZwVpBWgFZwVqBWkFawVpBWoFawVsBWkFawVtBWwFawVuBW0FbwVtBW4FbwVwBW0FcQVwBW8FcQVvBXIFcwVxBXIFcwV0BXEFcwV1BXQFcwV2BXUFdwV1BXYFdwV4BXUFeQV6BXsFegV8BXsFeQV9BXoFegV+BXwFeQV/BX0FfAV+BYAFeQWBBX8FfAWABYIFgwV/BYEFhAWCBYAFgwWFBX8FhAWABYYFgwWHBYUFhAWGBYgFgwWJBYcFhAWIBYoFiwWHBYkFiAWMBYoFiwWNBYcFiAWOBYwFjwWNBYsFjAWOBY8FjwWLBZAFjAWPBZAFkQWSBZMFkQWUBZIFlQWTBZIFlQWSBZYFlQWWBZcFlQWXBZgFlwWZBZgFlwWaBZkFmQWaBZsFmQWbBZwFkQWdBZ4FnwWgBZ0FnwWhBaAFogWhBZ8FogWfBaMFpAWiBaMFpAWlBaIFpgWlBaQFpgWkBacFqAWmBacFqAWpBaYFqgWrBawFrQWsBasFqgWuBasFrQWrBa8FrQWvBbAFrQWwBbEFqgWyBa4FqgWzBbIFtAWyBbMFtAW1BbIFtAW2BbcFuAW5BboFuAW7BbkFvAW7BbgFvAW4Bb0FvgW8Bb0FvgW/BbwFvgXABb8FvgXBBcAFwgXABcEFwgXDBcAFxAXFBcYFxAXHBcUFyAXJBcoFywXMBc0FzgXPBdAF0QXSBdMF1AXVBdYF1wXYBdkF2gXbBdwF2gXdBdsF3gXfBeAF3gXhBd8F4gXjBeQF5QXmBecF5QXoBeYF5wXmBekF5wXpBeoF6gXpBesF6gXrBewF7QXuBe8F7QXwBe4F8QXwBe0F8QXyBfAF8wX0BfUF8wX2BfQF9wX4BfMF9wX5BfgF+gX5BfcF+gX7BfkF/AX9Bf4F/AX/Bf0FAAb8Bf4FAAYBBvwFAgYDBgQGBAYDBgUGBAYFBgYGAgYHBgMGBwYCBggGBwYIBgkGCgYLBgwGDAYLBg0GCgYOBgsGDwYOBgoGDwYQBg4GDAYNBhEGEQYNBhIGEQYSBhMGEwYSBhQGEwYUBhUGFgYXBhgGFgYZBhcGGAYXBhoGGAYaBhsGHAYdBh4GHAYfBh0GIAYfBhwGIAYhBh8GIgYjBiQGIgYlBiMGJAYjBiYGJAYmBicGKAYpBioGKAYrBikGLAYrBigGLAYtBisGKwYuBi8GKwYwBi4GLQYwBisGLQYxBjAGMAYyBjMGMAY0BjIGNQY0BjAGNQY2BjQGNgY3BjQGNgY4BjcGNAY3BjkGNAY5BjoGOwY8Bj0GOwY+BjwGPwZABkEGPwZCBkAGQwZEBkUGQwZGBkQGRwZIBkkGRwZKBkgGSwZMBk0GSwZOBkwGTQZMBk8GTQZPBlAGUAZPBlEGUAZRBlIGUgZRBlMGUgZTBlQGVAZTBlUGVAZVBlYGVwZYBlkGVwZaBlgGWwZXBlkGWwZZBlwGXQZeBl8GXQZgBl4GYQZgBl0GYQZiBmAGYgZjBmAGYgZkBmMGZQZmBmcGZQZoBmYGaQZoBmUGZwZmBmoGaQZrBmgGawZmBmgGawZqBmYGbAZrBmkGZwZqBm0GbAZuBmsGbgZqBmsGbwZuBmwGbQZqBnAGbQZwBm8GbgZwBmoGbwZwBm4GcQZyBnMGcQZ0BnIGdQZ0BnEGdgZ0BnUGdQZxBncGdgZ4BnQGdwZxBnkGegZ4BnYGdwZ5BnoGegZ5BngGewZ8Bn0GewZ+BnwGfwZ9BnwGfwaABn0GgQaCBoMGgQaEBoIGhQaGBocGhQaIBoYGiQaKBosGiQaMBooGjQaOBo8GjQaQBo4GkQaSBpMGkQaUBpIGlQaWBpcGlQaYBpYGmQaaBpsGmQacBpoGnQaeBpkGnQafBp4GnwagBqEGnwaiBqAGowakBqUGowamBqQGpganBqgGpgaoBqkGqgarBqwGqgatBqsGrgavBrAGrgaxBq8GsgazBrQGsga1BrMGtga3BrQGtga0BrgGuQa6BrsGuQa8BroGvQa+Br8GvQbABr4GwQbCBsMGwwbCBsQGwwbEBsUGwQbGBsIGxwbGBsEGxwbIBsYGyQbKBssGywbKBswGyQbNBsoGywbMBs4GzwbNBskGzgbMBtAGzwbRBs0GzgbQBtIG0gbQBtMG0gbTBtQG1QbRBs8G1QbWBtEG1wbWBtUG1wbYBtYG2QbYBtcG2QbaBtgG2wbaBtkG2wbcBtoG3QbeBt8G3wbeBuAG3QbhBt4G3wbgBuIG4gbgBuMG4gbjBuQG5QbhBt0G5QbmBuEG5wbmBuUG5wboBuYG6QbqBusG6wbqBuwG6wbsBu0G6QbuBuoG7wbuBukG7wbwBu4G8QbwBu8G8QbyBvAG8wbyBvEG8wb0BvIG9Qb2BvcG9wb2BvgG9wb4BvkG9Qb6BvYG+wb6BvUG+wb8BvoG/Qb+Bv8G/QYAB/4GAQcAB/0GAQcCBwAHAwcCBwEHAwcEBwIHBQcEBwMHBQcGBwQHBwcGBwUHBwcIBwYHCQcKBwsHCwcKBwwHCQcNBwoHCwcMBw4HDgcMBw8HDgcPBxAHEQcNBwkHEQcSBw0HEwcSBxEHEwcUBxIHFQcUBxMHFQcWBxQHFwcWBxUHFwcYBxYHGQcYBxcHGQcaBxgHGwcaBxkHGwccBxoHHQceBx8HHQcgBx4HHwceByEHHwchByIHIwckByUHIwcmByQHJwcmByMHJwcoByYHKQcoBycHKQcqBygHKwcqBykHKwcsByoHLQcsBysHLQcuBywHLwcwBzEHLwcyBzAHMwc0BzUHMwc2BzQHNwc4BzkHNwc6BzgHOwc6BzcHOwc8BzoHPQc8BzsHPQc+BzwHPwdAB0EHPwdCB0AHQwdCBz8HQwdEB0IHRQdEB0MHRQdGB0QHRwdIB0kHRwdKB0gHSwdMB00HSwdOB0wHTwdOB0sHTwdQB04HUQdSB1MHUwdUB1EHUwdVB1QHVgdTB1IHUgdXB1YHVgdYB1MHWAdZB1MHWgdbB1wHXAddB1oHXAdeB10HXwdgB2EHYQdiB18HYQdjB2IHYwdkB2IHZQdmB2cHZQdoB2YHaQdqB2sHaQdsB2oHbQduB28HbwdwB20HbwdxB3AHcgdzB3QHdAd1B3IHdAd2B3UHdAd3B3YHeAd5B3oHegd7B3gHewd8B3gHfAd9B3gHfgd/B4AHgAeBB34HgQeCB34HggeDB34HhAeFB4YHhgeHB4QHhgeIB4cHhgeJB4gHigeLB4wHjAeNB4oHjQeOB4oHjweQB5EHkQeSB48HkgeTB48HkweUB48HlQeWB5cHlweYB5UHlweZB5gHlweaB5kHmwecB50HnQeeB5sHngefB5sHnwegB5sHoQeiB6MHowekB6EHowelB6QHowemB6UH"),
-"material": SubResource("StandardMaterial3D_528u5"),
+"material": SubResource("ShaderMaterial_cek0b"),
 "name": "Material.006",
 "primitive": 3,
 "uv_scale": Vector4(0, 0, 0, 0),
@@ -434,20 +509,142 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_hbfal")
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_240yq"]
+resource_name = "Material.001"
+render_priority = 0
+shader = ExtResource("4_bq6qy")
+shader_parameter/albedo = Color(0.17995402, 0.28665915, 0.0950373, 1)
+shader_parameter/albedo_texture_size = Vector2i(0, 0)
+shader_parameter/point_size = 1.0
+shader_parameter/roughness = 0.348052
+shader_parameter/metallic_texture_channel = Vector4(1, 0, 0, 0)
+shader_parameter/specular = 0.5
+shader_parameter/metallic = 1.0
+shader_parameter/emission = Color(0, 0, 0, 1)
+shader_parameter/emission_energy = 0.0
+shader_parameter/normal_scale = 0.0
+shader_parameter/uv1_scale = Vector3(1, 1, 1)
+shader_parameter/uv1_offset = Vector3(0, 0, 0)
+shader_parameter/uv2_scale = Vector3(1, 1, 1)
+shader_parameter/uv2_offset = Vector3(0, 0, 0)
+shader_parameter/damage_amount = 0.5
+shader_parameter/cloak_alpha = 1.0
+shader_parameter/damage_threshold = 0.1
+shader_parameter/damage_edge_softness = 0.2
+shader_parameter/damage_noise_scale = 30.0
+shader_parameter/burn_color_dark = Color(0, 0, 0, 1)
+shader_parameter/burn_color_char = Color(0, 0, 0, 1)
+shader_parameter/burn_color_glow = Color(0, 0, 0, 1)
+shader_parameter/burn_color_molten = Color(1, 0.011764706, 0, 1)
+shader_parameter/burn_color_molten_core = Color(1, 0.92156863, 0.54901963, 1)
+shader_parameter/molten_core_falloff = 0.8
+shader_parameter/burn_glow_energy = 6.0
+shader_parameter/burn_molten_energy = 15.0
+shader_parameter/damage_roughness_boost = 0.75
+shader_parameter/damage_normal_disturb = 1.8
+shader_parameter/crack_amount = 0.6
+shader_parameter/crack_scale = 0.0
+shader_parameter/crack_width = 0.0
+shader_parameter/crack_glow_intensity = 0.0
+shader_parameter/crack_drift_amount = 0.0
+shader_parameter/streak_amount = 0.3
+shader_parameter/streak_direction = Vector3(0, 0, 1)
+shader_parameter/streak_stretch = 1.0
+shader_parameter/streak_scale = 15.0
+shader_parameter/streak_threshold = 0.3
+shader_parameter/rim_width = 0.0
+shader_parameter/rim_glow_energy = 2.5
+shader_parameter/pulse_amplitude = 0.6076923076923076
+shader_parameter/pulse_speed_hz = 2.8769230769230774
+shader_parameter/pulse_async_amount = 0.7
+shader_parameter/pulse_flicker_amount = 0.46153846153846145
+shader_parameter/inner_hull_amount = 1.0
+shader_parameter/inner_hull_threshold = 0.55
+shader_parameter/inner_hull_darkness = 0.15
+shader_parameter/inner_grid_scale = 25.0
+shader_parameter/inner_pipe_thickness = 0.12
+shader_parameter/inner_pipe_orientation = 0.3
+shader_parameter/inner_pipe_color = Color(0.4, 0.25, 0.1, 1)
+shader_parameter/inner_pipe_glow_color = Color(1, 0.5, 0.2, 1)
+shader_parameter/inner_pipe_glow_energy = 1.5
+shader_parameter/inner_parallax_depth = 0.05
+shader_parameter/inner_grid_flicker_independence = 0.4
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_g4kwf"]
+resource_name = "Material.006"
+render_priority = 0
+shader = ExtResource("4_bq6qy")
+shader_parameter/albedo = Color(0.052417032, 0.16665773, 0, 1)
+shader_parameter/albedo_texture_size = Vector2i(0, 0)
+shader_parameter/point_size = 1.0
+shader_parameter/roughness = 0.422078
+shader_parameter/metallic_texture_channel = Vector4(1, 0, 0, 0)
+shader_parameter/specular = 0.5
+shader_parameter/metallic = 1.0
+shader_parameter/emission = Color(0, 0, 0, 1)
+shader_parameter/emission_energy = 0.0
+shader_parameter/normal_scale = 0.0
+shader_parameter/uv1_scale = Vector3(1, 1, 1)
+shader_parameter/uv1_offset = Vector3(0, 0, 0)
+shader_parameter/uv2_scale = Vector3(1, 1, 1)
+shader_parameter/uv2_offset = Vector3(0, 0, 0)
+shader_parameter/damage_amount = 0.5
+shader_parameter/cloak_alpha = 1.0
+shader_parameter/damage_threshold = 0.1
+shader_parameter/damage_edge_softness = 0.2
+shader_parameter/damage_noise_scale = 30.0
+shader_parameter/burn_color_dark = Color(0, 0, 0, 1)
+shader_parameter/burn_color_char = Color(0, 0, 0, 1)
+shader_parameter/burn_color_glow = Color(0, 0, 0, 1)
+shader_parameter/burn_color_molten = Color(1, 0.011764706, 0, 1)
+shader_parameter/burn_color_molten_core = Color(1, 0.92156863, 0.54901963, 1)
+shader_parameter/molten_core_falloff = 0.8
+shader_parameter/burn_glow_energy = 6.0
+shader_parameter/burn_molten_energy = 15.0
+shader_parameter/damage_roughness_boost = 0.75
+shader_parameter/damage_normal_disturb = 1.8
+shader_parameter/crack_amount = 0.6
+shader_parameter/crack_scale = 0.0
+shader_parameter/crack_width = 0.0
+shader_parameter/crack_glow_intensity = 0.0
+shader_parameter/crack_drift_amount = 0.0
+shader_parameter/streak_amount = 0.3
+shader_parameter/streak_direction = Vector3(0, 0, 1)
+shader_parameter/streak_stretch = 1.0
+shader_parameter/streak_scale = 15.0
+shader_parameter/streak_threshold = 0.3
+shader_parameter/rim_width = 0.0
+shader_parameter/rim_glow_energy = 2.5
+shader_parameter/pulse_amplitude = 0.6076923076923076
+shader_parameter/pulse_speed_hz = 2.8769230769230774
+shader_parameter/pulse_async_amount = 0.7
+shader_parameter/pulse_flicker_amount = 0.46153846153846145
+shader_parameter/inner_hull_amount = 1.0
+shader_parameter/inner_hull_threshold = 0.55
+shader_parameter/inner_hull_darkness = 0.15
+shader_parameter/inner_grid_scale = 25.0
+shader_parameter/inner_pipe_thickness = 0.12
+shader_parameter/inner_pipe_orientation = 0.3
+shader_parameter/inner_pipe_color = Color(0.4, 0.25, 0.1, 1)
+shader_parameter/inner_pipe_glow_color = Color(1, 0.5, 0.2, 1)
+shader_parameter/inner_pipe_glow_energy = 1.5
+shader_parameter/inner_parallax_depth = 0.05
+shader_parameter/inner_grid_flicker_independence = 0.4
+
 [sub_resource type="SphereMesh" id="SphereMesh_q6dot"]
 radius = 1.0
 height = 2.0
 
-[sub_resource type="FastNoiseLite" id="FastNoiseLite_sdqp7"]
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_1nnqg"]
 noise_type = 2
-seed = -269764916
+seed = -1959033822
 frequency = 0.08
 fractal_octaves = 3
 
-[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_shx7j"]
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_cq8fy"]
 width = 256
 height = 256
-noise = SubResource("FastNoiseLite_sdqp7")
+noise = SubResource("FastNoiseLite_1nnqg")
 seamless = true
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_xnmtx"]
@@ -468,7 +665,7 @@ shader_parameter/impact_ages = Array[float]([100.0, 100.0, 100.0, 100.0, 100.0, 
 shader_parameter/impact_colors = Array[Color]([Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1)])
 shader_parameter/impact_types = Array[float]([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 shader_parameter/dissolve_progress = 0.0
-shader_parameter/dissolve_noise = SubResource("NoiseTexture2D_shx7j")
+shader_parameter/dissolve_noise = SubResource("NoiseTexture2D_cq8fy")
 shader_parameter/pattern_type = 1
 shader_parameter/pattern_scale = 60.0
 shader_parameter/pattern_line_width = 0.05
@@ -486,7 +683,10 @@ explosion_scene = ExtResource("3_ag3r8")
 explosion_size = 6.0
 explosion_origin = NodePath("Model/Effects/ExplosionOrigin")
 shockwave_delay = 2.0
+debris_data = ExtResource("4_shx7j")
+debris_color_tint = Color(0.16940668, 0.57369554, 0, 1)
 hit_reaction_tilt = 20.0
+show_debug = false
 cloak_component = NodePath("ShipController/CloakComponent")
 
 [node name="Model" type="Node3D" parent="." unique_id=1791772175]
@@ -498,6 +698,13 @@ transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, -6.5
 transform = Transform3D(1.9, 0, 0, 0, -8.305164e-08, -1.9, 0, 1.9, -8.305164e-08, -6.319302e-08, 0.7228435, 8.014038)
 mesh = SubResource("ArrayMesh_a2xp4")
 skeleton = NodePath("")
+surface_material_override/0 = SubResource("ShaderMaterial_240yq")
+surface_material_override/2 = SubResource("ShaderMaterial_g4kwf")
+script = ExtResource("6_6dckk")
+damage_parameters = ExtResource("7_cek0b")
+ship_controller_path = NodePath("../../..")
+damage_shader = ExtResource("4_bq6qy")
+damage_curve_exponent = 1.5
 
 [node name="ShieldMesh" type="MeshInstance3D" parent="Model" unique_id=34795952]
 transform = Transform3D(20, 0, 0, 0, -6.556708e-07, -25, 0, 15, -1.0927847e-06, 7.1054274e-15, -3.467, -3.5892782)
@@ -559,7 +766,6 @@ shield_radius_y = 15.0
 shield_radius_z = 25.0
 shield_mesh_path = NodePath("../Model/ShieldMesh")
 max_impact_slots = 3
-show_debug = true
 
 [node name="ShipController" type="Node3D" parent="." unique_id=307302684]
 
@@ -568,6 +774,7 @@ script = ExtResource("10_hrn4b")
 mesh_instance = NodePath("../../Model/MeshModel/Body")
 ship_controller_path = NodePath("../..")
 damage_decal_scenes = Array[PackedScene]([ExtResource("15_sdqp7")])
+max_decals = 5
 vfx_scenes = Array[PackedScene]([ExtResource("15_ag3r8")])
 decals_permanent = true
 min_decal_size = 0.1
@@ -576,11 +783,11 @@ decal_thickness = 3.0
 min_emission = 1.0
 max_emission = 2.0
 
-[node name="DecalPool" type="Node3D" parent="ShipController/HullImpactReceiver" unique_id=257490146]
-
 [node name="HullDamageVfx" type="Node3D" parent="ShipController" unique_id=716541722 node_paths=PackedStringArray("mesh_instance")]
 script = ExtResource("14_tswv7")
+ship_controller_path = NodePath("../..")
 mesh_instance = NodePath("../../Model/MeshModel/Body")
+vfx_parent_path = NodePath("..")
 vfx_scenes = Array[PackedScene]([ExtResource("15_bq6qy")])
 debug_vfx = true
 
