@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource("1_lcq2a")
-damage_amount = 0.5
+damage_amount = 0.3
 damage_threshold = 0.0
 damage_edge_softness = 0.18
 damage_noise_scale = 10.0

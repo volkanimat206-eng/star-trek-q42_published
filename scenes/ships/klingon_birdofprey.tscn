@@ -53,6 +53,7 @@ shader_parameter/damage_noise_scale = 39.2030018146425
 shader_parameter/burn_color_dark = Color(0.0108242, 0.004136481, 0.0024218082, 1)
 shader_parameter/burn_color_char = Color(0.12, 0.06, 0.02, 1)
 shader_parameter/burn_color_glow = Color(0, 0, 0, 1)
+shader_parameter/burn_soot_intensity = 0.8
 shader_parameter/burn_color_molten = Color(1, 0.27620506, 0.19143105, 1)
 shader_parameter/burn_color_molten_core = Color(0.89827347, 0.92168134, 0.30353206, 1)
 shader_parameter/molten_core_falloff = 2.038000073055
@@ -121,6 +122,7 @@ shader_parameter/damage_noise_scale = 12.0
 shader_parameter/burn_color_dark = Color(0.04, 0.02, 0.01, 1)
 shader_parameter/burn_color_char = Color(0.12, 0.06, 0.02, 1)
 shader_parameter/burn_color_glow = Color(1, 0.45, 0.05, 1)
+shader_parameter/burn_soot_intensity = 0.8
 shader_parameter/burn_color_molten = Color(1, 0.35, 0.05, 1)
 shader_parameter/burn_color_molten_core = Color(1, 0.92, 0.55, 1)
 shader_parameter/molten_core_falloff = 2.5
@@ -535,6 +537,7 @@ shader_parameter/damage_noise_scale = 30.0
 shader_parameter/burn_color_dark = Color(0, 0, 0, 1)
 shader_parameter/burn_color_char = Color(0, 0, 0, 1)
 shader_parameter/burn_color_glow = Color(0, 0, 0, 1)
+shader_parameter/burn_soot_intensity = 0.8
 shader_parameter/burn_color_molten = Color(1, 0.011764706, 0, 1)
 shader_parameter/burn_color_molten_core = Color(1, 0.92156863, 0.54901963, 1)
 shader_parameter/molten_core_falloff = 0.8
@@ -596,6 +599,7 @@ shader_parameter/damage_noise_scale = 30.0
 shader_parameter/burn_color_dark = Color(0, 0, 0, 1)
 shader_parameter/burn_color_char = Color(0, 0, 0, 1)
 shader_parameter/burn_color_glow = Color(0, 0, 0, 1)
+shader_parameter/burn_soot_intensity = 0.8
 shader_parameter/burn_color_molten = Color(1, 0.011764706, 0, 1)
 shader_parameter/burn_color_molten_core = Color(1, 0.92156863, 0.54901963, 1)
 shader_parameter/molten_core_falloff = 0.8
@@ -637,7 +641,7 @@ height = 2.0
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_1nnqg"]
 noise_type = 2
-seed = -1959033822
+seed = 1428058595
 frequency = 0.08
 fractal_octaves = 3
 
@@ -705,6 +709,8 @@ damage_parameters = ExtResource("7_cek0b")
 ship_controller_path = NodePath("../../..")
 damage_shader = ExtResource("4_bq6qy")
 damage_curve_exponent = 1.5
+damage_start_threshold = null
+damage_min_visual = null
 
 [node name="ShieldMesh" type="MeshInstance3D" parent="Model" unique_id=34795952]
 transform = Transform3D(20, 0, 0, 0, -6.556708e-07, -25, 0, 15, -1.0927847e-06, 7.1054274e-15, -3.467, -3.5892782)
@@ -789,7 +795,6 @@ ship_controller_path = NodePath("../..")
 mesh_instance = NodePath("../../Model/MeshModel/Body")
 vfx_parent_path = NodePath("..")
 vfx_scenes = Array[PackedScene]([ExtResource("15_bq6qy")])
-debug_vfx = true
 
 [node name="MovementComponent" type="Node" parent="ShipController" unique_id=196664631]
 script = ExtResource("8_xnmtx")

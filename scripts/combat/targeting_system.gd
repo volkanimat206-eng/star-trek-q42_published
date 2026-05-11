@@ -93,6 +93,10 @@ func _ready() -> void:
 	# Reticle NICHT in _ready() initialisieren –
 	# is_player_controlled wird erst nach _ready() per Code gesetzt.
 	# PlayerController ruft setup_as_player() nach add_child() auf.
+	# Gruppe für weltweite Benachrichtigung bei Ziel-Zerstörung.
+	# ShipController iteriert diese Gruppe in _on_ship_destroyed().
+	add_to_group("targeting_systems")
+
 	_dbg("=== TARGETING SYSTEM READY ===")
 	_dbg("  target_layer  : %d" % target_layer)
 	_dbg("  max_lock_range: %.1f" % max_lock_range)
@@ -251,10 +255,20 @@ func _set_lock(target: Node3D) -> void:
 	locked_target  = target
 	current_mode   = Mode.TARGET_LOCK
 	hovered_target = null
+	
+	# --- NEU: Signal-Verbindung für automatischen Unlock ---
+	if is_instance_valid(locked_target):
+		var ship = _find_ship_controller_of(locked_target)
+		if ship:
+			# Wir verbinden uns mit dem Tod des Schiffes. 
+			# CONNECT_ONE_SHOT sorgt dafür, dass die Verbindung nach dem ersten Mal gelöscht wird.
+			if not ship.ship_destroyed.is_connected(release_target):
+				ship.ship_destroyed.connect(release_target, CONNECT_ONE_SHOT)
+	# -------------------------------------------------------
+
 	targeting_mode_changed.emit(current_mode)
 	target_locked.emit(target)
 	_set_reticle_state(TargetReticle.State.LOCKED)
-	# Disposition direkt setzen – Farbe aktualisiert sich sofort
 	_set_reticle_disposition(target)
 	_dbg("LOCK gesetzt → '%s'" % target.name)
 
@@ -815,3 +829,14 @@ func _find_ship_controller_of(node: Node3D) -> ShipController:
 func _dbg(msg: String) -> void:
 	if show_debug:
 		print("[TargetingSystem] %s" % msg)
+		
+## Wird aufgerufen, wenn ein anvisiertes Ziel zerstört wird
+func _on_target_destroyed(target: Node3D) -> void:
+	if target == locked_target:
+		_dbg("🎯 Aktuelles Ziel zerstört. Lock gelöscht.")
+		release_target()
+	
+	if multi_locked_targets.has(target):
+		_dbg("🎯 Multi-Ziel zerstört. Aus Liste entfernt.")
+		multi_locked_targets.erase(target)
+		multi_target_removed.emit(target)

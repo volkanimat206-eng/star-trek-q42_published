@@ -24,6 +24,11 @@ class_name HullDamageVisualizer
 @export_group("Damage Mapping")
 @export_range(0.5, 1.0, 0.01) var damage_visual_cap: float = 0.65
 @export_range(0.0, 6.0, 0.1)  var damage_curve_exponent: float = 2.5
+## Ab wie viel Prozent Hüllenschaden soll die Anzeige beginnen? (0.5 = 50%)
+@export_range(0.0, 1.0, 0.05) var damage_start_threshold: float = 0.5
+## Welcher damage_amount soll beim Erreichen des Schwellenwerts sofort angezeigt werden?
+@export_range(0.0, 1.0, 0.05) var damage_min_visual: float = 0.3
+
 
 @export_group("Dynamic Pulse Scaling")
 @export var enable_dynamic_pulse: bool = true
@@ -277,9 +282,25 @@ func _update_shader_parameters() -> void:
 		final_damage_amount = damage_parameters.damage_amount
 	else:
 		if _ship_ctrl:
+			# Aktueller Hüllenzustand (1.0 = gesund, 0.0 = zerstört)
 			var integrity: float = float(_ship_ctrl.get_hull_integrity())
-			#var hp_loss: float   = clamp(0.0 - integrity, 0.0, 1.0)
-			#final_damage_amount  = pow(hp_loss, damage_curve_exponent)
+			# Umrechnen in Schaden (0.0 = gesund, 1.0 = zerstört)
+			var hull_damage_ratio: float = clamp(1.0 - integrity, 0.0, 1.0)
+			
+			# Prüfung: Ist der Schaden über dem Schwellenwert (z.B. 0.5)?
+			if hull_damage_ratio >= damage_start_threshold:
+				# Berechne den Fortschritt innerhalb des aktiven Bereichs (z.B. von 0.5 bis 1.0)
+				var range_width = 1.0 - damage_start_threshold
+				var local_ratio = (hull_damage_ratio - damage_start_threshold) / max(range_width, 0.001)
+				
+				# Kurve anwenden (Exponential für dramatischeren Schaden am Ende)
+				var curved_ratio = pow(local_ratio, damage_curve_exponent)
+				
+				# Mappen auf [damage_min_visual bis damage_visual_cap]
+				final_damage_amount = lerp(damage_min_visual, damage_visual_cap, curved_ratio)
+			else:
+				# Schiff ist noch zu gesund -> kein sichtbarer Schaden
+				final_damage_amount = 0.0
 
 	# 2. Dynamisches Pulse-Scaling
 	var dyn_pulse_speed: float = damage_parameters.pulse_speed_hz

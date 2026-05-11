@@ -550,6 +550,8 @@ ship_data = ExtResource("2_pq61h")
 explosion_scene = ExtResource("3_armtx")
 explosion_size = 8.0
 explosion_origin = NodePath("Model/Effects/ExplosionOrigin")
+shockwave_delay = 2.5
+show_debug = false
 cloak_component = NodePath("ShipController/CloakComponent")
 
 [node name="Model" type="Node3D" parent="." unique_id=453299257]
@@ -562,7 +564,7 @@ curve = SubResource("Curve3D_07lv0")
 debug_custom_color = Color(1, 0, 0, 1)
 
 [node name="PathFollow3D_A" type="PathFollow3D" parent="Model/PathPlannings/PhaserBank_Top" unique_id=95988932]
-transform = Transform3D(-0.3144238, -0.0014662549, -0.9492814, 0, 1.0003717, -0.0015440173, 0.9492799, -0.00048565806, -0.31442428, 10.38, -13.7, -15.296)
+transform = Transform3D(-0.3144238, -0.0014662573, -0.9492814, 0, 1.0003732, -0.0015440173, 0.9492799, -0.00048565882, -0.31442428, 10.38, -13.7, -15.296)
 rotation_mode = 4
 
 [node name="Marker3D_A" type="Marker3D" parent="Model/PathPlannings/PhaserBank_Top/PathFollow3D_A" unique_id=61802971]
@@ -578,7 +580,7 @@ light_indirect_energy = 0.6
 light_volumetric_fog_energy = 0.5
 
 [node name="PathFollow3D_B" type="PathFollow3D" parent="Model/PathPlannings/PhaserBank_Top" unique_id=1223719029]
-transform = Transform3D(-0.3144238, -0.0014662549, -0.9492814, 0, 1.0003717, -0.0015440173, 0.9492799, -0.00048565806, -0.31442428, 10.38, -13.7, -15.296)
+transform = Transform3D(-0.3144238, -0.0014662573, -0.9492814, 0, 1.0003732, -0.0015440173, 0.9492799, -0.00048565882, -0.31442428, 10.38, -13.7, -15.296)
 rotation_mode = 4
 
 [node name="Marker3D_B" type="Marker3D" parent="Model/PathPlannings/PhaserBank_Top/PathFollow3D_B" unique_id=235449444]
@@ -643,7 +645,7 @@ curve = SubResource("Curve3D_bvt33")
 debug_custom_color = Color(1, 0, 0, 1)
 
 [node name="PathFollow3D_A" type="PathFollow3D" parent="Model/PathPlannings/PhaserBank_Top_Right" unique_id=1331458506]
-transform = Transform3D(0.22227737, 0.021834452, -0.9747386, 0, 1.0001112, 0.0223866, 0.97497255, -0.004977888, 0.22222403, -16.706, -15.3, -26.472)
+transform = Transform3D(0.22227737, 0.021834485, -0.9747386, 0, 1.0001128, 0.0223866, 0.97497255, -0.004977896, 0.22222403, -16.706, -15.3, -26.472)
 rotation_mode = 4
 
 [node name="Marker3D_A" type="Marker3D" parent="Model/PathPlannings/PhaserBank_Top_Right/PathFollow3D_A" unique_id=1235774715]
@@ -659,7 +661,7 @@ light_indirect_energy = 0.6
 light_volumetric_fog_energy = 0.5
 
 [node name="PathFollow3D_B" type="PathFollow3D" parent="Model/PathPlannings/PhaserBank_Top_Right" unique_id=529980478]
-transform = Transform3D(0.22227737, 0.021834452, -0.9747386, 0, 1.0001112, 0.0223866, 0.97497255, -0.004977888, 0.22222403, -16.706, -15.3, -26.472)
+transform = Transform3D(0.22227737, 0.021834485, -0.9747386, 0, 1.0001128, 0.0223866, 0.97497255, -0.004977896, 0.22222403, -16.706, -15.3, -26.472)
 rotation_mode = 4
 
 [node name="Marker3D_B" type="Marker3D" parent="Model/PathPlannings/PhaserBank_Top_Right/PathFollow3D_B" unique_id=1147521489]
@@ -760,7 +762,7 @@ curve = SubResource("Curve3D_2gfh4")
 debug_custom_color = Color(1, 0, 0, 1)
 
 [node name="PathFollow3D_A" type="PathFollow3D" parent="Model/PathPlannings/PhaserBank_Back_Right" unique_id=1243775207]
-transform = Transform3D(-0.11479008, 0, 0.99338967, 0, 1.0003597, 0, -0.99337626, 0, -0.11479163, -12.318174, -15.400036, -24.15163)
+transform = Transform3D(-0.11479008, 0, 0.99338967, 0, 1.0003612, 0, -0.99337626, 0, -0.11479163, -12.318174, -15.400036, -24.15163)
 rotation_mode = 4
 
 [node name="Marker3D_A" type="Marker3D" parent="Model/PathPlannings/PhaserBank_Back_Right/PathFollow3D_A" unique_id=1564434586]
@@ -776,7 +778,7 @@ light_indirect_energy = 0.6
 light_volumetric_fog_energy = 0.5
 
 [node name="PathFollow3D_B" type="PathFollow3D" parent="Model/PathPlannings/PhaserBank_Back_Right" unique_id=1855841634]
-transform = Transform3D(-0.11479008, 0, 0.99338967, 0, 1.0003597, 0, -0.99337626, 0, -0.11479163, -12.318174, -15.400036, -24.15163)
+transform = Transform3D(-0.11479008, 0, 0.99338967, 0, 1.0003612, 0, -0.99337626, 0, -0.11479163, -12.318174, -15.400036, -24.15163)
 rotation_mode = 4
 
 [node name="Marker3D_B" type="Marker3D" parent="Model/PathPlannings/PhaserBank_Back_Right/PathFollow3D_B" unique_id=712457263]
@@ -801,6 +803,8 @@ ship_controller_path = NodePath("../..")
 damage_shader = ExtResource("7_lf6dt")
 damage_visual_cap = 0.5
 damage_curve_exponent = 0.5
+damage_start_threshold = null
+damage_min_visual = null
 death_animation = ExtResource("7_e2qwc")
 animation_player_path = NodePath("AnimationPlayer")
 
@@ -1006,7 +1010,7 @@ light_color = "White"
 intensity_multiplier = 10.0
 
 [node name="ExplosionOrigin" type="Marker3D" parent="Model/Effects" unique_id=674188665]
-transform = Transform3D(0.9999996, -1.1641532e-10, -2.7755576e-17, 8.326673e-17, -4.371111e-08, 1, 5.820766e-11, -0.99999964, -4.3711253e-08, -0.007829916, -4.563967, -10.689252)
+transform = Transform3D(0.9999996, -1.1641532e-10, -2.7755576e-17, 8.326673e-17, -4.371111e-08, 1, 5.820766e-11, -0.99999964, -4.3711253e-08, 0, 0, 0)
 
 [node name="ShieldSystem" type="Node3D" parent="." unique_id=1793752570]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.3488464)
@@ -1015,10 +1019,10 @@ script = ExtResource("11_6yb54")
 data = ExtResource("28_armtx")
 
 [node name="ShipController" type="Node3D" parent="." unique_id=1381585337]
-visible = false
 
-[node name="HullImpactReceiver" type="Node" parent="ShipController" unique_id=955331018 node_paths=PackedStringArray("additional_meshes")]
+[node name="HullImpactReceiver" type="Node" parent="ShipController" unique_id=955331018 node_paths=PackedStringArray("mesh_instance", "additional_meshes")]
 script = ExtResource("9_aa5v5")
+mesh_instance = NodePath("../../Model/MeshModel/Body")
 additional_meshes = [null]
 ship_controller_path = NodePath("../..")
 damage_decal_scenes = Array[PackedScene]([ExtResource("10_hso8w")])
@@ -1039,7 +1043,7 @@ ship_controller_path = NodePath("../..")
 mesh_instance = NodePath("../../Model/MeshModel/Body")
 vfx_parent_path = NodePath("..")
 vfx_scenes = Array[PackedScene]([ExtResource("13_3o5hw")])
-debug_vfx = true
+min_damage_for_vfx = 0.5
 
 [node name="MovementComponent" type="Node" parent="ShipController" unique_id=1549703365]
 script = ExtResource("14_6yb54")

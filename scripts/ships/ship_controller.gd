@@ -368,7 +368,29 @@ func _on_ship_destroyed() -> void:
 	_is_alive = false
 	_dbg("💥 SCHIFF ZERSTÖRT: %s" % ship_name)
 
-	# 1. SHADER-VISUALISIERUNG (Zerfall des Schiffs-Modells)
+	# 1. VELOCITY SOFORT NULLEN → verhindert Partikel-Drift bei der Explosion.
+	# Der ShipController ist Kind des CharacterBody3D (Player oder AI-Body).
+	var body := get_parent() as CharacterBody3D
+	if body:
+		body.velocity = Vector3.ZERO
+		_dbg("⛔ velocity → ZERO (Anti-Drift)")
+
+	# 2. EIGENES TARGETING FREIGEBEN → Lock auf das zerstörte Schiff löschen.
+	if is_instance_valid(targeting_system):
+		targeting_system.release_target()
+		_dbg("🎯 TargetingSystem.release_target() ausgeführt")
+
+	# 3. ALLE FREMDEN TARGETING-SYSTEME BENACHRICHTIGEN → Geister-Feuer verhindern.
+	# Jedes TargetingSystem in der Gruppe prüft ob wir sein aktuelles Ziel sind
+	# und gibt den Lock frei. Die Funktion _on_target_destroyed() existiert bereits
+	# im TargetingSystem und behandelt sowohl locked_target als auch multi_targets.
+	var all_ts := get_tree().get_nodes_in_group("targeting_systems")
+	for ts in all_ts:
+		if ts is TargetingSystem and is_instance_valid(ts):
+			(ts as TargetingSystem)._on_target_destroyed(get_parent())
+	_dbg("📡 %d TargetingSystem(e) über Zerstörung benachrichtigt" % all_ts.size())
+
+	# 4. SHADER-VISUALISIERUNG (Zerfall des Schiffs-Modells)
 	var visualizer: HullDamageVisualizer = null
 	for child in find_children("*", "HullDamageVisualizer", true, false):
 		visualizer = child as HullDamageVisualizer
@@ -380,11 +402,13 @@ func _on_ship_destroyed() -> void:
 	else:
 		_dbg("⚠️ Kein HullDamageVisualizer gefunden — kein visueller Zerfall")
 
-	# 3. AUFRÄUMEN & SIGNALE
+	# 5. SIGNAL SENDEN (vor Gruppen-Cleanup, damit Empfänger noch reagieren können)
+	ship_destroyed.emit()
+
+	# 6. GRUPPEN-CLEANUP (nach Signal-Emit — Empfänger brauchen evtl. Gruppen-Info)
 	for group in get_groups():
 		remove_from_group(group)
 
-	ship_destroyed.emit()
 	_destroy_sequence()
 	_trigger_shockwave_delayed()
 

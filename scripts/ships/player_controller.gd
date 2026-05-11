@@ -12,6 +12,8 @@
 #   - MovementComponent → liegt jetzt direkt unter dem Schiff (ShipController)
 extends CharacterBody3D
 
+#signal ship_destroyed
+
 # ===== EXPORTS =====
 ## Weise hier die .tres-Datei des Spielerschiffs zu (z.B. ship_sovereign.tres).
 ## Setter: wird bei Inspector-Wechsel zur Laufzeit aufgerufen → Fraktion + Schiff

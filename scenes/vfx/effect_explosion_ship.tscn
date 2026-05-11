@@ -52,6 +52,7 @@ emission_shape = 1
 emission_sphere_radius = 0.1
 angle_min = 1.0728835e-05
 angle_max = 360.00003
+inherit_velocity_ratio = 1.0
 spread = 90.0
 angular_velocity_min = -90.000015
 angular_velocity_max = 179.99998
@@ -115,6 +116,7 @@ emission_shape = 1
 emission_sphere_radius = 0.2
 angle_min = -319.6
 angle_max = 153.70001
+inherit_velocity_ratio = 1.0
 spread = 0.0
 angular_velocity_min = -90.000015
 angular_velocity_max = 89.999985
@@ -122,8 +124,8 @@ radial_velocity_min = -3.0000222
 radial_velocity_max = -2.2351742e-05
 gravity = Vector3(0, 0, 0)
 damping_max = 10.0
-scale_min = 4.0
-scale_max = 4.0
+scale_min = 2.0
+scale_max = 2.0
 scale_curve = SubResource("CurveTexture_bjuy5")
 color = Color(0.427493, 0.42749307, 0.42749307, 1)
 color_initial_ramp = SubResource("GradientTexture1D_wc23w")
@@ -148,10 +150,11 @@ particles_anim_loop = false
 [sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_s7v4n"]
 angle_min = 1.0728835e-05
 angle_max = 90.000015
+inherit_velocity_ratio = 1.0
 direction = Vector3(0, 0, 0)
 spread = 0.0
 angular_velocity_min = -1.6093254e-05
-angular_velocity_max = 19.999983
+angular_velocity_max = -1.6093254e-05
 radial_velocity_min = -2.2351742e-05
 radial_velocity_max = -2.2351742e-05
 gravity = Vector3(0, 0, 0)
@@ -189,17 +192,17 @@ particles_anim_loop = false
 [sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_kkhwf"]
 angle_min = -360.0
 angle_max = 360.00003
+inherit_velocity_ratio = 1.0
 direction = Vector3(0, 1, 0)
 spread = 0.0
-initial_velocity_max = 1.0
 radial_velocity_min = -10.000022
 radial_velocity_max = -2.2351742e-05
 gravity = Vector3(0, 0, 0)
 tangential_accel_min = -2.2351742e-06
 tangential_accel_max = 0.99999774
 damping_max = 6.0000005
-scale_min = 6.0
-scale_max = 6.0
+scale_min = 2.0
+scale_max = 2.0
 scale_curve = SubResource("CurveTexture_bjuy5")
 color_initial_ramp = SubResource("GradientTexture1D_wc23w")
 alpha_curve = SubResource("CurveTexture_y1du8")
@@ -207,12 +210,14 @@ emission_curve = SubResource("CurveTexture_jfqqp")
 
 [sub_resource type="QuadMesh" id="QuadMesh_s7v4n"]
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wc23w"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_s7v4n"]
 transparency = 1
-blend_mode = 1
-shading_mode = 0
 vertex_color_use_as_albedo = true
 albedo_texture = ExtResource("4_xlu0u")
+billboard_mode = 3
+particles_anim_h_frames = 1
+particles_anim_v_frames = 1
+particles_anim_loop = false
 
 [sub_resource type="Gradient" id="Gradient_yfdta"]
 offsets = PackedFloat32Array(0.4041096, 0.86986303, 0.99657536)
@@ -240,19 +245,20 @@ curve = SubResource("Curve_ywskf")
 [sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_d7ndn"]
 angle_min = -179.99998
 angle_max = 180.00002
+inherit_velocity_ratio = 1.0
 spread = 180.0
 initial_velocity_min = 1.0
 initial_velocity_max = 3.0
 gravity = Vector3(0, 0, 0)
 tangential_accel_min = -1.0000023
 tangential_accel_max = 0.99999774
-scale_min = 0.099999994
-scale_max = 1.1999999
+scale_min = 2.0
+scale_max = 2.0
 scale_curve = SubResource("CurveTexture_32i0v")
 color_ramp = SubResource("GradientTexture1D_jfqqp")
 emission_curve = SubResource("CurveTexture_lnhgi")
 
-[sub_resource type="QuadMesh" id="QuadMesh_duafy"]
+[sub_resource type="QuadMesh" id="QuadMesh_t5ukw"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_2xe56"]
 transparency = 1
@@ -300,6 +306,7 @@ point_count = 4
 curve = SubResource("Curve_4pfye")
 
 [sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_hswh6"]
+inherit_velocity_ratio = 1.0
 gravity = Vector3(0, 0, 0)
 scale_min = 2.0
 scale_max = 2.0
@@ -355,6 +362,7 @@ point_count = 5
 curve = SubResource("Curve_hswh6")
 
 [sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_i7rxg"]
+inherit_velocity_ratio = 1.0
 spread = 0.0
 gravity = Vector3(0, 0, 0)
 radial_accel_min = -2.2351742e-06
@@ -386,16 +394,17 @@ colors = PackedColorArray(1, 0, 0, 1, 1, 1, 0, 1)
 gradient = SubResource("Gradient_022s6")
 
 [sub_resource type="Curve" id="Curve_hxxib"]
-_data = [Vector2(0, 0.37704915), 0.0, 0.0, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
-point_count = 2
+_data = [Vector2(0, 0.38167048), 0.0, 0.0, 0, 0, Vector2(0.32258064, 1), 0.0, 0.0, 0, 0, Vector2(0.65102637, 0.3967517), 0.0, 0.0, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
+point_count = 4
 
 [sub_resource type="CurveTexture" id="CurveTexture_hswh6"]
 curve = SubResource("Curve_hxxib")
 
 [sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_c3iex"]
 particle_flag_align_y = true
-emission_shape = 2
-emission_sphere_radius = 0.1
+emission_shape = 1
+emission_sphere_radius = 0.01
+inherit_velocity_ratio = 1.0
 spread = 180.0
 radial_velocity_min = -10.000022
 radial_velocity_max = -5.0000224
@@ -411,7 +420,7 @@ scale_curve = SubResource("CurveTexture_hswh6")
 color_ramp = SubResource("GradientTexture1D_4pfye")
 
 [sub_resource type="QuadMesh" id="QuadMesh_i7rxg"]
-size = Vector2(0.4, 2)
+size = Vector2(0.1, 2)
 
 [sub_resource type="Animation" id="Animation_hd7i2"]
 length = 6.0
@@ -541,7 +550,7 @@ tracks/6/keys = {
 }
 tracks/7/type = "value"
 tracks/7/imported = false
-tracks/7/enabled = false
+tracks/7/enabled = true
 tracks/7/path = NodePath("Shockwave2:emitting")
 tracks/7/interp = 1
 tracks/7/loop_wrap = true
@@ -553,7 +562,7 @@ tracks/7/keys = {
 }
 tracks/8/type = "value"
 tracks/8/imported = false
-tracks/8/enabled = false
+tracks/8/enabled = true
 tracks/8/path = NodePath("Stars:emitting")
 tracks/8/interp = 1
 tracks/8/loop_wrap = true
@@ -565,7 +574,7 @@ tracks/8/keys = {
 }
 tracks/9/type = "value"
 tracks/9/imported = false
-tracks/9/enabled = false
+tracks/9/enabled = true
 tracks/9/path = NodePath("Smoke3:emitting")
 tracks/9/interp = 1
 tracks/9/loop_wrap = true
@@ -634,7 +643,7 @@ process_material = SubResource("ParticleProcessMaterial_kkhwf")
 draw_pass_1 = SubResource("QuadMesh_s7v4n")
 
 [node name="Spark3" type="GPUParticles3D" parent="." unique_id=23230289]
-material_override = SubResource("StandardMaterial3D_wc23w")
+material_override = SubResource("StandardMaterial3D_s7v4n")
 emitting = false
 amount = 50
 lifetime = 2.0
@@ -643,7 +652,7 @@ explosiveness = 0.9
 randomness = 0.59
 fixed_fps = 0
 process_material = SubResource("ParticleProcessMaterial_d7ndn")
-draw_pass_1 = SubResource("QuadMesh_duafy")
+draw_pass_1 = SubResource("QuadMesh_t5ukw")
 
 [node name="Spark4" type="GPUParticles3D" parent="." unique_id=1959893783]
 material_override = SubResource("StandardMaterial3D_2xe56")

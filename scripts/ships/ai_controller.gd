@@ -37,7 +37,7 @@ signal debug_log_generated(ship_name: String, message: String)
 @export var auto_fire:         bool  = true
 @export var detection_radius:  float = 300.0
 @export var fire_range:        float = 150.0
-@export var disengage_timeout: float = 5.0
+@export var disengage_timeout: float = 1.0
 @export var chase_distance_multiplier: float = 3.0
 
 @export_group("Kampf – Fallback")
@@ -179,6 +179,10 @@ func _ready() -> void:
 
 	_initialized = true
 	_dbg("AIController fully initialized")
+
+	# Player-destroyed-Signal verbinden: wenn der Spieler stirbt, brechen alle
+	# NPCs ihren Angriff sofort ab (verhindert Geister-Feuer auf das Wrack).
+	_connect_player_destroyed_signal()
 
 ## Radar-Radius auf detection_radius synchronisieren.
 ## So passt sich die Area3D automatisch an den Inspector-Wert an.
@@ -364,10 +368,9 @@ func _tick_patrol(delta: float, stats: ShipStats) -> void:
 
 
 func _tick_combat(delta: float, stats: ShipStats) -> void:
-	# === Re-Check: Ziel noch gültig UND noch feindlich? ===
-	# Ohne diesen Check bleibt ein bereits gelocktes Schiff aggressiv,
-	# selbst wenn der Ruf zwischendurch auf NEUTRAL/FRIENDLY wechselt.
+	# === VERBESSERTER CHECK: Ziel noch gültig? ===
 	if not is_instance_valid(_target) or _is_target_dead():
+		_dbg("🎯 Ziel ungültig/zerstört → PATROL")
 		_enter_patrol()
 		return
 
@@ -425,6 +428,12 @@ func _update_combat_phase(dist: float, delta: float) -> void:
 				_combat_phase = CombatPhase.APPROACH
 
 func _handle_weapons(to_target: Vector3, dist: float, delta: float) -> void:
+	# Letzter Schutzwall gegen Geister-Feuer: Ziel nochmals prüfen bevor
+	# irgendein Schuss abgefeuert wird. _tick_combat filtert bereits, aber
+	# zwischen dem Check und dem Schuss kann das Ziel queue_free() bekommen.
+	if not is_instance_valid(_target) or _is_target_dead():
+		return
+
 	# ── HARTE REGEL: Kein Feuer im Cloak ───────────────────────────────
 	if is_instance_valid(cloak_component):
 		if cloak_component.is_cloaked() or cloak_component.is_transitioning():
@@ -507,7 +516,25 @@ func _find_nearest_hostile() -> Node3D:
 		# body == self nicht greifen und wir würden uns selbst als Ziel sehen.
 		if is_ancestor_of(body):
 			continue
-		if not body.is_in_group("ships"):
+		if not body.is_in_group("ships") and not body.is_in_group("player"):
+			continue
+
+		# ─── PRÜFE OB DAS SCHIFF NOCH LEBT ───
+		# WICHTIG: body kann ein Child-Node sein (z.B. HullCollision), nicht der
+		# Root. _find_ship_controller_in() sucht nur abwärts. Deshalb zuerst den
+		# "ships"/"player"-Root-Node per Aufwärts-Traversierung finden, dann erst
+		# den ShipController von dort aus nach unten suchen.
+		var ship_root := _get_ship_root(body)
+		var target_sc := _find_ship_controller_in(ship_root) if ship_root else _find_ship_controller_in(body)
+
+		if target_sc:
+			if not target_sc._is_alive or target_sc.get_hull_integrity() <= 0.0:
+				_dbg("  SKIP: '%s' ist zerstört (_is_alive=%s hull=%.0f)" % [
+					body.name, target_sc._is_alive, target_sc.get_hull_integrity()
+				])
+				continue
+		elif ship_root and ship_root.is_queued_for_deletion():
+			_dbg("  SKIP: '%s' ist queued_for_deletion" % body.name)
 			continue
 
 		if _is_hostile_to_me(body):
@@ -520,12 +547,29 @@ func _find_nearest_hostile() -> Node3D:
 	if best_node == null:
 		_dbg("Query gab 0 Hits → Fallback auf Gruppen-Scan")
 		var all_ships = get_tree().get_nodes_in_group("ships")
-		for ship in all_ships:
+		var all_players = get_tree().get_nodes_in_group("player")
+		var all_targets = all_ships + all_players
+		
+		for ship in all_targets:
 			if ship == self or not is_instance_valid(ship):
 				continue
 			# Falls ein Child-Node von uns in der "ships"-Gruppe landen würde
 			if is_ancestor_of(ship):
 				continue
+				
+			# ─── PRÜFE OB DAS SCHIFF NOCH LEBT ───
+			# Wenn ship_sc null → ShipController wurde bereits queue_free()d.
+			# Das ist ein sicheres Zeichen dass das Schiff zerstört ist.
+			var ship_sc = _find_ship_controller_in(ship)
+			if not ship_sc:
+				_dbg("  SKIP (Fallback): '%s' → kein ShipController (bereits freed)" % ship.name)
+				continue
+			if ship_sc.get_hull_integrity() <= 0.0 or not ship_sc._is_alive:
+				_dbg("  SKIP (Fallback): '%s' ist zerstört (hull=%.0f _is_alive=%s)" % [
+					ship.name, ship_sc.get_hull_integrity(), ship_sc._is_alive
+				])
+				continue
+				
 			if not _is_hostile_to_me(ship):
 				continue
 
@@ -657,6 +701,21 @@ func _find_ship_controller_in(node: Node) -> ShipController:
 	return null
 
 
+## Läuft die Node-Hierarchie aufwärts und gibt den ersten Node zurück,
+## der in "ships" oder "player" Gruppe ist. Wird gebraucht weil Physics
+## Query Child-Nodes (HullCollision etc.) als Treffer zurückgibt, der
+## ShipController aber am Root hängt.
+func _get_ship_root(node: Node) -> Node3D:
+	var current: Node = node
+	while is_instance_valid(current):
+		if current is Node3D:
+			var n3d := current as Node3D
+			if n3d.is_in_group("ships") or n3d.is_in_group("player"):
+				return n3d
+		current = current.get_parent()
+	return null
+
+
 func _curve_pos(t: float) -> Vector3:
 	return patrol_center + Vector3(
 		sin(t) * patrol_radius_x,
@@ -673,11 +732,28 @@ func _curve_tangent(t: float) -> Vector3:
 func _find_nearest_curve_t() -> float:
 	return 0.0
 
-
 func _is_target_dead() -> bool:
-	if not is_instance_valid(_target): return true
-	return not _target.is_in_group("ships")
-
+	if not is_instance_valid(_target):
+		return true
+	
+	# Prüfe ob das Target noch in den relevanten Gruppen ist
+	if not _target.is_in_group("ships") and not _target.is_in_group("player"):
+		return true
+	
+	# Prüfe ShipController und Hüllen-Integrität
+	var target_sc = _find_ship_controller_in(_target)
+	if target_sc and target_sc.has_method("get_hull_integrity"):
+		if target_sc.get_hull_integrity() <= 0.0:
+			if show_debug:
+				_dbg("_is_target_dead: Ziel '%s' hat hull=0 → tot" % _target.name)
+			return true
+	
+	# Prüfe ob der Node zum Löschen markiert ist
+	if _target.is_queued_for_deletion():
+		return true
+	
+	return false
+	
 func _enter_patrol() -> void:
 	if _state == State.PATROL:
 		return
@@ -833,6 +909,53 @@ func _find_player_node() -> Node3D:
 	var players := get_tree().get_nodes_in_group("player")
 	return players[0] if players.size() > 0 else null
 
+## Sucht den ShipController des Spielers und verbindet ship_destroyed mit
+## on_player_destroyed(). Wird einmalig am Ende von _ready() aufgerufen.
+## Ohne diese Verbindung wissen NPCs nicht dass der Spieler tot ist und
+## feuern weiter auf die Wrack-Position (Geister-Feuer).
+func _connect_player_destroyed_signal() -> void:
+	var player := _find_player_node()
+	if not is_instance_valid(player):
+		_dbg("⚠ _connect_player_destroyed_signal: kein Player-Node gefunden")
+		return
+
+	# ShipController liegt als Kind-Node unter dem Player-CharacterBody3D
+	var player_sc: ShipController = null
+	for child in player.get_children():
+		var sc := _find_ship_controller_in(child)
+		if sc:
+			player_sc = sc
+			break
+
+	if not is_instance_valid(player_sc):
+		_dbg("⚠ _connect_player_destroyed_signal: kein ShipController im Player gefunden")
+		return
+
+	if not player_sc.ship_destroyed.is_connected(on_player_destroyed):
+		player_sc.ship_destroyed.connect(on_player_destroyed)
+		_dbg("✅ Player-ship_destroyed → on_player_destroyed() verbunden")
+
+func on_player_destroyed() -> void:
+	_dbg("📢 Player zerstört → Reset + Scan-Pause")
+
+	# Erst in Patrol → setzt _target = null
+	if _state == State.COMBAT:
+		_target = null
+		_enter_patrol()
+	else:
+		_target = null
+
+	# KERN-FIX: ScanTimer stoppen und erst nach destruction_delay neu starten.
+	# Ohne diese Pause findet der nächste Scan-Tick den Player-Wrack noch in der
+	# Szene (queue_free greift erst nach destruction_delay Sekunden) und geht
+	# erneut in Combat — obwohl hull=0. 2.5s > typischer destruction_delay (2.0s).
+	if is_instance_valid(_scan_timer):
+		_scan_timer.stop()
+		await get_tree().create_timer(2.5).timeout
+		if is_instance_valid(_scan_timer) and is_instance_valid(self):
+			_scan_timer.start()
+			_dbg("✅ Scan-Timer nach Player-Tod neu gestartet")
+
 # ─────────────────────────────────────────────────────────────────────────────
 # RADAR VISUALIZER STEUERUNG
 # ─────────────────────────────────────────────────────────────────────────────
@@ -871,30 +994,40 @@ func _set_radar_pulsing(active: bool) -> void:
 # ─────────────────────────────────────────────────────────────────────────────
 # STATE WECHSEL
 # ─────────────────────────────────────────────────────────────────────────────
+
 func _enter_combat(target: Node3D) -> void:
 	if not is_instance_valid(target):
 		return
 
-	# ── WICHTIG: Zuerst Cloak brechen, falls aktiv ─────────────────────
+	# ── WICHTIG: Bestehende Signal-Verbindungen bereinigen ──
+	if is_instance_valid(_target) and _target.has_signal("ship_destroyed"):
+		if _target.ship_destroyed.is_connected(_on_target_destroyed):
+			_target.ship_destroyed.disconnect(_on_target_destroyed)
+
+	# ── Cloak-Check (dein bestehender Code) ──
 	if is_instance_valid(cloak_component) and \
 	   (cloak_component.is_cloaked() or cloak_component.is_transitioning()):
 		
 		cloak_component.break_cloak("combat_entry")
 		_dbg("💥 Cloak gebrochen wegen COMBAT-Eintritt – warte auf Decloak...")
 
-		# Kurze Wartezeit, bis Decloak-Fade fertig ist (fade_out_duration + Puffer)
-		# Damit der NPC nicht sofort schießt, während er noch unsichtbar ist.
-		var fade_wait: float = 0.8  # sicherer Fallback
+		var fade_wait: float = 0.8
 		if is_instance_valid(cloak_component) and cloak_component.cloak_data:
 			fade_wait = cloak_component.cloak_data.fade_out_duration
 		await get_tree().create_timer(fade_wait + 0.2).timeout
 		
 		if not is_instance_valid(self) or not is_instance_valid(cloak_component):
-			return  # NPC mittlerweile zerstört
+			return
 
-	# ── Jetzt erst in Combat gehen ─────────────────────────────────────
+	# ── Jetzt erst in Combat gehen ──
 	_state = State.COMBAT
 	_target = target
+
+	# ── NEU: Signal verbinden, wenn das Ziel zerstört wird ──
+	if _target.has_signal("ship_destroyed"):
+		if not _target.ship_destroyed.is_connected(_on_target_destroyed):
+			# CONNECT_ONE_SHOT verhindert Memory Leaks
+			_target.ship_destroyed.connect(_on_target_destroyed, CONNECT_ONE_SHOT)
 
 	_torpedo_fire_timer = randf_range(2.0, 4.0)
 	_combat_phase = CombatPhase.APPROACH
@@ -907,3 +1040,8 @@ func _enter_combat(target: Node3D) -> void:
 	_set_radar_pulsing(false)
 	_update_radar_color()
 	_dbg("→ COMBAT | Ziel: %s | Radar rot + statisch" % target.name)
+
+# Neue Hilfsfunktion für das Signal
+func _on_target_destroyed() -> void:
+	_dbg("🏳️ Ziel '%s' wurde zerstört!" % (_target.name if _target else "UNKNOWN"))
+	_enter_patrol()  # Einfach patrol aufrufen – das räumt alles auf
