@@ -72,7 +72,9 @@ enum Faction {
 @export var bolt_weapon_data: BoltWeaponData
 ## TorpedoData für alle TorpedoMount3D-Nodes dieses Schiffes.
 ## Leer lassen = Mount-eigene torpedo_data behalten.
-@export var torpedo_data: TorpedoData
+#@export var torpedo_data: TorpedoData
+@export var torpedo_loadout: TorpedoLoadout
+
 
 @export_group("Visuell")
 ## Das eigentliche 3D-Scene-File des Schiffs (wird vom PlayerController instanziiert).

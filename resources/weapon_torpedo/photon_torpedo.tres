@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="TorpedoData" format=3 uid="uid://b3c87durs2kif"]
+
+[ext_resource type="Script" uid="uid://e5d104onkic3" path="res://resources/data/weapon_data_torpedo.gd" id="1_qmr8e"]
+
+[resource]
+script = ExtResource("1_qmr8e")
+torpedo_color = Color(0.54854745, 0.24699983, 0.5199696, 1)
+trail_color = Color(0.98902017, 0.54205894, 0.7395946, 1)
+metadata/_custom_type_script = "uid://e5d104onkic3"

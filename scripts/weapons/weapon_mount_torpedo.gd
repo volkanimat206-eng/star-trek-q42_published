@@ -1,4 +1,4 @@
-# res://scripts/weapons/torpedo_mount_3d.gd
+# res://scripts/weapons/weapon_mount_torpedo.gd
 @tool
 extends Node3D
 class_name TorpedoMount3D
@@ -16,15 +16,14 @@ class_name TorpedoMount3D
 # ─────────────────────────────────────────────────────────────────────────────
 # OVERRIDE-PATTERN
 # ─────────────────────────────────────────────────────────────────────────────
-# torpedo_data wird normalerweise vom ShipController gesetzt – aus
-# ship_data.torpedo_data. Damit haben alle Torpedo-Werfer desselben Schiffes
-# automatisch dieselben Werte (Schaden, Range, Cooldown, max_ammo, reload_time).
+# torpedo_data wird zur Laufzeit vom ShipController gesetzt – entweder aus
+# torpedo_loadout.active_data() oder aus torpedo_data_override.
+# Das aktive torpedo_data kann jederzeit durch cycle_torpedo_type() wechseln.
 # ─────────────────────────────────────────────────────────────────────────────
 @export_group("Torpedo Data Override (Optional)")
-## NUR setzen wenn dieser Mount ANDERE Werte braucht als die zentralen aus
-## ship_data.torpedo_data. Beispiel: schwächerer Heck-Werfer mit längerer
-## Reload-Zeit oder kleinerem Magazin.
-## Leer lassen → ShipController setzt automatisch ship_data.torpedo_data ein.
+## NUR setzen wenn dieser Mount ANDERE Werte braucht als der zentrale Loadout.
+## Beispiel: schwächerer Heck-Werfer. Leer lassen = wird vom ShipController
+## aus dem aktiven TorpedoLoadout-Eintrag befüllt.
 @export var torpedo_data_override: TorpedoData = null
 
 @export_group("Arc")
@@ -43,36 +42,40 @@ class_name TorpedoMount3D
 
 @export_group("Velocity")
 ## Sekunden bis Torpedo von Schiff-Boost auf Eigengeschwindigkeit zurückfällt.
-## Wird an torpedo_3d.gd weitergegeben.
 @export var velocity_decay_time: float = 2.5
 
 @export_group("Audio")
-## Sound der beim Abfeuern eines Torpedos abgespielt wird.
+## Fallback-Sound wenn TorpedoData kein launch_sound_override hat.
 @export var launch_sound: AudioStream
-## Lautstärke-Offset in dB (addiert zum Basis-Wert -6 dB).
 @export_range(-20.0, 20.0) var launch_volume_db: float = 0.0
-## Panning-Stärke für Spieler-Torpedos (0.0 = kein Zoom-Einfluss).
-## Wird automatisch auf 1.0 gesetzt wenn NPC das Schiff steuert.
 @export_range(0.0, 1.0) var player_panning_strength: float = 0.0
 
 @export_group("Debug")
 @export var show_debug: bool = false
 
+
 # ===== INTERN =====
-## Wird zur Laufzeit vom ShipController gesetzt – entweder aus
-## torpedo_data_override (Sonderfall) oder aus ship_data.torpedo_data.
-## Nicht mehr im Inspector pro Mount – Tuning passiert zentral.
+## Aktive TorpedoData – wird vom ShipController gesetzt und bei Typwechsel
+## sofort aktualisiert (via notify_torpedo_type_changed).
+## Nicht mehr fix im Inspector tunen – Tuning passiert zentral in den .tres.
 var torpedo_data: TorpedoData = null
 
-# Cooldown / Ammo / Reload kommen jetzt aus TorpedoData – siehe _get_*() Helpers.
-# Diese Defaults greifen nur wenn torpedo_data NULL ist (Fehlerfall).
+# ─────────────────────────────────────────────────────────────────────────────
+# AMMO-TRACKING  –  pro Torpedo-Typ getrennt
+# ─────────────────────────────────────────────────────────────────────────────
+# Photon und Quantum haben separate Magazinstände und Reload-Timer.
+# Wenn der Spieler zwischen Typen wechselt, wechselt auch der aktive Eintrag.
+# Das verhindert dass der Reload des einen Typs den anderen beeinflusst.
+# ─────────────────────────────────────────────────────────────────────────────
+
+## key = torpedo_name (String), value = { ammo: int, reload_timer: float }
+var _ammo_state: Dictionary = {}
+
 const _DEFAULT_COOLDOWN:    float = 0.5
 const _DEFAULT_MAX_AMMO:    int   = 4
 const _DEFAULT_RELOAD_TIME: float = 8.0
 
 var _cooldown_remaining: float           = 0.0
-var _current_ammo:       int             = 0
-var _reload_timer:       float           = 0.0
 var _ship_controller:    ShipController  = null
 var _ship_body:          CharacterBody3D = null
 var _exclude_rids:       Array[RID]      = []
@@ -93,26 +96,22 @@ func _ready() -> void:
 	_ship_body       = _find_character_body()
 	call_deferred("_build_exclude_rids")
 	_setup_audio()
-
-	# Ammo-Init und Status-Print verzögert: torpedo_data wird vom ShipController
-	# via Override-Pattern gesetzt, dessen _ready() läuft NACH unserem.
-	# Mit call_deferred sehen wir die finalen Werte aus TorpedoData.
 	call_deferred("_post_setup")
 
 
 func _post_setup() -> void:
-	_current_ammo = _get_max_ammo()
-	_reload_timer = 0.0
-
 	if not torpedo_data:
 		push_warning("[TorpedoMount3D|%s] torpedo_data nicht gesetzt – Defaults aktiv (cd=%.1fs ammo=%d reload=%.1fs)" % [
 			name, _DEFAULT_COOLDOWN, _DEFAULT_MAX_AMMO, _DEFAULT_RELOAD_TIME])
 		return
 
-	print("[TorpedoMount3D|%s] bereit | data=%s | ammo=%d/%d | cd=%.1fs reload=%.1fs | ship_body=%s" % [
+	# Ammo-State für den Starttyp initialisieren
+	_ensure_ammo_state(torpedo_data)
+
+	print("[TorpedoMount3D|%s] bereit | typ=%s | ammo=%d/%d | cd=%.1fs reload=%.1fs | ship_body=%s" % [
 		name,
 		torpedo_data.torpedo_name,
-		_current_ammo, _get_max_ammo(),
+		_get_current_ammo(), _get_max_ammo(),
 		_get_cooldown(), _get_reload_time(),
 		_ship_body.name if _ship_body else "❌ NULL – keine Geschwindigkeitsvererbung!"
 	])
@@ -123,23 +122,70 @@ func _process(delta: float) -> void:
 		return
 	if _cooldown_remaining > 0.0:
 		_cooldown_remaining -= delta
-	# Ammo nachladen: ein Torpedo pro reload_time Sekunden
+
+	# Reload nur für den aktuell aktiven Typ ticken
+	if not torpedo_data:
+		return
+	var key: String = torpedo_data.torpedo_name
+	if not _ammo_state.has(key):
+		return
+
+	var state: Dictionary = _ammo_state[key]
 	var max_a: int = _get_max_ammo()
-	if _current_ammo < max_a:
-		_reload_timer += delta
-		if _reload_timer >= _get_reload_time():
-			_current_ammo += 1
-			_reload_timer  = 0.0
+	if state["ammo"] < max_a:
+		state["reload_timer"] += delta
+		if state["reload_timer"] >= _get_reload_time():
+			state["ammo"] += 1
+			state["reload_timer"] = 0.0
 			if show_debug:
-				print("[TorpedoMount] 🔄 Torpedo nachgeladen | %d/%d" % [_current_ammo, max_a])
+				print("[TorpedoMount] 🔄 %s nachgeladen | %d/%d" % [
+					torpedo_data.torpedo_name, state["ammo"], max_a])
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TORPEDO-TYP WECHSEL  –  wird vom ShipController aufgerufen
+# ─────────────────────────────────────────────────────────────────────────────
+
+## Wird vom ShipController aufgerufen wenn der Spieler den Torpedo-Typ wechselt.
+## Initialisiert Ammo-State für den neuen Typ falls noch nicht vorhanden.
+## Cooldown wird NICHT zurückgesetzt – du kannst nicht durch Wechseln spamen.
+func notify_torpedo_type_changed(new_data: TorpedoData) -> void:
+	if torpedo_data_override:
+		# Mount hat feste Spezialbelegung – ignoriert den zentralen Typwechsel
+		if show_debug:
+			print("[TorpedoMount3D|%s] Typwechsel ignoriert – hat Override (%s)" % [
+				name, torpedo_data_override.torpedo_name])
+		return
+
+	torpedo_data = new_data
+	_ensure_ammo_state(new_data)
+
+	# Audio aktualisieren wenn der neue Typ einen eigenen Launch-Sound hat
+	_update_audio_for_type(new_data)
+
+	if show_debug:
+		print("[TorpedoMount3D|%s] ⚡ Typ → %s | ammo=%d/%d" % [
+			name, new_data.torpedo_name, _get_current_ammo(), _get_max_ammo()])
+
+
+## Stellt sicher dass für diesen Torpedo-Typ ein Ammo-State-Eintrag existiert.
+func _ensure_ammo_state(data: TorpedoData) -> void:
+	if not data:
+		return
+	var key: String = data.torpedo_name
+	if not _ammo_state.has(key):
+		_ammo_state[key] = {
+			"ammo":         data.max_ammo,
+			"reload_timer": 0.0
+		}
+		if show_debug:
+			print("[TorpedoMount3D|%s] Ammo-State init: %s → %d/%d" % [
+				name, key, data.max_ammo, data.max_ammo])
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # DATA-ZUGRIFF mit Fallback
 # ─────────────────────────────────────────────────────────────────────────────
-# Diese Helpers lesen Cooldown/Ammo/Reload aus TorpedoData.
-# Falls die Resource (noch) nicht die nötigen Felder hat, greifen die Defaults.
-# Damit bleibt das Refactoring auch während der Migration funktionsfähig.
 
 func _get_cooldown() -> float:
 	if torpedo_data and "cooldown" in torpedo_data:
@@ -156,6 +202,19 @@ func _get_reload_time() -> float:
 		return torpedo_data.reload_time
 	return _DEFAULT_RELOAD_TIME
 
+func _get_current_ammo() -> int:
+	if not torpedo_data:
+		return 0
+	var state = _ammo_state.get(torpedo_data.torpedo_name, null)
+	return state["ammo"] if state else 0
+
+func _set_current_ammo(value: int) -> void:
+	if not torpedo_data:
+		return
+	var key: String = torpedo_data.torpedo_name
+	if _ammo_state.has(key):
+		_ammo_state[key]["ammo"] = value
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PUBLIC API – kompatibel mit WeaponMount
@@ -168,19 +227,34 @@ func get_mount_position() -> WeaponMount.MountPosition:
 	return WeaponMount.MountPosition.FULL
 
 func is_ready_to_fire() -> bool:
-	return _cooldown_remaining <= 0.0 and _current_ammo > 0
+	return _cooldown_remaining <= 0.0 and _get_current_ammo() > 0
 
 func get_weapon_state() -> String:
-	if _current_ammo <= 0:
+	if _get_current_ammo() <= 0:
 		return "NO_AMMO"
 	return "IDLE" if is_ready_to_fire() else "COOLDOWN"
+
+## Gibt Ammo-Info für das aktive HUD zurück.
+## { "ammo": int, "max_ammo": int, "type_name": String, "type_abbrev": String, "type_color": Color }
+func get_hud_ammo_info() -> Dictionary:
+	var td: TorpedoData = torpedo_data
+	if not td:
+		return { "ammo": 0, "max_ammo": 0, "type_name": "---",
+				 "type_abbrev": "--", "type_color": Color.WHITE }
+	return {
+		"ammo":        _get_current_ammo(),
+		"max_ammo":    td.max_ammo,
+		"type_name":   td.torpedo_name,
+		"type_abbrev": td.get_hud_abbreviation() if td.has_method("get_hud_abbreviation") else "??",
+		"type_color":  td.get_hud_color()         if td.has_method("get_hud_color")         else Color.WHITE,
+		"cooldown_pct": clampf(1.0 - _cooldown_remaining / maxf(_get_cooldown(), 0.001), 0.0, 1.0)
+	}
 
 
 func is_target_node_in_arc(target: Node3D) -> bool:
 	if not is_instance_valid(target):
 		return false
 
-	# Reichweite aus TorpedoData — fire_range ist nur für den Gizmo
 	var effective_range: float = torpedo_data.max_range if torpedo_data else fire_range
 	var dist: float = global_position.distance_to(target.global_position)
 
@@ -211,7 +285,17 @@ func is_target_node_in_arc(target: Node3D) -> bool:
 
 func fire_at(target_pos: Vector3, _range: float = INF,
 			_freeze: bool = false, tracking_node: Node3D = null) -> bool:
-	if not is_ready_to_fire() or not torpedo_scene or not torpedo_data:
+	if not is_ready_to_fire() or not torpedo_data:
+		return false
+
+	# Bestimme welche Scene verwendet wird:
+	# Priorität: torpedo_data.torpedo_scene_override > mount-eigene torpedo_scene
+	var active_scene: PackedScene = torpedo_data.torpedo_scene_override \
+		if (torpedo_data and torpedo_data.torpedo_scene_override) \
+		else torpedo_scene
+
+	if not active_scene:
+		push_warning("[TorpedoMount3D|%s] Keine torpedo_scene! (und kein Override in TorpedoData)" % name)
 		return false
 
 	# Arc + Range Check
@@ -225,11 +309,10 @@ func fire_at(target_pos: Vector3, _range: float = INF,
 				print("[TorpedoMount] RANGE FAIL (pos)")
 			return false
 
-	var torpedo: Node3D = torpedo_scene.instantiate() as Node3D
+	var torpedo: Node3D = active_scene.instantiate() as Node3D
 	if not torpedo:
 		return false
 
-	# Abschussposition
 	var launch_pos: Vector3 = launch_marker.global_position \
 		if launch_marker and is_instance_valid(launch_marker) \
 		else global_position
@@ -237,21 +320,13 @@ func fire_at(target_pos: Vector3, _range: float = INF,
 	get_tree().current_scene.add_child(torpedo)
 	torpedo.global_position = launch_pos
 
-	# Startrichtung: -Z Achse des MOUNTS (nicht des Schiffes!).
-	# Dadurch feuert ein nach hinten gedrehter Mount korrekt nach hinten,
-	# ein seitlicher Mount nach der Seite, etc.
-	# Der Torpedo fliegt launch_straight_distance Units in diese Richtung,
-	# dann dreht er zum Ziel (Homing).
 	var launch_dir: Vector3 = -global_transform.basis.z
-
-	# Fallback falls Richtung degeneriert
 	if launch_dir.length_squared() < 0.001:
 		launch_dir = -_ship_body.global_transform.basis.z if _ship_body else Vector3.FORWARD
 
 	torpedo.global_transform.basis = Basis.looking_at(
 		launch_dir.normalized(), Vector3.UP)
 
-	# Schiffsgeschwindigkeit für Vererbung
 	var ship_velocity: Vector3 = Vector3.ZERO
 	if _ship_body:
 		ship_velocity = _ship_body.velocity
@@ -262,13 +337,15 @@ func fire_at(target_pos: Vector3, _range: float = INF,
 			ship_velocity, velocity_decay_time, launch_straight_distance)
 
 	_cooldown_remaining = _get_cooldown()
-	_current_ammo      -= 1
+	_set_current_ammo(_get_current_ammo() - 1)
 	_play_launch_sound()
 
 	if show_debug:
-		var aim: Vector3 = tracking_node.global_position 			if tracking_node and is_instance_valid(tracking_node) else target_pos
-		print("[TorpedoMount3D] 🚀 Torpedo → %s | ammo=%d/%d | vel=%.1f" % [
-			aim.snappedf(1.0), _current_ammo, _get_max_ammo(), ship_velocity.length()])
+		var aim: Vector3 = tracking_node.global_position \
+			if tracking_node and is_instance_valid(tracking_node) else target_pos
+		print("[TorpedoMount3D] 🚀 %s → %s | ammo=%d/%d | vel=%.1f" % [
+			torpedo_data.torpedo_name,
+			aim.snappedf(1.0), _get_current_ammo(), _get_max_ammo(), ship_velocity.length()])
 
 	return true
 
@@ -342,7 +419,6 @@ func _draw_arc_sector(st: SurfaceTool, color: Color) -> void:
 # ─────────────────────────────────────────────────────────────────────────────
 
 func _setup_audio() -> void:
-	# Prüfen ob dieses Schiff dem Spieler gehört (kein AIController im Baum)
 	var node: Node = get_parent()
 	_is_player_ship = true
 	while node:
@@ -359,7 +435,7 @@ func _setup_audio() -> void:
 	_audio_player.stream          = launch_sound
 	_audio_player.bus             = "Weapons"
 	_audio_player.max_distance    = 800.0
-	_audio_player.max_polyphony   = 4   # mehrere schnelle Schüsse möglich
+	_audio_player.max_polyphony   = 4
 
 	if _is_player_ship:
 		_audio_player.panning_strength = player_panning_strength
@@ -371,10 +447,22 @@ func _setup_audio() -> void:
 	add_child(_audio_player)
 
 
-func _play_launch_sound() -> void:
-	if not _audio_player or not launch_sound:
+## Aktualisiert AudioPlayer-Stream wenn TorpedoData einen eigenen Launch-Sound hat.
+func _update_audio_for_type(data: TorpedoData) -> void:
+	if not _audio_player:
 		return
-	_audio_player.volume_db = -6.0 + launch_volume_db
+	if data and data.launch_sound_override:
+		_audio_player.stream = data.launch_sound_override
+	else:
+		_audio_player.stream = launch_sound  # Fallback auf Mount-Sound
+
+
+func _play_launch_sound() -> void:
+	if not _audio_player:
+		return
+	var vol_offset: float = torpedo_data.launch_volume_db_offset \
+		if (torpedo_data and "launch_volume_db_offset" in torpedo_data) else 0.0
+	_audio_player.volume_db = -6.0 + launch_volume_db + vol_offset
 	_audio_player.play()
 
 

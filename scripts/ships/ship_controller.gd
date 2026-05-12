@@ -124,6 +124,7 @@ func _ready() -> void:
 	_dbg("  model: %s" % (model.name if model else "❌ NULL – kein Model-Node gefunden!"))
 	targeting_system = find_child("TargetingSystem", true, false) as TargetingSystem
 	movement_comp = find_child("MovementComponent", true, false) as MovementComponent
+	
 	if model and movement_comp:
 		movement_comp.init_tilt(model)
 
@@ -134,7 +135,40 @@ func _ready() -> void:
 	_connect_movement_signal()
 
 	call_deferred("_setup_shield_deferred")
+	
+	# --- TORPEDO SYSTEM SETUP ---
+	if ship_data and ship_data.torpedo_loadout:
+		# Verbinde das Signal des Loadouts: Wenn der Typ wechselt, informiere die Mounts
+		ship_data.torpedo_loadout.active_type_changed.connect(_on_torpedo_type_changed)
+		
+		# Initialisierung: Setze den aktuellen Typ für alle Mounts beim Start
+		_on_torpedo_type_changed(ship_data.torpedo_loadout.active_data())
 
+	# --- INPUT COMPONENT SETUP (für Spieler-Steuerung) ---
+	var input_comp = get_node_or_null("InputComponent")
+	if input_comp:
+		# Verbinde die Signale der InputComponent mit den Feuer-Befehlen
+		input_comp.phaser_pressed.connect(fire_phasers)
+		input_comp.torpedo_pressed.connect(fire_torpedos)
+		# Verbinde die "Q"-Taste mit unserer neuen Wechsel-Logik
+		input_comp.cycle_torpedo_pressed.connect(_on_cycle_torpedo_requested)
+		
+# Diese Funktion leitet den Wechsel ein, wenn du "Q" drückst
+func _on_cycle_torpedo_requested() -> void:
+	if ship_data and ship_data.torpedo_loadout:
+		# Das Loadout schaltet intern um und sendet automatisch 'active_type_changed'
+		ship_data.torpedo_loadout.cycle_next()
+
+# Diese Funktion verteilt die neuen Torpedo-Daten an alle physischen Werfer
+func _on_torpedo_type_changed(new_data: TorpedoData) -> void:
+	if not new_data: return
+	
+	for mount in weapon_mounts:
+		# Wir prüfen per duck-typing, ob der Mount die Methode zum Wechseln hat
+		if mount.has_method("notify_torpedo_type_changed"):
+			mount.notify_torpedo_type_changed(new_data)
+	
+	_dbg("Torpedo-Typ gewechselt auf: " + new_data.torpedo_name)
 
 func _setup_shield_deferred() -> void:
 	_setup_shield()
@@ -643,6 +677,16 @@ func _fire_weapons_of_type(weapon_type: WeaponMount.WeaponType,
 		if not mount.is_ready_to_fire():
 			continue
 
+		# --- NEU: Torpedo-Logik ergänzen ---
+		if weapon_type == WeaponMount.WeaponType.TORPEDO:
+			if ship_data and ship_data.torpedo_loadout:
+				# Wir stellen sicher, dass der Mount die aktuellen Daten hat
+				# (als Sicherheits-Check, falls das Signal mal nicht griff)
+				var current_data = ship_data.torpedo_loadout.active_data()
+				if mount.has_method("notify_torpedo_type_changed"):
+					mount.notify_torpedo_type_changed(current_data)
+		# ----------------------------------
+
 		if candidates.is_empty():
 			if mount.fire_at(target_pos, INF, false, null):
 				fired_count += 1
@@ -663,7 +707,6 @@ func _fire_weapons_of_type(weapon_type: WeaponMount.WeaponType,
 	if fired_count > 0:
 		weapons_fired.emit(weapon_type, fired_count)
 	return fired_count
-
 
 ## Defensiver Aufruf von RelationshipResolver.notify_attack().
 ## Bleibt funktionsfähig auch wenn der Resolver-Autoload fehlt.
@@ -803,7 +846,11 @@ func _apply_weapon_data_to_mounts() -> void:
 		return
 
 	var bwd: BeamWeaponData = ship_data.beam_weapon_data
-	var tpd: TorpedoData = ship_data.torpedo_data
+	# NEU: Wir holen die Daten aus dem Loadout, nicht mehr aus einer einzelnen torpedo_data
+	var current_tpd: TorpedoData = null
+	if ship_data.torpedo_loadout:
+		current_tpd = ship_data.torpedo_loadout.active_data()
+	
 	var bld: BoltWeaponData = ship_data.get("bolt_weapon_data") as BoltWeaponData \
 		if "bolt_weapon_data" in ship_data else null
 
@@ -812,9 +859,13 @@ func _apply_weapon_data_to_mounts() -> void:
 	_dbg("  zentrale Quellen:", true)
 	_dbg("    beam_weapon_data: %s" % (bwd.weapon_name if bwd else "❌ NULL"), true)
 	_dbg("    bolt_weapon_data: %s" % (bld.weapon_name if bld else "— (kein WingDisruptor)"), true)
-	_dbg("    torpedo_data    : %s" % (tpd.torpedo_name if tpd else "❌ NULL"), true)
+	# DEBUG-LOG angepasst auf Loadout
+	_dbg("    aktiver Torpedo : %s" % (current_tpd.torpedo_name if current_tpd else "❌ NULL (Loadout leer?)"), true)
 
 	for mount in weapon_mounts:
+		if not mount.has_method("get_weapon_type"):
+			continue
+			
 		var wtype: WeaponMount.WeaponType = mount.get_weapon_type()
 		match wtype:
 			WeaponMount.WeaponType.PHASER, \
@@ -828,10 +879,11 @@ func _apply_weapon_data_to_mounts() -> void:
 					_resolve_beam_data(mount, bwd)
 
 			WeaponMount.WeaponType.TORPEDO:
-				_resolve_torpedo_data(mount, tpd)
+				# Hier übergeben wir jetzt die Daten des aktuell gewählten Typs
+				_resolve_torpedo_data(mount, current_tpd)
 
 	_dbg("══════════════════════════════════", true)
-
+	
 ## Setzt mount.weapon_data – Override hat Priorität vor zentralem Wert.
 func _resolve_beam_data(mount: Node, central: BeamWeaponData) -> void:
 	if not "weapon_data_override" in mount:
@@ -872,23 +924,26 @@ func _resolve_bolt_data(mount: Node, central: BoltWeaponData) -> void:
 			% [ship_name, mount.name])
 
 
-## Setzt mount.torpedo_data – Override hat Priorität vor zentralem Wert.
 func _resolve_torpedo_data(mount: Node, central: TorpedoData) -> void:
-	if not "torpedo_data_override" in mount:
-		push_warning("[ShipController|%s] Mount '%s' kennt 'torpedo_data_override' nicht – altes Skript?" % [ship_name, mount.name])
+	# 1. Prüfen, ob der Mount überhaupt ein Torpedo-Werfer ist
+	if not mount.has_method("notify_torpedo_type_changed"):
+		push_warning("[ShipController|%s] Mount '%s' ist kein TorpedoMount3D oder Skript veraltet!" % [ship_name, mount.name])
 		return
 
-	var override: TorpedoData = mount.torpedo_data_override
+	# 2. Check auf Override (z.B. ein schwächerer Heck-Werfer)
+	# Wir greifen sicherheitshalber über 'get' darauf zu
+	var override: TorpedoData = mount.get("torpedo_data_override")
+	
 	if override:
-		mount.torpedo_data = override
-		print("  [%-24s] OVERRIDE → '%s'" % [mount.name, override.torpedo_name])
+		# Wenn ein Override existiert, nutzen wir diesen permanent
+		mount.notify_torpedo_type_changed(override)
+		_dbg("  [%-24s] OVERRIDE-Typ gesetzt -> '%s'" % [mount.name, override.torpedo_name])
 	elif central:
-		mount.torpedo_data = central
-		print("  [%-24s] zentral  → '%s'" % [mount.name, central.torpedo_name])
+		# Wenn kein Override da ist, nutzen wir den vom Spieler gewählten Typ (Photon/Quantum)
+		mount.notify_torpedo_type_changed(central)
+		_dbg("  [%-24s] Zentraler Typ gesetzt -> '%s'" % [mount.name, central.torpedo_name])
 	else:
-		push_warning("[ShipController|%s] Mount '%s' hat weder Override noch zentrale TorpedoData!" \
-			% [ship_name, mount.name])
-
+		push_warning("[ShipController|%s] Mount '%s' hat keine Daten erhalten!" % [ship_name, mount.name])
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PUBLIC API

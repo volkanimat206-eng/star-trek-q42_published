@@ -3,6 +3,10 @@ extends Node
 class_name InputComponent
 
 signal phaser_pressed()
+# NEUE SIGNALE für das Torpedo-System
+signal torpedo_pressed()        # Für RMB (Feuern)
+signal cycle_torpedo_pressed()  # Für Taste Q (Wechseln)
+
 
 func get_movement_input() -> Vector2:
 	var rotation: float = Input.get_action_strength("move_right") \
@@ -12,8 +16,19 @@ func get_movement_input() -> Vector2:
 	return Vector2(rotation, thrust)
 
 func _process(_delta: float) -> void:
+	# 1. PHASER (Linke Maustaste / fire_phaser)
 	if Input.is_action_just_pressed("fire_phaser"):
 		phaser_pressed.emit()
+
+	# 2. TORPEDO FEUERN (Rechte Maustaste)
+	# Du musst "fire_torpedo" in den Project Settings -> Input Map anlegen (RMB)
+	if Input.is_action_just_pressed("fire_torpedo"):
+		torpedo_pressed.emit()
+
+	# 3. TORPEDO WECHSELN (Taste Q)
+	# Du musst "cycle_torpedo" in den Project Settings -> Input Map anlegen (Taste Q)
+	if Input.is_action_just_pressed("cycle_torpedo"):
+		cycle_torpedo_pressed.emit()
 
 func get_mouse_3d_world_position() -> Vector3:
 	var viewport := get_viewport()
