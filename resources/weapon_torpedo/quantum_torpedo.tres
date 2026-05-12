@@ -1,9 +1,30 @@
 [gd_resource type="Resource" script_class="TorpedoData" format=3 uid="uid://donejefxyvwpf"]
 
 [ext_resource type="Script" uid="uid://e5d104onkic3" path="res://resources/data/weapon_data_torpedo.gd" id="1_ahpl8"]
+[ext_resource type="PackedScene" uid="uid://bgvvs83cnka02" path="res://scenes/vfx/effect_explosion_torpedo.tscn" id="1_tlrx1"]
+[ext_resource type="AudioStream" uid="uid://btrqyjpyeglvu" path="res://assets/audio/explosion/soundreality-game-explosion-321700.mp3" id="2_u54jq"]
+[ext_resource type="AudioStream" uid="uid://7xkk8mjybthl" path="res://assets/audio/torpedo/quantumtorpeodoes2.mp3" id="3_aegoe"]
 
 [resource]
 script = ExtResource("1_ahpl8")
-torpedo_color = Color(0.35253903, 0.86183965, 1, 1)
-trail_color = Color(0, 0.29748532, 0.9955913, 1)
+torpedo_name = "Quantum Torpedo"
+torpedo_type = 1
+damage = 200.0
+shield_damage_multiplier = 1.0
+hull_damage_multiplier = 1.0
+reload_time = 14.0
+speed = 260.0
+turn_rate_deg = 80.0
+max_range = 500.0
+torpedo_color = Color(0.30353367, 0.0064035077, 0.99999803, 1)
+trail_color = Color(0.66116637, 0.7769564, 1, 1)
+collision_mask = 35
+explosion_scene = ExtResource("1_tlrx1")
+proximity_radius = 10.0
+explosion_scale = 3.0
+impact_sound = ExtResource("2_u54jq")
+impact_volume_db = 20.0
+impact_distance_attenuation_strength = 0.1
+launch_sound_override = ExtResource("3_aegoe")
+launch_volume_db_offset = 20.0
 metadata/_custom_type_script = "uid://e5d104onkic3"

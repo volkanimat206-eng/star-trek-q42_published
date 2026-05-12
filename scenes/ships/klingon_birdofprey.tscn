@@ -25,8 +25,11 @@
 [ext_resource type="PackedScene" uid="uid://b3dmgsmoke01x" path="res://scenes/vfx/damage_smoke_plume.tscn" id="15_bq6qy"]
 [ext_resource type="PackedScene" uid="uid://bb8bkk3rk0usk" path="res://scenes/vfx/decals/damage_decal1.tscn" id="15_sdqp7"]
 [ext_resource type="Resource" uid="uid://rnjw554k4unh" path="res://resources/cloak_data_birdofprey.tres" id="16_6dckk"]
+[ext_resource type="Script" uid="uid://sp4g3jfvi2eg" path="res://scripts/weapons/weapon_mount_torpedo.gd" id="16_cq8fy"]
 [ext_resource type="Script" uid="uid://bb2df4t0jrl2e" path="res://scripts/combat/cloak_component.gd" id="17_6dckk"]
 [ext_resource type="Resource" uid="uid://bp70loho04vtm" path="res://resources/weapon_cloak/audio_cloak_klingon.tres" id="17_cek0b"]
+[ext_resource type="PackedScene" uid="uid://os1qneg6o6ma" path="res://scenes/weapon/Torpedo.tscn" id="17_su50l"]
+[ext_resource type="AudioStream" uid="uid://d0m6tke226pcr" path="res://assets/audio/torpedo/tng_torpedo_clean.mp3" id="18_oxi30"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_2bfqn"]
 resource_name = "Material.001"
@@ -512,7 +515,7 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_hbfal")
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_240yq"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_4njac"]
 resource_name = "Material.001"
 render_priority = 0
 shader = ExtResource("4_bq6qy")
@@ -574,7 +577,7 @@ shader_parameter/inner_pipe_glow_energy = 1.5
 shader_parameter/inner_parallax_depth = 0.05
 shader_parameter/inner_grid_flicker_independence = 0.4
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_g4kwf"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_s1npb"]
 resource_name = "Material.006"
 render_priority = 0
 shader = ExtResource("4_bq6qy")
@@ -649,16 +652,16 @@ _data = {
 radius = 1.0
 height = 2.0
 
-[sub_resource type="FastNoiseLite" id="FastNoiseLite_1nnqg"]
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_7lei0"]
 noise_type = 2
-seed = 1331392002
+seed = 1911069393
 frequency = 0.08
 fractal_octaves = 3
 
-[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_cq8fy"]
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_iqvxo"]
 width = 256
 height = 256
-noise = SubResource("FastNoiseLite_1nnqg")
+noise = SubResource("FastNoiseLite_7lei0")
 seamless = true
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_xnmtx"]
@@ -679,7 +682,7 @@ shader_parameter/impact_ages = Array[float]([100.0, 100.0, 100.0, 100.0, 100.0, 
 shader_parameter/impact_colors = Array[Color]([Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1)])
 shader_parameter/impact_types = Array[float]([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 shader_parameter/dissolve_progress = 0.0
-shader_parameter/dissolve_noise = SubResource("NoiseTexture2D_cq8fy")
+shader_parameter/dissolve_noise = SubResource("NoiseTexture2D_iqvxo")
 shader_parameter/pattern_type = 1
 shader_parameter/pattern_scale = 60.0
 shader_parameter/pattern_line_width = 0.05
@@ -719,8 +722,8 @@ animation_player_path = NodePath("AnimationPlayer")
 transform = Transform3D(1.9, 0, 0, 0, -8.305164e-08, -1.9, 0, 1.9, -8.305164e-08, -6.319302e-08, 0.7228435, 8.014038)
 mesh = SubResource("ArrayMesh_a2xp4")
 skeleton = NodePath("")
-surface_material_override/0 = SubResource("ShaderMaterial_240yq")
-surface_material_override/2 = SubResource("ShaderMaterial_g4kwf")
+surface_material_override/0 = SubResource("ShaderMaterial_4njac")
+surface_material_override/2 = SubResource("ShaderMaterial_s1npb")
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="Model/MeshModel" unique_id=351385236]
 libraries/ = SubResource("AnimationLibrary_g4kwf")
@@ -768,6 +771,20 @@ transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 13.5
 
 [node name="WingTip_R" type="Marker3D" parent="Model/Weapons/WingDisruptorMount" unique_id=1405866332]
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, -13.530939, 0.968874, 4.7559996)
+
+[node name="WN_Torpedo" type="Node3D" parent="Model/Weapons" unique_id=668997659 node_paths=PackedStringArray("launch_marker")]
+transform = Transform3D(-0.99999976, 0, -8.7422755e-08, 0, 1, 0, 8.7422755e-08, 0, -0.99999976, 0.012487523, 1.5609932, 6.760435)
+script = ExtResource("16_cq8fy")
+torpedo_scene = ExtResource("17_su50l")
+launch_marker = NodePath("Torpedo_Launcher")
+launch_straight_distance = 100.0
+arc_half_angle = 100.0
+fire_range = 1000.0
+show_gizmo = false
+launch_sound = ExtResource("18_oxi30")
+
+[node name="Torpedo_Launcher" type="Marker3D" parent="Model/Weapons/WN_Torpedo" unique_id=38471425]
+transform = Transform3D(-1.0000001, 0, 8.736978e-08, 2.842171e-14, 1, -1.2789769e-13, -8.7427985e-08, 0, -1.0000001, -0.0011403458, 0.13600731, 0.01379478)
 
 [node name="Effects" type="Node3D" parent="Model" unique_id=611753747]
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 6.593826e-08, 0.7542454, 7.935009)

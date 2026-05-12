@@ -9,6 +9,7 @@
 [ext_resource type="Resource" uid="uid://rnjw554k4unh" path="res://resources/cloak_data_birdofprey.tres" id="3_otble"]
 [ext_resource type="Resource" uid="uid://nsgk2qqpppmc" path="res://resources/shipstats_birdofprey.tres" id="4_yfkko"]
 [ext_resource type="Resource" uid="uid://bxkh3m2yf8p3i" path="res://resources/shockwavedata_birdofprey.tres" id="5_yfkko"]
+[ext_resource type="Resource" uid="uid://lo4khq83bjir" path="res://resources/weapon_torpedo/loadout_birdofprey.tres" id="10_e3ooc"]
 
 [resource]
 script = ExtResource("1_7sek7")
@@ -23,6 +24,7 @@ hull = ExtResource("2_d4kd8")
 combat_behavior = ExtResource("1_1o8v7")
 beam_weapon_data = ExtResource("1_qte1b")
 bolt_weapon_data = ExtResource("2_otble")
+torpedo_loadout = ExtResource("10_e3ooc")
 ship_scene_path = "uid://ba2kgx0xuybdg"
 can_cloak = true
 cloak_data = ExtResource("3_otble")

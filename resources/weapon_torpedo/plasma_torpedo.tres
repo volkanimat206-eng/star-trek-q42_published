@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="TorpedoData" format=3 uid="uid://d2wxv8ffo10oc"]
+
+[ext_resource type="Script" uid="uid://e5d104onkic3" path="res://resources/data/weapon_data_torpedo.gd" id="1_kv6gc"]
+[ext_resource type="PackedScene" uid="uid://bgvvs83cnka02" path="res://scenes/vfx/effect_explosion_torpedo.tscn" id="1_quq4l"]
+[ext_resource type="AudioStream" uid="uid://b35v726o6hq4l" path="res://assets/audio/torpedo/audiopapkin-sound-design-elements-impact-sfx-ps-032-306981.mp3" id="2_f4i4u"]
+
+[resource]
+script = ExtResource("1_kv6gc")
+torpedo_name = "Plasma Torpedo"
+torpedo_type = 2
+torpedo_color = Color(5.1740557e-07, 0.41701582, 0.059543274, 1)
+trail_color = Color(0.41680178, 0.95714885, 0, 1)
+collision_mask = 35
+explosion_scene = ExtResource("1_quq4l")
+proximity_radius = 10.0
+explosion_scale = 3.0
+impact_sound = ExtResource("2_f4i4u")
+impact_volume_db = 20.0
+impact_distance_attenuation_strength = 0.1
+impact_sound_duration = 3.0
+metadata/_custom_type_script = "uid://e5d104onkic3"

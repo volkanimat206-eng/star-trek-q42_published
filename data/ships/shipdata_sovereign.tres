@@ -8,7 +8,7 @@
 [ext_resource type="Resource" uid="uid://xcg3chji10d0" path="res://data/shields/shielddata_sovereign.tres" id="3_gsgdk"]
 [ext_resource type="Resource" uid="uid://b1sl0pidh6b7t" path="res://resources/shipstats_sovereign.tres" id="4_vhcdi"]
 [ext_resource type="Resource" uid="uid://cw5ex24ispc0" path="res://resources/shockwavedata_sovereign.tres" id="6_wk48e"]
-[ext_resource type="Resource" uid="uid://cu1mnccqs5glh" path="res://resources/weapon_torpedo/sovereign_loadout.tres" id="9_xloj1"]
+[ext_resource type="Resource" uid="uid://cu1mnccqs5glh" path="res://resources/weapon_torpedo/loadout_sovereign.tres" id="9_xloj1"]
 
 [resource]
 script = ExtResource("1_3ju8f")

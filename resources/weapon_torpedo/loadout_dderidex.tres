@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="TorpedoLoadout" format=3 uid="uid://ddulq5aesc1wc"]
+
+[ext_resource type="Script" uid="uid://e5d104onkic3" path="res://resources/data/weapon_data_torpedo.gd" id="1_nhlw3"]
+[ext_resource type="Resource" uid="uid://d2wxv8ffo10oc" path="res://resources/weapon_torpedo/plasma_torpedo.tres" id="2_6ihd0"]
+[ext_resource type="Script" uid="uid://bsvn7027s7i4a" path="res://resources/data/torpedo_loadout.gd" id="2_b1g2u"]
+
+[resource]
+script = ExtResource("2_b1g2u")
+entries = Array[ExtResource("1_nhlw3")]([ExtResource("2_6ihd0")])
+metadata/_custom_type_script = "uid://bsvn7027s7i4a"

@@ -566,7 +566,7 @@ curve = SubResource("Curve3D_07lv0")
 debug_custom_color = Color(1, 0, 0, 1)
 
 [node name="PathFollow3D_A" type="PathFollow3D" parent="Model/PathPlannings/PhaserBank_Top" unique_id=95988932]
-transform = Transform3D(-0.3144238, -0.0014662594, -0.9492814, 0, 1.0003747, -0.0015440173, 0.9492799, -0.00048565952, -0.31442428, 10.38, -13.7, -15.296)
+transform = Transform3D(-0.3144238, -0.0014662601, -0.9492814, 0, 1.0003752, -0.0015440173, 0.9492799, -0.00048565975, -0.31442428, 10.38, -13.7, -15.296)
 rotation_mode = 4
 
 [node name="Marker3D_A" type="Marker3D" parent="Model/PathPlannings/PhaserBank_Top/PathFollow3D_A" unique_id=61802971]
@@ -582,7 +582,7 @@ light_indirect_energy = 0.6
 light_volumetric_fog_energy = 0.5
 
 [node name="PathFollow3D_B" type="PathFollow3D" parent="Model/PathPlannings/PhaserBank_Top" unique_id=1223719029]
-transform = Transform3D(-0.3144238, -0.0014662594, -0.9492814, 0, 1.0003747, -0.0015440173, 0.9492799, -0.00048565952, -0.31442428, 10.38, -13.7, -15.296)
+transform = Transform3D(-0.3144238, -0.0014662601, -0.9492814, 0, 1.0003752, -0.0015440173, 0.9492799, -0.00048565975, -0.31442428, 10.38, -13.7, -15.296)
 rotation_mode = 4
 
 [node name="Marker3D_B" type="Marker3D" parent="Model/PathPlannings/PhaserBank_Top/PathFollow3D_B" unique_id=235449444]
@@ -647,7 +647,7 @@ curve = SubResource("Curve3D_bvt33")
 debug_custom_color = Color(1, 0, 0, 1)
 
 [node name="PathFollow3D_A" type="PathFollow3D" parent="Model/PathPlannings/PhaserBank_Top_Right" unique_id=1331458506]
-transform = Transform3D(0.22227737, 0.021834517, -0.9747386, 0, 1.0001142, 0.0223866, 0.97497255, -0.004977903, 0.22222403, -16.706, -15.3, -26.472)
+transform = Transform3D(0.22227737, 0.021834526, -0.9747386, 0, 1.0001147, 0.0223866, 0.97497255, -0.004977905, 0.22222403, -16.706, -15.3, -26.472)
 rotation_mode = 4
 
 [node name="Marker3D_A" type="Marker3D" parent="Model/PathPlannings/PhaserBank_Top_Right/PathFollow3D_A" unique_id=1235774715]
@@ -663,7 +663,7 @@ light_indirect_energy = 0.6
 light_volumetric_fog_energy = 0.5
 
 [node name="PathFollow3D_B" type="PathFollow3D" parent="Model/PathPlannings/PhaserBank_Top_Right" unique_id=529980478]
-transform = Transform3D(0.22227737, 0.021834517, -0.9747386, 0, 1.0001142, 0.0223866, 0.97497255, -0.004977903, 0.22222403, -16.706, -15.3, -26.472)
+transform = Transform3D(0.22227737, 0.021834526, -0.9747386, 0, 1.0001147, 0.0223866, 0.97497255, -0.004977905, 0.22222403, -16.706, -15.3, -26.472)
 rotation_mode = 4
 
 [node name="Marker3D_B" type="Marker3D" parent="Model/PathPlannings/PhaserBank_Top_Right/PathFollow3D_B" unique_id=1147521489]
@@ -764,7 +764,7 @@ curve = SubResource("Curve3D_2gfh4")
 debug_custom_color = Color(1, 0, 0, 1)
 
 [node name="PathFollow3D_A" type="PathFollow3D" parent="Model/PathPlannings/PhaserBank_Back_Right" unique_id=1243775207]
-transform = Transform3D(-0.11479008, 0, 0.99338967, 0, 1.0003626, 0, -0.99337626, 0, -0.11479163, -12.318174, -15.400036, -24.15163)
+transform = Transform3D(-0.11479008, 0, 0.99338967, 0, 1.0003631, 0, -0.99337626, 0, -0.11479163, -12.318174, -15.400036, -24.15163)
 rotation_mode = 4
 
 [node name="Marker3D_A" type="Marker3D" parent="Model/PathPlannings/PhaserBank_Back_Right/PathFollow3D_A" unique_id=1564434586]
@@ -780,7 +780,7 @@ light_indirect_energy = 0.6
 light_volumetric_fog_energy = 0.5
 
 [node name="PathFollow3D_B" type="PathFollow3D" parent="Model/PathPlannings/PhaserBank_Back_Right" unique_id=1855841634]
-transform = Transform3D(-0.11479008, 0, 0.99338967, 0, 1.0003626, 0, -0.99337626, 0, -0.11479163, -12.318174, -15.400036, -24.15163)
+transform = Transform3D(-0.11479008, 0, 0.99338967, 0, 1.0003631, 0, -0.99337626, 0, -0.11479163, -12.318174, -15.400036, -24.15163)
 rotation_mode = 4
 
 [node name="Marker3D_B" type="Marker3D" parent="Model/PathPlannings/PhaserBank_Back_Right/PathFollow3D_B" unique_id=712457263]
