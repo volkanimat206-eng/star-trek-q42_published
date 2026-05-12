@@ -37,7 +37,6 @@ script = ExtResource("1_kvtvj")
 spawn_ship_datas = Array[ExtResource("2_8jptv")]([ExtResource("3_8gwfh"), ExtResource("4_1nfr7"), ExtResource("5_t24vc"), ExtResource("6_j20uj")])
 spawn_offset_radius = 200.0
 ai_controller_scene = ExtResource("6_t24vc")
-toggle_key = null
 debug_flags_node = NodePath("Debug_Flags")
 panel = NodePath("Debug_Control")
 title_bar = NodePath("Debug_Control/VBoxContainer/TitleBar")
@@ -66,7 +65,7 @@ reputation_bar = NodePath("Debug_Control/VBoxContainer/ReputationBar")
 reputation_content = NodePath("Debug_Control/VBoxContainer/MarginContainer_Reputation")
 sound_bar = NodePath("Debug_Control/VBoxContainer/SoundBar")
 sound_content = NodePath("Debug_Control/VBoxContainer/MarginContainer_Sound")
-debug_flag_names = Array[String](["vfx.hull_impact", "vfx.torpedo_explosion", "vfx.fire", "ai.faction_lookup", "weapons.projectile_path", "ai.faction_hostile", "ai.debug", "ai.faction_hostile", "ai.resolver", "weapons.arc_check", "cloak.setup", "ai.hostile_diag"])
+debug_flag_names = Array[String](["vfx.hull_impact", "vfx.torpedo_explosion", "vfx.fire", "ai.faction_lookup", "weapons.projectile_path", "ai.faction_hostile", "ai.debug", "ai.faction_hostile", "ai.resolver", "weapons.arc_check", "cloak.setup", "ai.hostile_diag", "cloak.events"])
 
 [node name="Debug_Control" type="Panel" parent="." unique_id=423755254]
 custom_minimum_size = Vector2(420, 500)

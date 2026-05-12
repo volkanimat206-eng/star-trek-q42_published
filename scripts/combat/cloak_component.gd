@@ -138,6 +138,8 @@ var _cloak_alpha: float    = 1.0
 var _cooldown_timer: float = 0.0
 var _active_tween: Tween   = null
 var is_active: bool
+var _cloak_visibility_to_player: float = 1.0
+var _faction_check_done: bool = false
 
 ## Wird in _ready() einmal anhand der "player"-Group ermittelt und cached.
 var _is_player_ship: bool = false
@@ -153,6 +155,12 @@ var _cached_materials: Array[Material] = []
 ## Reihenfolge entspricht 1:1 _cached_materials.
 var _original_colors:  Array[Color]    = []
 var _materials_initialized: bool = false
+
+## Basis-Materialien (dupliziert) mit Mesh-Referenz für Alpha-Steuerung.
+## Jeder Eintrag: { "mesh": MeshInstance3D, "surface": int, "mat": Material, "type": String }
+## type = "standard" → albedo_color.a steuern
+## type = "shader"   → MeshInstance3D.transparency steuern (per-Instance-Property)
+var _base_material_entries: Array = []
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -174,11 +182,7 @@ func _ready() -> void:
 	# Player-Auto-Detect: einmalig in _ready() — die Group-Mitgliedschaft ändert
 	# sich während des Spiels normalerweise nicht (Player-Schiff bleibt Player).
 	_resolve_player_mode()
-
-	# WICHTIG: Originalfarben SOFORT in _ready() snapshotten — bevor irgendein
-	# Code (auch von anderen Systemen) die geteilten Base-Materials anfasst.
-	# Kein duplicate(), kein Override — nur lesen. Absolut sicher in _ready().
-	_snapshot_original_colors()
+	_update_cloak_visibility_to_player()
 
 	_dbg("✅ CloakComponent bereit | root='%s' | sc='%s' | mode=%s | min_alpha=%.2f | detection_range=%.0fm | fade_in=%.1fs" % [
 		_ship_root.name if _ship_root else "NULL",
@@ -187,6 +191,14 @@ func _ready() -> void:
 		_effective_min_alpha,
 		cloak_data.detection_range, cloak_data.fade_in_duration
 	])
+
+	# Shader-Warmup: Cloak-Shader einmalig in _ready() laden damit der erste
+	# Cloak-Aufruf keinen Compile-Stutter verursacht. Godot cached den Shader
+	# nach dem ersten load() — alle weiteren Aufrufe sind instantan.
+	# Kein set_shader_parameter nötig — nur das Laden reicht für den Pre-Compile.
+	var _warmup_shader: Shader = load("res://shaders/cloak.gdshader")
+	if not _warmup_shader:
+		push_warning("[CloakComponent] Warmup: cloak.gdshader nicht gefunden!")
 
 
 ## Prüft ob das Schiff zum Spieler gehört und setzt den effektiven Min-Alpha.
@@ -288,32 +300,34 @@ func is_transitioning() -> bool:
 ## Diese Funktion ist die Wahrheits-Quelle für externe Visibility-Checks
 ## (TargetingSystem, AIController). ShipController.is_visible_to(observer)
 ## delegiert hierhin.
+
 func visibility_to(observer: Node3D) -> float:
-	# Im IDLE: voll sichtbar
 	if _state == State.IDLE:
 		return 1.0
 
-	# Im Übergang: linear interpoliert mit _cloak_alpha
 	if _state == State.CLOAKING or _state == State.DECLOAKING:
 		return _cloak_alpha
 
-	# Im COOLDOWN: voll sichtbar (war ja gerade enttarnt)
 	if _state == State.COOLDOWN:
 		return 1.0
 
-	# CLOAKED: hängt von Distanz zum Observer ab
 	if not is_instance_valid(observer):
 		return 0.0
 	if not _ship_root:
 		return 0.0
 
-	var dist: float = _ship_root.global_position.distance_to(observer.global_position)
-	if dist >= cloak_data.detection_range:
-		return 0.0
+	var same_faction: bool = false
+	if Engine.has_singleton("FactionSystem"):
+		var my_faction: int = FactionSystem.get_faction_of(_ship_root)
+		var obs_faction: int = FactionSystem.get_faction_of(observer)
+		same_faction = (my_faction >= 0 and my_faction == obs_faction)
 
-	# Linear interpoliert: bei dist=0 → shimmer_max_alpha, bei dist=detection_range → 0
-	var t: float = 1.0 - (dist / cloak_data.detection_range)
-	return t * cloak_data.shimmer_max_alpha
+	if same_faction:
+		var ally_vis: float = cloak_data.ally_visibility if cloak_data else 0.35
+		return ally_vis
+
+	# Feinde und Neutrale sehen nichts.
+	return 0.0
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -338,9 +352,11 @@ func _begin_cloak() -> bool:
 	_set_weapons_locked(true)
 	_set_shields_offline(true)
 
-	# Mesh-Fade auf _effective_min_alpha (0.0 = komplett unsichtbar, >0 = leicht sichtbar)
-	_fade_to(_effective_min_alpha, cloak_data.fade_in_duration, _on_cloak_complete)
-	_dbg("  → Ziel-Alpha: %.2f" % _effective_min_alpha)
+	# cloak_progress → 1.0 = voll getarnt. Rim-Sichtbarkeit für Player/Verbündete
+	# regelt der Shader selbst über rim_intensity (kein Alpha-Limit mehr nötig).
+	_update_cloak_visibility_to_player()
+	_fade_to(1.0, cloak_data.fade_in_duration, _on_cloak_complete)
+	_dbg("  → cloak_progress Ziel: 1.0")
 	return true
 
 
@@ -359,35 +375,29 @@ func _begin_decloak(emergency: bool = false) -> bool:
 	if audio_data:
 		_play_sound(audio_data.sound_decloak, audio_data.cloak_volume_offset_db)
 
-	# Mesh-Fade zurück auf 1.0
-	_fade_to(1.0, duration, _on_decloak_complete.bind(emergency))
+	# cloak_progress → 0.0 = voll sichtbar
+	_fade_to(0.0, duration, _on_decloak_complete.bind(emergency))
 	return true
 
 
 func _on_cloak_complete() -> void:
 	_state = State.CLOAKED
 	_set_collision_active(false)
-
-	# NPC-Modus mit min_alpha=0: Mesh komplett ausblenden für sauberen Look
-	# (sonst können Restartefakte vom transparenten Material sichtbar bleiben).
-	# Player-Modus mit min_alpha>0: Mesh bleibt sichtbar.
-	if _effective_min_alpha <= 0.0:
-		_set_original_meshes_visible(false)
-		_dbg("✅ CLOAKED (komplett unsichtbar)")
-	else:
-		_dbg("✅ CLOAKED (leicht sichtbar, alpha=%.2f)" % _effective_min_alpha)
-
+	
+	_update_cloak_visibility_to_player(true)  # force check
+	_apply_cloak_progress(1.0)                # force final shader update
+	
+	_dbg("✅ CLOAKED")
 	cloaked.emit()
 
 
 func _on_decloak_complete(emergency: bool) -> void:
-	# Mesh wieder sichtbar wenn es im Cloak versteckt wurde (NPC-Modus)
-	if _effective_min_alpha <= 0.0:
-		_set_original_meshes_visible(true)
-
 	_set_collision_active(true)
 	_set_shields_offline(false)
 	_set_weapons_locked(false)
+
+	# Materials aufräumen: next_pass entfernen, Alpha/transparency zurücksetzen
+	_cleanup_materials()
 
 	if emergency:
 		_state = State.COOLDOWN
@@ -398,6 +408,88 @@ func _on_decloak_complete(emergency: bool) -> void:
 		_dbg("✅ DECLOAKED (voll sichtbar)")
 
 	decloaked.emit()
+
+## Updates the visibility this ship should have for the player.
+## Called in _ready() and when cloak completes.
+func _update_cloak_visibility_to_player(force: bool = false) -> void:
+	if _is_player_ship:
+		_cloak_visibility_to_player = 1.0
+		return
+
+	if not _ship_root:
+		_cloak_visibility_to_player = 1.0
+		return
+
+	# Direct Autoload access (no Engine.has_singleton)
+	if not FactionSystem:
+		_cloak_visibility_to_player = 1.0
+		_dbg("⚠ FactionSystem autoload not found")
+		return
+
+	var my_faction: int = FactionSystem.get_faction_of(_ship_root)
+	
+	# NEW: Correct way to get player faction
+	var player_faction: int = -1
+	var player_node = get_tree().get_first_node_in_group("player")
+	if player_node:
+		player_faction = FactionSystem.get_faction_of(player_node)
+
+	if my_faction < 0 or player_faction < 0:
+		_cloak_visibility_to_player = 1.0
+		return
+
+	if FactionSystem.is_faction_pair_hostile(my_faction, player_faction):
+		_cloak_visibility_to_player = 0.0
+		_dbg("🛡️ HOSTILE ship detected (faction %d vs player %d) → cloak_visibility = 0.0" % [my_faction, player_faction])
+	else:
+		_cloak_visibility_to_player = 1.0
+		_dbg("👥 Ally/Neutral → cloak_visibility = 1.0")
+
+## Räumt alle Cloak-Effekte an den Materialien auf:
+##   1. next_pass (Rim-Glow-Shader) vom Basis-Material entfernen
+##   2. StandardMaterial3D: albedo_color.a und transparency-Mode wiederherstellen
+##   3. ShaderMaterial: mesh.transparency auf Original zurücksetzen
+##   4. Interne Listen leeren + _materials_initialized zurücksetzen
+func _cleanup_materials() -> void:
+	# Basis-Materialien wiederherstellen
+	for entry in _base_material_entries:
+		var mesh: MeshInstance3D = entry.get("mesh")
+		if not is_instance_valid(mesh):
+			continue
+		var mat: Material = entry.get("mat")
+		match entry.get("type", ""):
+			"standard":
+				var sm3d := mat as StandardMaterial3D
+				if sm3d:
+					# Albedo-Alpha zurücksetzen
+					var orig_a: float = sm3d.get_meta("_cloak_orig_albedo_a", 1.0)
+					var col: Color = sm3d.albedo_color
+					col.a = orig_a
+					sm3d.albedo_color = col
+					sm3d.remove_meta("_cloak_orig_albedo_a")
+					# Transparency-Mode zurücksetzen
+					if sm3d.has_meta("_cloak_orig_transparency"):
+						sm3d.transparency = sm3d.get_meta("_cloak_orig_transparency") as int
+						sm3d.remove_meta("_cloak_orig_transparency")
+					# next_pass entfernen
+					sm3d.next_pass = null
+			"shader":
+				# mesh.transparency zurücksetzen
+				var surface_idx: int = entry.get("surface", 0)
+				var meta_key: String = "_cloak_orig_mesh_transparency_%d" % surface_idx
+				if mesh.has_meta(meta_key):
+					mesh.transparency = mesh.get_meta(meta_key) as float
+					mesh.remove_meta(meta_key)
+				else:
+					mesh.transparency = 0.0
+				# next_pass am Material entfernen
+				if mat:
+					mat.next_pass = null
+
+	_base_material_entries.clear()
+	_cached_materials.clear()
+	_materials_initialized = false
+	_dbg("🧹 Materials bereinigt (next_pass entfernt, alpha/transparency wiederhergestellt)")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -445,188 +537,250 @@ func _snapshot_original_colors() -> void:
 	_dbg("📷 Originalfarben gesichert: %d Einträge" % _original_colors.size())
 
 
-## Dupliziert alle relevanten Mesh-Materials per-Instanz (Material-Isolation).
-## Wird LAZY beim ersten Cloak-Versuch aufgerufen — nicht in _ready(),
-## damit Schiffe die nie cloaken keinen unnötigen Material-Speicher belegen.
+## Hängt den Cloak-Shader als next_pass ans Ende der Material-Chain jeder Surface.
+## Wird LAZY beim ersten Cloak-Versuch aufgerufen.
 ##
-## ⚠ KRITISCH: IMMER duplicate(true) (Deep-Copy) und IMMER neu setzen, auch
-## wenn surface_override_material schon existiert. Sonst teilen sich zwei
-## Schiffe desselben Typs die Material-Reference und cloaken zusammen.
+## WARUM next_pass statt Override:
+##   Alle Schiffe haben bereits einen damage_shader als surface_override_material.
+##   Ein zweiter Override würde diesen ersetzen. next_pass legt sich additiv
+##   ÜBER den bestehenden Pass — beide Shader laufen parallel.
+##
+## MATERIALIEN werden NICHT mehr dupliziert: der Cloak-Shader-Pass ist per
+## Instanz neu erstellt (ShaderMaterial.new()) → keine Isolation-Probleme,
+## kein transparency-Toggle nötig, kein Decloak-Sprung.
 func _initialize_materials() -> void:
 	if _materials_initialized:
+		_dbg_setup("_initialize_materials: bereits initialisiert → skip")
 		return
 
-	# _collect_meshes() liefert exakt dieselbe Reihenfolge wie _snapshot_original_colors
-	# → color_idx bleibt synchron. KRITISCH: Reihenfolge nie ändern!
+	_dbg_setup("══ _initialize_materials START ══")
+	_dbg_setup("  _ship_root  : %s" % (_ship_root.name if _ship_root else "NULL"))
+	_dbg_setup("  mesh_root   : %s" % (mesh_root.name if is_instance_valid(mesh_root) else "nicht gesetzt"))
+	_dbg_setup("  target_meshes: %d Einträge" % target_meshes.size())
+
 	var mesh_instances: Array[MeshInstance3D] = _collect_meshes()
 	if mesh_instances.is_empty():
-		_dbg("⚠ _initialize_materials: _collect_meshes() lieferte 0 Meshes!")
+		_dbg_setup("⚠ _collect_meshes() lieferte 0 Meshes → ABBRUCH")
+		_dbg_setup("  Mögliche Ursachen:")
+		_dbg_setup("  1. mesh_root nicht gesetzt UND target_meshes leer")
+		_dbg_setup("  2. target_meshes enthält ungültige Nodes")
+		_dbg_setup("  3. Alle gefundenen Meshes wurden durch exclude_meshes gefiltert")
 		return
 
-	_dbg("🎯 Nutze %d Meshes aus dem Inspector" % mesh_instances.size())
+	_dbg_setup("  %d MeshInstance3D(s) gefunden:" % mesh_instances.size())
+	for m in mesh_instances:
+		_dbg_setup("    • '%s' | surfaces=%d | visible=%s" % [
+			m.name,
+			m.mesh.get_surface_count() if m.mesh else 0,
+			m.visible
+		])
 
-	# Separater Index für die Snapshot-Farben — wir überspringen Surfaces ohne
-	# Material, daher kann der Surface-Index abweichen.
-	var color_idx: int = 0
+	# Fraktionsfarbe + Displacement aus FactionSystem holen.
+	var faction_visuals: Dictionary = {}
+	if _ship_root and Engine.has_singleton("FactionSystem"):
+		var faction: int = FactionSystem.get_faction_of(_ship_root)
+		faction_visuals = FactionSystem.get_cloak_visuals(faction)
+		_dbg_setup("  Fraktion: %d | visuals: %s" % [faction, faction_visuals])
+	else:
+		_dbg_setup("  ⚠ FactionSystem nicht erreichbar → Default-Visuals")
+
+	var rim_col:  Color = Color(0.4, 0.75, 1.0)
+	var disp_str: float = 0.04
+
+	if not faction_visuals.is_empty():
+		rim_col  = faction_visuals.get("rim_color",             rim_col)
+		disp_str = faction_visuals.get("displacement_strength", disp_str)
+
+	# CloakData-Override hat höchste Priorität
+	if cloak_data:
+		if cloak_data.rim_color_override.a > 0.01:
+			_dbg_setup("  CloakData rim_color_override aktiv: %s" % cloak_data.rim_color_override)
+			rim_col = cloak_data.rim_color_override
+		if cloak_data.displacement_strength_override >= 0.0:
+			_dbg_setup("  CloakData displacement_override aktiv: %.3f" % cloak_data.displacement_strength_override)
+			disp_str = cloak_data.displacement_strength_override
+
+	_dbg_setup("  Finale Visuals | rim=%s | displacement=%.3f" % [rim_col, disp_str])
+
+	var cloak_shader: Shader = load("res://shaders/cloak.gdshader") as Shader
+	if not cloak_shader:
+		_dbg_setup("⚠ FEHLER: cloak.gdshader nicht gefunden!")
+		_dbg_setup("  Erwartet unter: res://shaders/cloak.gdshader")
+		_dbg_setup("  Vorhandene Pfade prüfen: FileSystem-Dock → shaders/")
+		return
+	_dbg_setup("  cloak.gdshader geladen ✅")
+
+	var surface_count_total: int = 0
 
 	for mesh in mesh_instances:
-
-		var surface_count: int = mesh.mesh.get_surface_count() if mesh.mesh else 0
+		if not mesh.mesh:
+			_dbg_setup("  '%s': mesh=NULL → skip" % mesh.name)
+			continue
+		var surface_count: int = mesh.mesh.get_surface_count()
+		_dbg_setup("  Mesh '%s': %d Surface(s)" % [mesh.name, surface_count])
 
 		for i in range(surface_count):
-			# Quelle: Override falls vorhanden, sonst Base. Beide sind potenziell
-			# zwischen Schiffsinstanzen geteilt — wir MÜSSEN duplizieren.
-			var override_mat: Material = mesh.get_surface_override_material(i)
-			var source_mat: Material = override_mat if override_mat else mesh.mesh.surface_get_material(i)
+			# ── SCHRITT 1: Top-Material ermitteln ──────────────────────────────
+			var existing_override: Material = mesh.get_surface_override_material(i)
+			var base_mat:          Material = mesh.mesh.surface_get_material(i)
+			var source_mat:        Material = existing_override if existing_override else base_mat
+
+			_dbg_setup("    Surface %d:" % i)
+			_dbg_setup("      override : %s" % (existing_override.get_class() if existing_override else "NULL"))
+			_dbg_setup("      base_mat : %s" % (base_mat.get_class() if base_mat else "NULL"))
+			_dbg_setup("      source   : %s" % (source_mat.get_class() if source_mat else "NULL"))
+
 			if not source_mat:
+				_dbg_setup("      → kein Material → skip")
 				continue
 
-			# DEEP-COPY: duplicate(true) kopiert auch verschachtelte Sub-Resources
-			# wie Texture-Refs, Sub-Materials etc. Ohne true gehen Texturen
-			# verloren → Schiff erscheint farblos.
-			var new_mat: Material = source_mat.duplicate(true)
-			mesh.set_surface_override_material(i, new_mat)
-			_cached_materials.append(new_mat)
+			if source_mat is ShaderMaterial:
+				var sm := source_mat as ShaderMaterial
+				_dbg_setup("      shader   : %s" % (sm.shader.resource_path if sm.shader else "NULL"))
 
-			# Snapshot-Farbe explizit zurückschreiben — Versicherung falls
-			# duplicate(true) doch was verschluckt hat.
-			if color_idx < _original_colors.size() and new_mat is StandardMaterial3D:
-				(new_mat as StandardMaterial3D).albedo_color = _original_colors[color_idx]
-			color_idx += 1
+			# ── SCHRITT 2: IMMER duplizieren ────────────────────────────────────
+			# KRITISCH: next_pass auf ein geteiltes Material setzen würde alle
+			# Instanzen desselben Typs gleichzeitig beeinflussen.
+			# duplicate(true) = Deep-Copy inkl. Texturen und Sub-Resources.
+			var instance_mat: Material = source_mat.duplicate(true)
+			mesh.set_surface_override_material(i, instance_mat)
+			_dbg_setup("      duplicate(true) → neue Material-ID: %d" % instance_mat.get_instance_id())
+
+			# ── SCHRITT 3: Basis-Material auf Transparent setzen + tracken ─────
+			# StandardMaterial3D: albedo_color.a direkt animieren.
+			# ShaderMaterial (damage_shader): MeshInstance3D.transparency nutzen —
+			# das ist eine per-Instance-Property in Godot 4 die KEINEN Shader-
+			# Rebuild verursacht und render_mode="opaque"-Shader transparent macht.
+			if instance_mat is StandardMaterial3D:
+				var sm3d := instance_mat as StandardMaterial3D
+				# Original-Transparency-Mode + Original-Albedo-Alpha merken
+				sm3d.set_meta("_cloak_orig_transparency", sm3d.transparency)
+				sm3d.set_meta("_cloak_orig_albedo_a", sm3d.albedo_color.a)
+				sm3d.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+				_base_material_entries.append({
+					"mesh": mesh, "surface": i, "mat": sm3d, "type": "standard"
+				})
+				_dbg_setup("      StandardMaterial3D: transparency → ALPHA, albedo_a tracked")
+			elif instance_mat is ShaderMaterial:
+				# MeshInstance3D.transparency steuert den opaken damage_shader per-Instanz.
+				# Original-Wert sichern (normalerweise 0.0 = voll opak).
+				mesh.set_meta("_cloak_orig_mesh_transparency_%d" % i, mesh.transparency)
+				_base_material_entries.append({
+					"mesh": mesh, "surface": i, "mat": instance_mat, "type": "shader"
+				})
+				_dbg_setup("      ShaderMaterial: mesh.transparency per-Instance getrackt")
+
+			# ── SCHRITT 4: Cloak-Pass (Rim-Glow) als next_pass ──────────────────
+			# blend_add: additive Überlagerung → Rim leuchtet über dem (transparenten)
+			# Basis-Material. Bei cloak_progress=0: ALPHA=0 → kein Overlay sichtbar.
+			var cloak_mat := ShaderMaterial.new()
+			cloak_mat.shader = cloak_shader
+			cloak_mat.set_shader_parameter("cloak_progress",        0.0)
+			cloak_mat.set_shader_parameter("rim_color",             rim_col)
+			cloak_mat.set_shader_parameter("displacement_strength", disp_str)
+
+			instance_mat.next_pass = cloak_mat
+			_cached_materials.append(cloak_mat)
+			surface_count_total += 1
+			_dbg_setup("      → next_pass: cloak_shader eingehängt ✅")
 
 	_materials_initialized = true
-	_dbg("✅ Materials dupliziert: %d (deep-copy + Farb-Snapshot zurückgeschrieben)" % _cached_materials.size())
+	_dbg_setup("══ _initialize_materials FERTIG ══")
+	_dbg_setup("  Gesamt: %d Cloak-Material(s) in _cached_materials" % _cached_materials.size())
 
 	if _cached_materials.is_empty():
-		_dbg("⚠ KEINE Materials gefunden! Mögliche Ursachen:")
-		_dbg("  1. target_meshes leer UND _ship_root falsch")
-		_dbg("  2. Mesh hat keine Surfaces (mesh.get_surface_count() = 0)")
-		_dbg("  3. Surfaces haben weder Base-Material noch Override")
+		_dbg_setup("⚠ ACHTUNG: _cached_materials leer nach Init!")
+		_dbg_setup("  → Cloak wird visuell KEINEN Effekt haben")
 
 
-## Tween-basierter Alpha-Fade von _cloak_alpha → target_alpha.
-func _fade_to(target_alpha: float, duration: float, on_complete: Callable) -> void:
+## Tween-basierter Fade: animiert cloak_progress 0→1 (Cloak) oder 1→0 (Decloak).
+##
+## Der Cloak-Shader empfängt cloak_progress als einzigen Steuer-Parameter.
+## Kein transparency-Toggle am Basis-Material mehr → kein Decloak-Sprung.
+## Kein albedo_color-Schreiben mehr → Originalfarbe bleibt immer erhalten.
+func _fade_to(target_progress: float, duration: float, on_complete: Callable) -> void:
 	_initialize_materials()
 
 	if _active_tween and _active_tween.is_valid():
 		_active_tween.kill()
 
 	if _cached_materials.is_empty():
-		_cloak_alpha = target_alpha
+		_cloak_alpha = 1.0 - target_progress
 		on_complete.call()
 		return
 
-	# Transparency aktivieren bevor der Fade startet (nur StandardMaterial3D)
-	for mat in _cached_materials:
-		if mat is StandardMaterial3D:
-			(mat as StandardMaterial3D).transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-
-	var start_alpha: float = _cloak_alpha
+	var start_progress: float = 1.0 - _cloak_alpha   # _cloak_alpha=1 → progress=0
 	_active_tween = create_tween()
+	_active_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	_active_tween.tween_method(
 		func(progress: float) -> void:
-			var current_alpha: float = lerp(start_alpha, target_alpha, progress)
-			_apply_alpha_to_materials(current_alpha),
-		0.0, 1.0,
+			_apply_cloak_progress(progress),
+		start_progress,
+		target_progress,
 		duration
 	)
 	_active_tween.tween_callback(func() -> void:
-		_cloak_alpha = target_alpha
-		# Beim Decloak (target=1.0): Originalfarbe + Transparency aus.
-		# Beim Cloak (target=min_alpha): Transparency bleibt aktiv.
-		if target_alpha >= 1.0:
-			for i in range(_cached_materials.size()):
-				var mat: Material = _cached_materials[i]
-				if mat is StandardMaterial3D:
-					var sm: StandardMaterial3D = mat as StandardMaterial3D
-					if i < _original_colors.size():
-						sm.albedo_color = _original_colors[i]
-					sm.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
-				elif mat is ShaderMaterial:
-					# cloak_alpha auf 1.0 zurücksetzen — Shader ist wieder voll sichtbar
-					(mat as ShaderMaterial).set_shader_parameter("cloak_alpha", 1.0)
+		_apply_cloak_progress(target_progress)
+		_cloak_alpha = 1.0 - target_progress
 		on_complete.call()
 	)
+	
 
+## Setzt cloak_progress auf allen gecachten Cloak-Shader-Materials UND
+## steuert den Alpha der Basis-Materialien für echte Transparenz.
+## Wird pro Tween-Frame aufgerufen.
+func _apply_cloak_progress(progress: float) -> void:
+	_cloak_alpha = 1.0 - progress
 
-## Wird von tween_method pro Frame aufgerufen — setzt alpha auf allen Materials.
-## Behält Original-RGB bei und setzt nur den Alpha-Kanal — kein Farbverlust.
-## Unterstützt StandardMaterial3D (albedo_color.a) UND ShaderMaterial (cloak_alpha uniform).
-func _apply_alpha_to_materials(alpha: float) -> void:
-	_cloak_alpha = alpha
-	for i in range(_cached_materials.size()):
-		var mat: Material = _cached_materials[i]
+	# Update visibility (especially important during transition)
+	_update_cloak_visibility_to_player()
 
-		if mat is StandardMaterial3D:
-			var sm: StandardMaterial3D = mat as StandardMaterial3D
-			# Original-RGB aus Snapshot, nur Alpha aus dem aktuellen Fade-Wert
-			var base: Color = _original_colors[i] if i < _original_colors.size() else sm.albedo_color
-			sm.albedo_color = Color(base.r, base.g, base.b, alpha)
+	for mat in _cached_materials:
+		if mat is ShaderMaterial:
+			var sm := mat as ShaderMaterial
+			sm.set_shader_parameter("cloak_progress", progress)
+			sm.set_shader_parameter("cloak_visibility", _cloak_visibility_to_player)
 
-		elif mat is ShaderMaterial:
-			# Shader muss uniform cloak_alpha : hint_range(0.0, 1.0) = 1.0 haben.
-			# Kein Fallback nötig: set_shader_parameter ist ein No-Op wenn die
-			# Uniform nicht existiert — kein Fehler, nur kein visueller Effekt.
-			(mat as ShaderMaterial).set_shader_parameter("cloak_alpha", alpha)
+	# ── Basis Material Alpha (unchanged) ───────────────────────────────
+	var target_alpha: float = lerp(1.0, _effective_min_alpha, progress)
+	for entry in _base_material_entries:
+		var mesh: MeshInstance3D = entry.get("mesh")
+		if not is_instance_valid(mesh):
+			continue
+		match entry.get("type"):
+			"standard":
+				var sm3d := entry["mat"] as StandardMaterial3D
+				if sm3d:
+					var orig_a: float = sm3d.get_meta("_cloak_orig_albedo_a", 1.0)
+					var col: Color = sm3d.albedo_color
+					col.a = orig_a * target_alpha
+					sm3d.albedo_color = col
+			"shader":
+				mesh.transparency = 1.0 - target_alpha
+								
+## Returns how visible this ship should be TO THE PLAYER (for the shader).
+func _get_cloak_visibility_for_player() -> float:
+	if _is_player_ship:
+		return 1.0  # Player must always see their own ship
 
-	# Debug bei markanten Alpha-Werten
-	if show_debug:
-		if alpha <= 0.01:
-			_dbg("🎨 Alpha=0.0 erreicht | %d Materials" % _cached_materials.size())
-		elif alpha >= 0.99:
-			_dbg("🎨 Alpha=1.0 erreicht | %d Materials" % _cached_materials.size())
+	if not Engine.has_singleton("FactionSystem") or not _ship_root:
+		return 1.0
+
+	var my_faction = FactionSystem.get_faction_of(_ship_root)
+	var player_faction = FactionSystem.get_faction_of_player()  # Make sure this method exists
+
+	# Hostile = completely invisible (no rim, no shimmer)
+	if FactionSystem.is_hostile(my_faction, player_faction):
+		return 0.0
+
+	# Ally or neutral → show rim
+	return 1.0
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # INTERN – Audio (nach dem Vorbild von WeaponMount)
 # ─────────────────────────────────────────────────────────────────────────────
-#
-#func _play_sound(stream: AudioStream, volume_offset_db: float = 0.0) -> void:
-	#if not stream:
-		#return
-#
-	#var player := AudioStreamPlayer3D.new()
-	#player.stream = stream
-#
-	#if is_instance_valid(_ship_root):
-		#player.global_position = _ship_root.global_position
-	#elif is_instance_valid(_ship_controller) and _ship_controller is Node3D:
-		#player.global_position = _ship_controller.global_position
-#
-	#player.volume_db = volume_offset_db
-#
-	## ── Zoom/Distanz-Steuerung – Werte aus audio_data ─────────────────
-	#var no_atten:  bool  = audio_data.no_distance_attenuation      if audio_data else false
-	#var max_dist:  float = audio_data.max_distance                  if audio_data else 800.0
-	#var atten_str: float = audio_data.distance_attenuation_strength if audio_data else 0.25
-	#var cutoff:    float = audio_data.attenuation_filter_cutoff_hz  if audio_data else 12000.0
-	#var fade_time: float = audio_data.sound_fade_out_time           if audio_data else 0.8
-#
-	#if no_atten:
-		#player.attenuation_model = AudioStreamPlayer3D.ATTENUATION_DISABLED
-		#player.max_distance      = 2000.0
-	#else:
-		#player.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
-		#player.max_distance      = max_dist
-		#player.unit_size         = 1.0 / max(0.1, atten_str)
-#
-	#player.attenuation_filter_cutoff_hz = cutoff
-#
-	#add_child(player)
-	#player.play()
-#
-	#if fade_time > 0.0:
-		#var tween := create_tween()
-		#tween.tween_property(player, "volume_db", -80.0, fade_time)\
-			#.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-		#tween.tween_callback(func():
-			#if is_instance_valid(player): player.queue_free()
-		#)
-	#else:
-		#player.finished.connect(func():
-			#if is_instance_valid(player): player.queue_free()
-		#)
-#
+
 func _play_sound(stream: AudioStream, volume_offset_db: float = 0.0) -> void:
 	if not stream:
 		return
@@ -703,7 +857,15 @@ func _find_all_mesh_instances(node: Node) -> Array[MeshInstance3D]:
 		result.append_array(_find_all_mesh_instances(child))
 	return result
 
-
+func _debug_cloak_visibility() -> void:
+	if not show_debug: return
+	var vis = _get_cloak_visibility_for_player()
+	print("[Cloak|%s] DEBUG Visibility to Player = %.3f | Faction=%s | is_player=%s" % [
+		_ship_controller.name if _ship_controller else "?", 
+		vis, 
+		FactionSystem.get_faction_of(_ship_root) if Engine.has_singleton("FactionSystem") else "N/A",
+		_is_player_ship
+	])
 
 # ─────────────────────────────────────────────────────────────────────────────
 # INTERN – Subsystem-Hooks
@@ -759,34 +921,60 @@ func _set_collision_active(active: bool) -> void:
 func _collect_meshes() -> Array[MeshInstance3D]:
 	var candidates: Array[MeshInstance3D] = []
 
+	_dbg_setup("  _collect_meshes:")
+	_dbg_setup("    mesh_root     : %s (valid=%s)" % [
+		mesh_root.name if is_instance_valid(mesh_root) else "—",
+		is_instance_valid(mesh_root)
+	])
+	_dbg_setup("    target_meshes : %d Einträge" % target_meshes.size())
+	for i in range(target_meshes.size()):
+		var tm := target_meshes[i]
+		_dbg_setup("      [%d] %s (%s) valid=%s" % [
+			i,
+			tm.name if is_instance_valid(tm) else "NULL",
+			tm.get_class() if is_instance_valid(tm) else "—",
+			is_instance_valid(tm)
+		])
+
 	if is_instance_valid(mesh_root):
-		# Primärer Pfad: mesh_root definiert den Suchraum explizit
 		candidates = _find_all_mesh_instances(mesh_root)
-		_dbg("🌳 mesh_root='%s' → %d Mesh-Kandidaten" % [mesh_root.name, candidates.size()])
+		_dbg_setup("    → Pfad: mesh_root | %d Kandidaten" % candidates.size())
 	elif target_meshes.size() > 0:
-		# Legacy-Pfad: explizite Liste aus dem Inspector
 		for m in target_meshes:
-			if is_instance_valid(m):
-				candidates.append(m)
-		_dbg("🎯 target_meshes (legacy): %d Kandidaten" % candidates.size())
+			if not is_instance_valid(m):
+				_dbg_setup("    ⚠ target_meshes-Eintrag ungültig → skip")
+				continue
+			if m is MeshInstance3D:
+				candidates.append(m as MeshInstance3D)
+				_dbg_setup("    → '%s' direkt als MeshInstance3D übernommen" % m.name)
+			else:
+				var found := _find_all_mesh_instances(m)
+				_dbg_setup("    → '%s' ist %s → rekursiv gesucht → %d MeshInstance3D gefunden" % [
+					m.name, m.get_class(), found.size()
+				])
+				for f in found:
+					_dbg_setup("       • '%s'" % f.name)
+				candidates.append_array(found)
+		_dbg_setup("    → Pfad: target_meshes | %d Kandidaten gesamt" % candidates.size())
 	elif _ship_root:
-		# Fallback: gesamten Ship-Root durchsuchen
 		candidates = _find_all_mesh_instances(_ship_root)
-		_dbg("🔍 Fallback _ship_root='%s' → %d Kandidaten" % [_ship_root.name, candidates.size()])
+		_dbg_setup("    → Pfad: Fallback _ship_root | %d Kandidaten" % candidates.size())
 	else:
-		_dbg("⚠ _collect_meshes: kein mesh_root, kein target_meshes, kein _ship_root!")
+		_dbg_setup("    ⚠ KEIN Suchpfad! mesh_root=NULL, target_meshes=leer, _ship_root=NULL")
 		return []
 
-	# Ausschluss-Filter: ShieldMesh immer, exclude_meshes aus Inspector
+	# Ausschluss-Filter
 	var result: Array[MeshInstance3D] = []
 	for m in candidates:
 		if m.name == "ShieldMesh":
+			_dbg_setup("    ⛔ '%s' → ShieldMesh-Filter" % m.name)
 			continue
 		if _is_excluded(m):
-			_dbg("  ⛔ '%s' ausgeschlossen (exclude_meshes)" % m.name)
+			_dbg_setup("    ⛔ '%s' → exclude_meshes-Filter" % m.name)
 			continue
 		result.append(m)
 
+	_dbg_setup("    → Nach Filter: %d Mesh(es)" % result.size())
 	return result
 
 
@@ -811,9 +999,10 @@ func _set_original_meshes_visible(visible: bool) -> void:
 	_dbg("👁 Meshes visible=%s" % visible)
 
 
+## Allgemeines Cloak-Log (Events: Tarnen/Enttarnen/Zustandsänderungen).
+## Aktiv wenn: show_debug=true ODER DebugManager-Flag "cloak.events"=true.
 func _dbg(msg: String) -> void:
 	if not show_debug:
-		# Auch ohne show_debug-Flag das DebugManager-Flag respektieren
 		var dm: Node = get_tree().root.get_node_or_null("DebugManager")
 		if not dm or not dm.has_method("get_flag"):
 			return
@@ -821,3 +1010,17 @@ func _dbg(msg: String) -> void:
 			return
 	var ship_name: String = _ship_controller.name if _ship_controller else "?"
 	print("[Cloak|%s] %s" % [ship_name, msg])
+
+
+## Setup-spezifisches Cloak-Log (Material-Init, Mesh-Suche, Shader-Setup).
+## Aktiv wenn: show_debug=true ODER DebugManager-Flag "cloak.setup"=true.
+## Separat von _dbg damit man Material-Spam nicht immer zusammen mit Events sieht.
+func _dbg_setup(msg: String) -> void:
+	if not show_debug:
+		var dm: Node = get_tree().root.get_node_or_null("DebugManager")
+		if not dm or not dm.has_method("get_flag"):
+			return
+		if not dm.get_flag("cloak.setup"):
+			return
+	var ship_name: String = _ship_controller.name if _ship_controller else "?"
+	print("[Cloak.Setup|%s] %s" % [ship_name, msg])

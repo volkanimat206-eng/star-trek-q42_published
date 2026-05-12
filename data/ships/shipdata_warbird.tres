@@ -13,6 +13,7 @@
 [resource]
 script = ExtResource("1_1gvea")
 ship_name = "Warbird"
+registry = "D'deridex"
 faction = 2
 weapon_target_mask = 35
 stats = ExtResource("4_vhxj6")

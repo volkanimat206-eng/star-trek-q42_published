@@ -6,7 +6,6 @@
 script = ExtResource("1_kqcbl")
 damage_type = "disruptor bolt"
 damage = 20.0
-hull_damage_multiplier = 0.6
 collision_mask = 3
 salvo_count = 2
 salvo_interval = 0.3

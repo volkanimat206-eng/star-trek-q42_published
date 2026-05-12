@@ -1,16 +1,25 @@
 [gd_resource type="Resource" script_class="ShipData" format=3 uid="uid://c7yeiowg0cgey"]
 
 [ext_resource type="Script" uid="uid://bfs0pr5hru0du" path="res://resources/data/ship_data.gd" id="1_j7g6e"]
+[ext_resource type="Resource" uid="uid://cqo177vihgx6k" path="res://data/weapons/weapondata_disruptor_birdofprey.tres" id="1_m360q"]
 [ext_resource type="Resource" uid="uid://dj52fe2b1v8i4" path="res://resources/cb_klingon.tres" id="1_nagfd"]
+[ext_resource type="Resource" uid="uid://rnjw554k4unh" path="res://resources/cloak_data_birdofprey.tres" id="1_wa7df"]
 [ext_resource type="Resource" uid="uid://cvuvetvegcohu" path="res://data/shields/shielddata_kvek.tres" id="3_crdrc"]
 [ext_resource type="Resource" uid="uid://bd6ypm5w527ic" path="res://resources/shipstats_kvek.tres" id="4_ffhrf"]
+[ext_resource type="Resource" uid="uid://j7kdjw4gagys" path="res://data/hulls/hulldata_birdofprey.tres" id="4_ojjvv"]
+[ext_resource type="Resource" uid="uid://bxkh3m2yf8p3i" path="res://resources/shockwavedata_birdofprey.tres" id="7_o4b1s"]
 
 [resource]
 script = ExtResource("1_j7g6e")
 ship_name = "Kvek"
 faction = 1
 stats = ExtResource("4_ffhrf")
+shockwave_data = ExtResource("7_o4b1s")
 shield = ExtResource("3_crdrc")
+hull = ExtResource("4_ojjvv")
 combat_behavior = ExtResource("1_nagfd")
+beam_weapon_data = ExtResource("1_m360q")
 ship_scene_path = "uid://dedqlnhcxprge"
+can_cloak = true
+cloak_data = ExtResource("1_wa7df")
 metadata/_custom_type_script = "uid://bfs0pr5hru0du"

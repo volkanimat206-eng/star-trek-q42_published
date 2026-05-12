@@ -14,6 +14,7 @@
 [ext_resource type="Resource" uid="uid://cdpep2sakodcf" path="res://resources/damage_parameters_xs_ships.tres" id="7_cek0b"]
 [ext_resource type="Script" uid="uid://bphq1pbix7nib" path="res://scripts/combat/targeting_system.gd" id="7_ut18v"]
 [ext_resource type="Script" uid="uid://ng03p8rp1rkm" path="res://scripts/weapons/weapon_mount_bolt.gd" id="8_4xfhx"]
+[ext_resource type="Animation" uid="uid://ckdprin1ofvs5" path="res://resources/animations/death_birdofprey.tres" id="8_240yq"]
 [ext_resource type="Resource" uid="uid://ch5k48335xxon" path="res://resources/weapons_beam/audio_disruptor_klingon.tres" id="8_shx7j"]
 [ext_resource type="Script" uid="uid://dsl76tjsngj6" path="res://scripts/ships/movement_component.gd" id="8_xnmtx"]
 [ext_resource type="PackedScene" uid="uid://celow4qg0pxxa" path="res://scenes/weapon/DisruptorBolt.tscn" id="9_s11h6"]
@@ -557,10 +558,10 @@ shader_parameter/streak_scale = 15.0
 shader_parameter/streak_threshold = 0.3
 shader_parameter/rim_width = 0.0
 shader_parameter/rim_glow_energy = 2.5
-shader_parameter/pulse_amplitude = 0.6076923076923076
-shader_parameter/pulse_speed_hz = 2.8769230769230774
+shader_parameter/pulse_amplitude = 0.7
+shader_parameter/pulse_speed_hz = 3.5
 shader_parameter/pulse_async_amount = 0.7
-shader_parameter/pulse_flicker_amount = 0.46153846153846145
+shader_parameter/pulse_flicker_amount = 0.6
 shader_parameter/inner_hull_amount = 1.0
 shader_parameter/inner_hull_threshold = 0.55
 shader_parameter/inner_hull_darkness = 0.15
@@ -600,9 +601,9 @@ shader_parameter/burn_color_dark = Color(0, 0, 0, 1)
 shader_parameter/burn_color_char = Color(0, 0, 0, 1)
 shader_parameter/burn_color_glow = Color(0, 0, 0, 1)
 shader_parameter/burn_soot_intensity = 0.8
-shader_parameter/burn_color_molten = Color(1, 0.011764706, 0, 1)
-shader_parameter/burn_color_molten_core = Color(1, 0.92156863, 0.54901963, 1)
-shader_parameter/molten_core_falloff = 0.8
+shader_parameter/burn_color_molten = Color(1, 0.35, 0.05, 1)
+shader_parameter/burn_color_molten_core = Color(1, 0.92, 0.55, 1)
+shader_parameter/molten_core_falloff = 2.5
 shader_parameter/burn_glow_energy = 6.0
 shader_parameter/burn_molten_energy = 15.0
 shader_parameter/damage_roughness_boost = 0.75
@@ -612,17 +613,17 @@ shader_parameter/crack_scale = 0.0
 shader_parameter/crack_width = 0.0
 shader_parameter/crack_glow_intensity = 0.0
 shader_parameter/crack_drift_amount = 0.0
-shader_parameter/streak_amount = 0.3
+shader_parameter/streak_amount = 0.4
 shader_parameter/streak_direction = Vector3(0, 0, 1)
-shader_parameter/streak_stretch = 1.0
-shader_parameter/streak_scale = 15.0
-shader_parameter/streak_threshold = 0.3
+shader_parameter/streak_stretch = 6.0
+shader_parameter/streak_scale = 7.0
+shader_parameter/streak_threshold = 0.15
 shader_parameter/rim_width = 0.0
 shader_parameter/rim_glow_energy = 2.5
-shader_parameter/pulse_amplitude = 0.6076923076923076
-shader_parameter/pulse_speed_hz = 2.8769230769230774
+shader_parameter/pulse_amplitude = 0.7
+shader_parameter/pulse_speed_hz = 3.5
 shader_parameter/pulse_async_amount = 0.7
-shader_parameter/pulse_flicker_amount = 0.46153846153846145
+shader_parameter/pulse_flicker_amount = 0.6
 shader_parameter/inner_hull_amount = 1.0
 shader_parameter/inner_hull_threshold = 0.55
 shader_parameter/inner_hull_darkness = 0.15
@@ -635,13 +636,22 @@ shader_parameter/inner_pipe_glow_energy = 1.5
 shader_parameter/inner_parallax_depth = 0.05
 shader_parameter/inner_grid_flicker_independence = 0.4
 
+[sub_resource type="Animation" id="Animation_8nil4"]
+length = 0.001
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_g4kwf"]
+_data = {
+&"RESET": SubResource("Animation_8nil4"),
+&"death_sequence": ExtResource("8_240yq")
+}
+
 [sub_resource type="SphereMesh" id="SphereMesh_q6dot"]
 radius = 1.0
 height = 2.0
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_1nnqg"]
 noise_type = 2
-seed = 1428058595
+seed = 1331392002
 frequency = 0.08
 fractal_octaves = 3
 
@@ -684,7 +694,7 @@ transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, 0, 0
 script = ExtResource("1_sb4qv")
 ship_data = ExtResource("2_r577l")
 explosion_scene = ExtResource("3_ag3r8")
-explosion_size = 6.0
+explosion_size = 4.0
 explosion_origin = NodePath("Model/Effects/ExplosionOrigin")
 shockwave_delay = 2.0
 debris_data = ExtResource("4_shx7j")
@@ -697,6 +707,13 @@ cloak_component = NodePath("ShipController/CloakComponent")
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, -6.593826e-08, -7.935009, 0.75424576)
 
 [node name="MeshModel" type="Node3D" parent="Model" unique_id=510066029]
+script = ExtResource("6_6dckk")
+damage_parameters = ExtResource("7_cek0b")
+ship_controller_path = NodePath("../..")
+damage_shader = ExtResource("4_bq6qy")
+damage_visual_cap = 0.5
+death_animation = ExtResource("8_240yq")
+animation_player_path = NodePath("AnimationPlayer")
 
 [node name="Body" type="MeshInstance3D" parent="Model/MeshModel" unique_id=1735101559]
 transform = Transform3D(1.9, 0, 0, 0, -8.305164e-08, -1.9, 0, 1.9, -8.305164e-08, -6.319302e-08, 0.7228435, 8.014038)
@@ -704,13 +721,9 @@ mesh = SubResource("ArrayMesh_a2xp4")
 skeleton = NodePath("")
 surface_material_override/0 = SubResource("ShaderMaterial_240yq")
 surface_material_override/2 = SubResource("ShaderMaterial_g4kwf")
-script = ExtResource("6_6dckk")
-damage_parameters = ExtResource("7_cek0b")
-ship_controller_path = NodePath("../../..")
-damage_shader = ExtResource("4_bq6qy")
-damage_curve_exponent = 1.5
-damage_start_threshold = null
-damage_min_visual = null
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="Model/MeshModel" unique_id=351385236]
+libraries/ = SubResource("AnimationLibrary_g4kwf")
 
 [node name="ShieldMesh" type="MeshInstance3D" parent="Model" unique_id=34795952]
 transform = Transform3D(20, 0, 0, 0, -6.556708e-07, -25, 0, 15, -1.0927847e-06, 7.1054274e-15, -3.467, -3.5892782)
@@ -808,3 +821,4 @@ script = ExtResource("17_6dckk")
 cloak_data = ExtResource("16_6dckk")
 target_meshes = [NodePath("../../Model/MeshModel/Body")]
 audio_data = ExtResource("17_cek0b")
+show_debug = true

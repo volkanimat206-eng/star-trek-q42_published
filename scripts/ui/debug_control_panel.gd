@@ -117,7 +117,9 @@ class_name DebugControlPanel
 @export var debug_flag_names: Array[String] = [
 	"vfx.hull_impact", "vfx.torpedo_explosion", "vfx.fire",
 	"ai.faction_hostile", "ai.faction_lookup", "ai.resolver",
-	"weapons.projectile_path"
+	"weapons.projectile_path",
+	"cloak.events",   # Tarnen/Enttarnen/Zustandsänderungen
+	"cloak.setup"     # Material-Init, Mesh-Suche, Shader-Einbindung (verbose)
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────

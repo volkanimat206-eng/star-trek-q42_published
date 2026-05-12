@@ -6,10 +6,12 @@
 script = ExtResource("1_qunog")
 weapon_name = "Disruptor"
 damage_type = "disruptor"
+hull_damage_multiplier = 0.8
 charge_duration = 0.4
-fire_duration = 1.0
-beam_core_width = 10.0
-beam_glow_width = 30.0
+fire_duration = 1.6
+beam_color = Color(0.40018785, 0.8001019, 0, 1)
+beam_core_width = 20.0
+beam_glow_width = 50.0
 hull_layer = 1
 shield_layer = 2
 metadata/_custom_type_script = "uid://uadlkt5xdjn0"

@@ -27,10 +27,10 @@ extends EditorScript
 # =============================================================================
 
 ## Ausgabepfad der fertigen Animation-Resource.
-const OUTPUT_PATH := "res://resources/animations/death_galaxy.tres"
+const OUTPUT_PATH := "res://resources/animations/death_dderidex.tres"
 
 ## Gesamtdauer der Todessequenz in Sekunden.
-const ANIM_LENGTH := 3.5
+const ANIM_LENGTH := 2.0
 
 ## Mesh-Node-Namen -> Surface-Indizes mit Damage-Shader.
 ## Jede Kombination aus (Node, Surface) bekommt eigene Tracks.
@@ -40,9 +40,12 @@ const ANIM_LENGTH := 3.5
 ##
 ## Galaxy (ein Mesh, zwei Surfaces):
 ##   const MESH_SURFACES := { "Body": [0, 1] }
+
+## #"Hull":   [0,1,2],
+##
 const MESH_SURFACES := {
-	#"Saucer": [0],
 	"Body":   [0,1],
+	
 }
 
 # -- Damage-Kurve --------------------------------------------------------------

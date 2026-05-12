@@ -2,20 +2,25 @@
 
 [ext_resource type="Script" uid="uid://bhrgp28dkuhg1" path="res://scripts/ships/ship_controller.gd" id="1_ujs1k"]
 [ext_resource type="Resource" uid="uid://c7yeiowg0cgey" path="res://data/ships/shipdata_kvek.tres" id="2_ujs1k"]
+[ext_resource type="PackedScene" uid="uid://cy3q4vd3ojfu1" path="res://scenes/vfx/effect_explosion_ship.tscn" id="3_0dlon"]
 [ext_resource type="PackedScene" uid="uid://b55vgygqcen7v" path="res://scenes/weapon/Weapon_Mount.tscn" id="3_sqm8u"]
+[ext_resource type="Resource" uid="uid://bv6jm8vtgu2ix" path="res://resources/debris_klingon.tres" id="4_fgw20"]
 [ext_resource type="PackedScene" uid="uid://b0ps2n8bkhaie" path="res://scenes/weapon/Weapon_BeamDisruptor.tscn" id="4_q2cv4"]
-[ext_resource type="Resource" uid="uid://cxj1fnk6rck4q" path="res://data/weapons/weapondata_phaser_federation_long.tres" id="5_vkfgk"]
+[ext_resource type="Script" uid="uid://btc2tuwctdkls" path="res://scripts/hull/hull_damage_visualizer.gd" id="5_pbqju"]
+[ext_resource type="Script" uid="uid://b167rajxfkg5w" path="res://scripts/vfx/thruster_glow.gd" id="6_11ubb"]
 [ext_resource type="Shader" uid="uid://du5dkyik5wt31" path="res://shaders/shield.gdshader" id="10_1cjmt"]
+[ext_resource type="Script" uid="uid://bb2df4t0jrl2e" path="res://scripts/combat/cloak_component.gd" id="11_1tyua"]
 [ext_resource type="Script" uid="uid://drfo5i81fkhuc" path="res://scripts/combat/shield_system.gd" id="11_lu58k"]
+[ext_resource type="Resource" uid="uid://rnjw554k4unh" path="res://resources/cloak_data_birdofprey.tres" id="12_h2naw"]
+[ext_resource type="Resource" uid="uid://bp70loho04vtm" path="res://resources/weapon_cloak/audio_cloak_klingon.tres" id="13_0dlon"]
+[ext_resource type="PackedScene" uid="uid://bb8bkk3rk0usk" path="res://scenes/vfx/decals/damage_decal1.tscn" id="13_s051w"]
 [ext_resource type="Script" uid="uid://dsl76tjsngj6" path="res://scripts/ships/movement_component.gd" id="13_v2xpw"]
 [ext_resource type="Script" uid="uid://bphq1pbix7nib" path="res://scripts/combat/targeting_system.gd" id="14_7xgry"]
+[ext_resource type="PackedScene" uid="uid://bju7gy3wiw7mf" path="res://scenes/vfx/fires/Effects_Fire2.tscn" id="14_q5frj"]
 [ext_resource type="Resource" uid="uid://cvuvetvegcohu" path="res://data/shields/shielddata_kvek.tres" id="14_ujs1k"]
 [ext_resource type="Script" uid="uid://bs4uq2531fjap" path="res://scripts/hull/hull_impact_receiver.gd" id="15_db6i2"]
-[ext_resource type="Texture2D" uid="uid://nmmsatdhso2t" path="res://assets/textures/hull_damage/burn_large1.png" id="16_80fh0"]
-[ext_resource type="Texture2D" uid="uid://bersyd033q76f" path="res://assets/textures/hull_damage/burn_large2.png" id="17_jm7hr"]
-[ext_resource type="Texture2D" uid="uid://fgvkhkkl1ks8" path="res://assets/textures/hull_damage/burn_large3.png" id="18_bc8q1"]
-[ext_resource type="Texture2D" uid="uid://y5xh05g2twy5" path="res://assets/textures/hull_damage/burn_small1.png" id="19_wfdis"]
-[ext_resource type="Texture2D" uid="uid://dtwd6xdmo6xjv" path="res://assets/textures/hull_damage/burn_small2.png" id="20_j8b2r"]
+[ext_resource type="Script" uid="uid://8n60p384snuf" path="res://scripts/hull/hull_damage_vfx.gd" id="18_f1hp0"]
+[ext_resource type="PackedScene" uid="uid://b3dmgsmoke01x" path="res://scenes/vfx/damage_smoke_plume.tscn" id="19_pbqju"]
 
 [sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_672qs"]
 data = PackedVector3Array(1.8851999, -1.7968999, 3.8188999, 2.3906, -2.5412, 3.6941998, 2.004, -2.5886998, 3.928, 1.8851999, -1.7968999, 3.8188999, 2.3416, -1.7494999, 3.5447, 2.3906, -2.5412, 3.6941998, 2.3808, -3.1588, 3.8384998, 2.2238, -3.4120998, 3.9859998, 2.0827, -3.2538, 4.0319, 2.0827, -3.2538, 4.0319, 2.0147998, -2.6996, 3.9466999, 2.3808, -3.1588, 3.8384998, 2.0147998, -2.6996, 3.9466999, 2.3595, -2.6520998, 3.737, 2.3808, -3.1588, 3.8384998, 1.8851999, 1.8194, 3.8188999, 2.3906, 2.5637, 3.6941998, 2.3416, 1.772, 3.5447, 1.8851999, 1.8194, 3.8188999, 2.004, 2.6111999, 3.928, 2.3906, 2.5637, 3.6941998, 2.3808, 3.1812, 3.8384998, 2.3595, 2.6745, 3.737, 2.0147998, 2.7221, 3.9466999, 2.0147998, 2.7221, 3.9466999, 2.0827, 3.2763, 4.0319, 2.3808, 3.1812, 3.8384998, 2.0827, 3.2763, 4.0319, 2.2238, 3.4347, 3.9859998, 2.3808, 3.1812, 3.8384998, 0.6536, -0.5858, 3.3964, 0.261, 0.36049998, 3.4972, 0.6536, 0.5482, 3.3964, 0.6536, -0.5858, 3.3964, 0.261, -0.3981, 3.4972, 0.261, 0.36049998, 3.4972)
@@ -234,16 +239,16 @@ shadow_mesh = SubResource("ArrayMesh_epw4n")
 radius = 1.0
 height = 2.0
 
-[sub_resource type="FastNoiseLite" id="FastNoiseLite_sqm8u"]
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_6yrji"]
 noise_type = 2
-seed = 2056671494
+seed = 1491686657
 frequency = 0.08
 fractal_octaves = 3
 
-[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_q2cv4"]
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_5d8gq"]
 width = 256
 height = 256
-noise = SubResource("FastNoiseLite_sqm8u")
+noise = SubResource("FastNoiseLite_6yrji")
 seamless = true
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_24fe3"]
@@ -254,68 +259,79 @@ shader_parameter/integrity = 1.0
 shader_parameter/rim_power = 3.0
 shader_parameter/hit_glow_duration = 2.0
 shader_parameter/impact_radius = 0.45
+shader_parameter/shockwave_speed = 3.0
+shader_parameter/shockwave_width = 0.06
+shader_parameter/shockwave_intensity = 1.8
+shader_parameter/shockwave_distortion = 0.012
 shader_parameter/impact_slot_count = 6
 shader_parameter/impact_points = Array[Vector3]([Vector3(0, -9999, 0), Vector3(0, -9999, 0), Vector3(0, -9999, 0), Vector3(0, -9999, 0), Vector3(0, -9999, 0), Vector3(0, -9999, 0), Vector3(0, -9999, 0), Vector3(0, -9999, 0)])
 shader_parameter/impact_ages = Array[float]([100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0])
 shader_parameter/impact_colors = Array[Color]([Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 1)])
+shader_parameter/impact_types = Array[float]([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 shader_parameter/dissolve_progress = 0.0
-shader_parameter/dissolve_noise = SubResource("NoiseTexture2D_q2cv4")
+shader_parameter/dissolve_noise = SubResource("NoiseTexture2D_5d8gq")
 shader_parameter/pattern_type = 1
 shader_parameter/pattern_scale = 60.0
 shader_parameter/pattern_line_width = 0.05
 shader_parameter/pattern_intensity = 1.5
 shader_parameter/debug_mode = 0
 
-[node name="Kvek" type="Node3D"]
+[node name="Kvek" type="Node3D" unique_id=1353460963 node_paths=PackedStringArray("cloak_component")]
 script = ExtResource("1_ujs1k")
 ship_data = ExtResource("2_ujs1k")
+explosion_scene = ExtResource("3_0dlon")
+explosion_size = 3.0
+shockwave_delay = 2.5
+debris_data = ExtResource("4_fgw20")
+debris_color_tint = Color(2.8878452e-07, 0.48470116, 0.06676331, 1)
+cloak_component = NodePath("ShipController/CloakComponent")
 
-[node name="Model" type="Node3D" parent="."]
+[node name="Model" type="Node3D" parent="." unique_id=1031924435]
 transform = Transform3D(1, 0, 0, 0, 0.99999994, 0, 0, 0, 0.99999994, 0, 0, 0)
 
-[node name="HullCollision" type="StaticBody3D" parent="Model"]
+[node name="HullCollision" type="StaticBody3D" parent="Model" unique_id=1040636262]
 transform = Transform3D(1, 0, 0, 0, -3.5762793e-07, -1, 0, 1, -3.5762793e-07, 0, 0, 0)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Model/HullCollision"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Model/HullCollision" unique_id=1609972845]
 transform = Transform3D(-1.9670121e-07, 4.5000005, 0, 2.2500007, 9.835069e-08, 3.8971121, 3.8971124, 1.7034826e-07, -2.2500005, 0, 0, 0)
 shape = SubResource("ConcavePolygonShape3D_672qs")
 
-[node name="CollisionShape3D2" type="CollisionShape3D" parent="Model/HullCollision"]
+[node name="CollisionShape3D2" type="CollisionShape3D" parent="Model/HullCollision" unique_id=1681417531]
 transform = Transform3D(-1.9670117e-07, 4.5000005, 0, 2.2500002, 9.835069e-08, 3.8971117, 3.8971117, 1.7034826e-07, -2.2500002, 0, 0, 0)
 shape = SubResource("ConcavePolygonShape3D_7byjm")
 
-[node name="MeshModel" type="Node3D" parent="Model"]
+[node name="MeshModel" type="Node3D" parent="Model" unique_id=1653816240]
+script = ExtResource("5_pbqju")
 
-[node name="Line63_Kvek_1_4_0_001" type="MeshInstance3D" parent="Model/MeshModel"]
+[node name="Line63_Kvek_1_4_0_001" type="MeshInstance3D" parent="Model/MeshModel" unique_id=1739917375]
 transform = Transform3D(-1.9670121e-07, 4.5000005, 0, -3.8971133, -1.703483e-07, 2.2499993, 2.2499995, 9.835063e-08, 3.897113, 0, 0, 0)
 mesh = SubResource("ArrayMesh_d7dvc")
 skeleton = NodePath("")
+script = ExtResource("6_11ubb")
 
-[node name="Line63_Kvek_1_4_0_004" type="MeshInstance3D" parent="Model/MeshModel"]
+[node name="Line63_Kvek_1_4_0_004" type="MeshInstance3D" parent="Model/MeshModel" unique_id=908319847]
 transform = Transform3D(-1.9670117e-07, 4.5000005, 0, -3.8971126, -1.703483e-07, 2.249999, 2.249999, 9.835063e-08, 3.8971126, 0, 0, 0)
 mesh = SubResource("ArrayMesh_6rut3")
 skeleton = NodePath("")
 
-[node name="Weapon" type="Node3D" parent="Model"]
+[node name="Weapon" type="Node3D" parent="Model" unique_id=500681934]
 
-[node name="WeapnMount_Top" parent="Model/Weapon" instance=ExtResource("3_sqm8u")]
-transform = Transform3D(-0.99999964, -5.5506162e-17, -8.741764e-08, 5.5511115e-17, 0.9999997, 4.852652e-24, 8.73012e-08, -5.684339e-14, -0.99999946, -0.07302563, -0.63194406, -53.59603)
+[node name="WeapnMount_Top" parent="Model/Weapon" unique_id=2121673487 instance=ExtResource("3_sqm8u")]
+transform = Transform3D(0.99999964, 0, 0, 0, 0.9999997, 0, 0, 0, 0.99999946, -0.07302563, -0.63194406, -53.59603)
 mount_position = 2
 weapon_scene = ExtResource("4_q2cv4")
-weapon_data = ExtResource("5_vkfgk")
 weapon_attach_path = NodePath(".")
 mouse_target_height = 0.0
-arc_half_angle_deg = 180.0
+arc_half_angle_deg = 120.0
 arc_radius = 2000.0
-show_gizmo = false
 
-[node name="ShieldMesh" type="MeshInstance3D" parent="Model"]
+[node name="ShieldMesh" type="MeshInstance3D" parent="Model" unique_id=1169999796]
 transform = Transform3D(50, 0, 0, 0, 30, 0, 0, 0, 60, 0, 0, 0)
 cast_shadow = 0
 mesh = SubResource("SphereMesh_q37n5")
 surface_material_override/0 = SubResource("ShaderMaterial_24fe3")
 
-[node name="ShieldSystem" type="Node3D" parent="."]
+[node name="ShieldSystem" type="Node3D" parent="." unique_id=121557368]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -4.0176983)
 script = ExtResource("11_lu58k")
 data = ExtResource("14_ujs1k")
@@ -325,39 +341,38 @@ shield_radius_z = 60.0
 shield_mesh_path = NodePath("../Model/ShieldMesh")
 show_debug = true
 
-[node name="ShipController" type="Node3D" parent="."]
-visible = false
+[node name="ShipController" type="Node3D" parent="." unique_id=876216089]
 
-[node name="MovementComponent" type="Node" parent="ShipController"]
+[node name="MovementComponent" type="Node" parent="ShipController" unique_id=1518733628]
 script = ExtResource("13_v2xpw")
 
-[node name="TargetingSystem" type="Node3D" parent="ShipController"]
+[node name="TargetingSystem" type="Node3D" parent="ShipController" unique_id=226107907]
 script = ExtResource("14_7xgry")
 max_lock_range = 2000.0
 
-[node name="HullImpactReceiver" type="Node" parent="ShipController" node_paths=PackedStringArray("mesh_root")]
+[node name="HullImpactReceiver" type="Node" parent="ShipController" unique_id=1963987569 node_paths=PackedStringArray("mesh_instance")]
 script = ExtResource("15_db6i2")
-mesh_root = NodePath("../../Model/MeshModel")
-glow_lifetime = 1.0
-fade_duration = 0.6
-persistent_impact_count = 4
-persistent_min_intensity = 0.7
-impact_radius_factor = 1.2
-impact_radius = 1.8
-ember_hot_color = Color(1, 0.4288597, 0.050708726, 1)
-center_color = Color(1, 0.9499975, 0.4072413, 1)
-emission_ember = 1.0
-emission_hot = 3.0
-crack_length_min = 2.0
-crack_length_max = 4.0
-crack_width = 0.1
-crack_glow_intensity = 1.2
-scorch_radius = 10.0
-scorch_build_rate = 0.6
-scorch_merge_radius = 16.0
-scorch_edge_softness = 0.0
-scorch_color = Color(0.17648879, 0.11952073, 0, 1)
-debug_impacts = true
-decal_textures = Array[Texture2D]([ExtResource("16_80fh0"), ExtResource("17_jm7hr"), ExtResource("18_bc8q1"), ExtResource("19_wfdis"), ExtResource("20_j8b2r")])
+mesh_instance = NodePath("../../Model/MeshModel/Line63_Kvek_1_4_0_004")
+decal_parent_path = NodePath(".")
+ship_controller_path = NodePath("../..")
+damage_decal_scenes = Array[PackedScene]([ExtResource("13_s051w")])
+max_decals = 6
+vfx_scenes = Array[PackedScene]([ExtResource("14_q5frj")])
+decal_thickness = 6.0
+min_emission = 1.1
+max_emission = 2.0
 
-[node name="DecalPool" type="Node3D" parent="ShipController/HullImpactReceiver"]
+[node name="DecalPool" type="Node3D" parent="ShipController/HullImpactReceiver" unique_id=88154167]
+
+[node name="CloakComponent" type="Node3D" parent="ShipController" unique_id=612261928 node_paths=PackedStringArray("mesh_root", "target_meshes")]
+script = ExtResource("11_1tyua")
+cloak_data = ExtResource("12_h2naw")
+mesh_root = NodePath("../../Model/MeshModel")
+target_meshes = [null]
+audio_data = ExtResource("13_0dlon")
+
+[node name="HullDamageVfx" type="Node3D" parent="ShipController" unique_id=1836196726]
+script = ExtResource("18_f1hp0")
+ship_controller_path = NodePath("../..")
+vfx_parent_path = NodePath("..")
+vfx_scenes = Array[PackedScene]([ExtResource("19_pbqju")])

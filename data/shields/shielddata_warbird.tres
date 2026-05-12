@@ -4,8 +4,8 @@
 
 [resource]
 script = ExtResource("1_hax2v")
-max_strength = 100.0
-current_strength = 100.0
+max_strength = 1000.0
+current_strength = 1000.0
 recharge_rate = 10.0
 recharge_delay = 8.0
 reactivation_delay = 10.0

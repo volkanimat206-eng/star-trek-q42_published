@@ -7,4 +7,5 @@ script = ExtResource("1_jm8fx")
 fade_in_duration = 1.0
 fade_out_duration = 1.0
 shimmer_tint = Color(1.1551381e-06, 0.8066519, 0.5065461, 1)
+rim_color_override = Color(0.35324964, 0.6095415, 0.33555686, 0.0627451)
 metadata/_custom_type_script = "uid://dq5py42u2ije5"

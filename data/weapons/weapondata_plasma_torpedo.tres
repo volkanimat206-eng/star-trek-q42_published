@@ -6,6 +6,8 @@
 script = ExtResource("1_rmtb1")
 torpedo_name = "Plasma Torpedo"
 damage = 150.0
+max_ammo = 8
+reload_time = 10.0
 torpedo_color = Color(0, 0.73337764, 0.09985284, 1)
 trail_color = Color(0, 1, 0, 1)
 collision_mask = 3

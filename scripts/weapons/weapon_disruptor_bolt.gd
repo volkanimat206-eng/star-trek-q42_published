@@ -162,13 +162,16 @@ func _on_hit(result: Dictionary) -> void:
 	_handle_hull_hit(collider, hit_pos, hit_norm)
 
 
+# BUG FIX: Schildtreffer gehen direkt an shield_sys.receive_hit() –
+# NICHT an sc.receive_damage(). receive_damage() leitet Schaden intern
+# nochmal durch die volle Schild+Hülle-Pipeline, was den Schaden
+# verdoppelt und den shield_damage_multiplier des Bolts umgeht.
 func _handle_shield_hit(shield_area: Area3D, hit_pos: Vector3, hit_norm: Vector3) -> void:
 	var shield_sys: ShieldSystem = shield_area.get_meta("shield_system") as ShieldSystem
 	if not shield_sys:
 		_handle_hull_hit(shield_area, hit_pos, hit_norm)
 		return
 
-	# Schild-Multiplikator anwenden
 	var effective: float = _get_effective_damage(true)
 
 	if debug_hit:
@@ -179,15 +182,12 @@ func _handle_shield_hit(shield_area: Area3D, hit_pos: Vector3, hit_norm: Vector3
 			shield_sys.get_integrity()
 		])
 
-	var sc := _find_ship_controller_from(shield_area)
-	if sc:
-		sc.receive_damage(effective, hit_pos, "disruptor", bolt_color)
-	else:
-		shield_sys.receive_hit(effective, hit_pos, bolt_color)
-
+	# FIX: Direkt an ShieldSystem – kein Umweg über sc.receive_damage()
+	shield_sys.receive_hit(effective, hit_pos, bolt_color)
 	_despawn()
 
 
+# BUG FIX: Gleiche Ursache wie _handle_shield_hit – direkt an shield_sys.
 func _handle_shield_hit_direct(shield_sys: ShieldSystem,
 								hit_pos: Vector3, _hit_norm: Vector3) -> void:
 	var effective: float = _get_effective_damage(true)
@@ -195,11 +195,8 @@ func _handle_shield_hit_direct(shield_sys: ShieldSystem,
 	if debug_hit:
 		print("[DisruptorBolt] → SCHILD (direkt) getroffen | effective=%.0f" % effective)
 
-	var sc := _find_ship_controller_from(shield_sys)
-	if sc:
-		sc.receive_damage(effective, hit_pos, "disruptor", bolt_color)
-	else:
-		shield_sys.receive_hit(effective, hit_pos, bolt_color)
+	# FIX: Direkt an ShieldSystem – kein Umweg über sc.receive_damage()
+	shield_sys.receive_hit(effective, hit_pos, bolt_color)
 	_despawn()
 
 

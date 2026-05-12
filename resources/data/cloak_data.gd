@@ -46,6 +46,14 @@ extends Resource
 ## könnte rötlicher sein.
 @export var shimmer_tint: Color = Color(0.4, 0.7, 1.0, 1.0)
 
+# ── Faction Visibility ────────────────────────────────────────────────────────
+@export_group("Faction Visibility")
+## Sichtbarkeit für Verbündete der gleichen Fraktion (IFF-System).
+## 0.0 = auch Kameraden sehen das Schiff nicht.
+## 0.35 = leicht sichtbarer Rim-Schimmer (empfohlen — realistisch für IFF).
+## 1.0 = Verbündete sehen das Schiff voll sichtbar.
+@export_range(0.0, 1.0, 0.05) var ally_visibility: float = 0.35
+
 # ── Visual Overrides (per-Schiff Sonderfälle) ─────────────────────────────────
 @export_group("Visual Overrides (Optional)")
 ## Override für die Rim-Farbe des Cloak-Shaders. Sentinel: alpha=0.0 bedeutet

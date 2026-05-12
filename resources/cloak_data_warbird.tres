@@ -4,5 +4,6 @@
 
 [resource]
 script = ExtResource("1_eexcl")
-shimmer_tint = Color(2.4065375e-08, 0.6367899, 0.15001696, 1)
+shimmer_tint = Color(1.9974261e-06, 0.6027554, 0.17776576, 1)
+rim_color_override = Color(0.21677333, 0.5061058, 0, 0.81960785)
 metadata/_custom_type_script = "uid://dq5py42u2ije5"
