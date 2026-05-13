@@ -1,0 +1,95 @@
+[gd_scene format=3 uid="uid://cuf275xog3sot"]
+
+[ext_resource type="Shader" uid="uid://b4nev6vltef2p" path="res://shaders/planets/planet_test.gdshader" id="1_2tx6m"]
+[ext_resource type="Texture2D" uid="uid://d13ty5hl8uq1u" path="res://assets/planets/gas_planet_texture_by_itzimcool_dh2t293-pre.jpg" id="1_r5lqi"]
+[ext_resource type="Script" uid="uid://r1atwi82iow8" path="res://scripts/planets/planet_rotation.gd" id="2_77vjx"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_2tx6m"]
+specular_mode = 2
+vertex_color_use_as_albedo = true
+albedo_texture = ExtResource("1_r5lqi")
+emission_enabled = true
+emission = Color(0.051970966, 0.05197096, 0.05197095, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_nokbe"]
+material = SubResource("StandardMaterial3D_2tx6m")
+radius = 100.0
+height = 200.0
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_2tx6m"]
+frequency = 0.0061
+fractal_type = 3
+fractal_weighted_strength = 0.28
+fractal_ping_pong_strength = 1.0
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_nokbe"]
+noise = SubResource("FastNoiseLite_2tx6m")
+seamless = true
+seamless_blend_skirt = 0.2
+
+[sub_resource type="Gradient" id="Gradient_r5lqi"]
+colors = PackedColorArray(0, 0, 0, 1, 1, 1, 1, 0)
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_h263y"]
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_tl0sq"]
+noise = SubResource("FastNoiseLite_h263y")
+color_ramp = SubResource("Gradient_r5lqi")
+seamless = true
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_nokbe"]
+render_priority = 0
+shader = ExtResource("1_2tx6m")
+shader_parameter/atmosphere_color = Color(0.7056726, 0.9462728, 0.9999998, 1)
+shader_parameter/cloud_color = Color(0.7304768, 0.8901521, 1, 1)
+shader_parameter/cloud_noise_tex = SubResource("NoiseTexture2D_nokbe")
+shader_parameter/distortion_noise_tex = SubResource("NoiseTexture2D_tl0sq")
+shader_parameter/show_clouds = true
+shader_parameter/cloud_density = 0.48400002299
+shader_parameter/rotation_speed = 9.499999986672947e-08
+shader_parameter/distortion_strength = 0.10400000494
+shader_parameter/distortion_speed = 0.010000000475
+shader_parameter/corona_intensity = 2.000000095
+shader_parameter/corona_width = 6.12000028744012
+
+[sub_resource type="SphereMesh" id="SphereMesh_2tx6m"]
+material = SubResource("ShaderMaterial_nokbe")
+radius = 102.0
+height = 204.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_r5lqi"]
+render_priority = 0
+shader = ExtResource("1_2tx6m")
+shader_parameter/atmosphere_color = Color(0.2884189, 0.45692742, 0.9151861, 1)
+shader_parameter/cloud_color = Color(0.76612836, 0.94811296, 1, 1)
+shader_parameter/cloud_noise_tex = SubResource("NoiseTexture2D_nokbe")
+shader_parameter/distortion_noise_tex = SubResource("NoiseTexture2D_tl0sq")
+shader_parameter/show_clouds = true
+shader_parameter/cloud_density = 0.5050000239875
+shader_parameter/rotation_speed = -0.1
+shader_parameter/distortion_strength = 0.026000001235
+shader_parameter/distortion_speed = 0.06000000285
+shader_parameter/corona_intensity = 0.546000025935
+shader_parameter/corona_width = 7.00000032924012
+
+[sub_resource type="SphereMesh" id="SphereMesh_77vjx"]
+material = SubResource("ShaderMaterial_r5lqi")
+radius = 101.8
+height = 203.6
+
+[node name="PlanetTest" type="Node3D" unique_id=903887353]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=46942206]
+transform = Transform3D(0.32270738, -0.09722876, -0.94216746, -0.0020236582, 0.99466014, -0.10334955, 0.94705635, 0.035252858, 0.32081392, 0, 0, 0)
+mesh = SubResource("SphereMesh_nokbe")
+script = ExtResource("2_77vjx")
+rotation_speed = 0.01
+
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="." unique_id=476169676]
+mesh = SubResource("SphereMesh_2tx6m")
+script = ExtResource("2_77vjx")
+rotation_speed = -0.02
+
+[node name="MeshInstance3D3" type="MeshInstance3D" parent="." unique_id=1877483381]
+visible = false
+mesh = SubResource("SphereMesh_77vjx")

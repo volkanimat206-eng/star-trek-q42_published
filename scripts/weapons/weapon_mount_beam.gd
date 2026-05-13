@@ -355,6 +355,14 @@ func _check_firing_constraints():
 			if debug_arc:
 				_dbg("Constraint LIVE [shape-aware]: Ziel außerhalb Arc → stop_charging()")
 			weapon_instance.stop_charging()
+		# Self-Occlusion: auch während des Feuerns prüfen ob die eigene
+		# Hülle jetzt (durch Schiffsbewegung) in den Schussweg geraten ist.
+		elif mount_position != MountPosition.FULL \
+		and weapon_instance.has_method("is_self_occluded") \
+		and weapon_instance.is_self_occluded(tracking_target.global_position):
+			if debug_arc:
+				_dbg("Constraint LIVE [self-occ]: Eigene Hülle blockiert Schuss → stop_charging()")
+			weapon_instance.stop_charging()
 	else:
 		var live_pos: Vector3 = weapon_instance.get("current_target_world_pos")
 		if not is_target_in_arc(live_pos):
@@ -442,6 +450,21 @@ func fire_at(target_pos: Vector3, weapon_range: float = INF, freeze_beam: bool =
 
 	if not in_arc:
 		return false
+
+	# ── Self-Occlusion-Check ───────────────────────────────────────────────
+	# Verhindert dass ein DORSAL/VENTRAL-Phaser durch die eigene Hülle schießt.
+	# Nur relevant wenn mount_position != FULL und die Waffe bereit ist.
+	# Bei FULL-Mounts (z.B. Klingon) entfällt der Check.
+	if mount_position != MountPosition.FULL \
+	and weapon_instance and is_instance_valid(weapon_instance) and is_weapon_ready \
+	and weapon_instance.has_method("is_self_occluded"):
+		var check_pos: Vector3 = tracking_node.global_position \
+			if (tracking_node and is_instance_valid(tracking_node)) \
+			else target_pos
+		if weapon_instance.is_self_occluded(check_pos):
+			if debug_arc:
+				_dbg("fire_at() | SELF-OCCLUDED → kein Schuss (eigene Hülle im Weg)")
+			return false
 
 	# Ab hier: Arc OK + Waffe bereit → nur jetzt loggen (wenn debug_arc aktiv)
 	if debug_arc:

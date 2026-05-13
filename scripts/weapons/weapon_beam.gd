@@ -101,7 +101,11 @@ var camera:        Camera3D
 var viewport:      Viewport
 var baked_points:  PackedVector3Array = []
 var baked_lengths: PackedFloat32Array = []
-var _exclude_rids: Array[RID]         = []
+var _exclude_rids:      Array[RID] = []
+# RIDs des EIGENEN Schiffs – für Self-Occlusion-Check (Strahl durch eigene Hülle).
+# Im Gegensatz zu _exclude_rids werden diese NICHT ausgeschlossen, sondern genutzt
+# um festzustellen ob das eigene Schiff zwischen Waffe und Ziel liegt.
+var _own_ship_rids:     Array[RID] = []
 var _impact_type_override: ImpactType = ImpactType.AUTO
 
 # ===== SCHADEN – INTERN =====
@@ -213,14 +217,65 @@ func set_visuals_active(is_active: bool) -> void:
 # ─────────────────────────────────────────────────────────────────────────────
 func _build_exclude_rids() -> void:
 	_exclude_rids.clear()
+	_own_ship_rids.clear()
 	var my_ship := _find_ship_root(self)
 	_collect_rids_recursive(my_ship)
+	# Kopie der eigenen RIDs für Self-Occlusion-Check
+	_own_ship_rids.assign(_exclude_rids)
 	if debug_surface_raycast:
 		print("[BeamWeapon|EXCL] Root: '%s' | RIDs: %d" % [
 			my_ship.name if my_ship else "NULL", _exclude_rids.size()])
 
 
-## Sucht den ShipController im Elternbaum – funktioniert für jedes Schiff.
+## Public API für WeaponMount: Prüft ob das eigene Schiff zwischen
+## diesem WeaponMount (convergence_marker) und dem Ziel liegt.
+##
+## Wird von WeaponMount.fire_at() und _check_firing_constraints() aufgerufen
+## BEVOR gefeuert wird. Verhindert dass ein dorsaler Phaser durch den
+## eigenen Saucer nach unten schießt.
+##
+## Technik: Raycast von der Waffe zum Ziel, der NUR gegen die eigenen
+## Kollisions-RIDs prüft (_own_ship_rids). Trifft er etwas → blockiert.
+##
+## Wichtig: Dieser Cast schließt die Feind-RIDs NICHT aus –
+## er interessiert sich ausschließlich für eigene Geometrie.
+func is_self_occluded(target_pos: Vector3) -> bool:
+	if not _space_state or _own_ship_rids.is_empty():
+		return false
+
+	var origin := convergence_marker.global_position \
+		if convergence_marker else global_position
+
+	# Mask = 0xFFFFFFFF → alle Layer, wir filtern nur über exclude
+	# Wir wollen NUR eigene Shapes treffen → query.exclude = alle ANDEREN RIDs
+	# Das geht nicht direkt, aber: wir bauen einen Cast der die eigene Geometrie
+	# NICHT ausschließt und prüfen ob ein hit_body in _own_ship_rids ist.
+	var query := PhysicsRayQueryParameters3D.create(origin, target_pos)
+	# Keine excludes → alles wird geprüft
+	query.collision_mask      = 0xFFFFFFFF
+	query.exclude             = []
+	query.hit_back_faces      = false
+	query.collide_with_areas  = false
+	query.collide_with_bodies = true
+
+	var result := _space_state.intersect_ray(query)
+	if result.is_empty():
+		return false
+
+	var hit_body := result.get("collider") as CollisionObject3D
+	if not hit_body:
+		return false
+
+	var hit_rid := hit_body.get_rid()
+	for rid in _own_ship_rids:
+		if rid == hit_rid:
+			if debug_surface_raycast:
+				print("[BeamWeapon|SELF-OCC] Eigene Hülle blockiert Schuss: '%s'" % hit_body.name)
+			return true
+
+	return false
+
+
 func _find_ship_root(node: Node) -> Node:
 	var temp := node.get_parent()
 	while temp:

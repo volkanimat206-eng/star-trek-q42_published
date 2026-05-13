@@ -41,6 +41,7 @@ signal ship_destroyed()
 ## Trümmer-Konfiguration als Resource. Eine .tres pro Schiffsklasse oder
 ## Faction. Leer lassen = kein Debris-Burst.
 @export var debris_data: ExplosionDebrisData = null
+@export var ship_fragment_scene: PackedScene  # → galaxy_debris.tscn im Inspector
 ## Faction-Tint für die Trümmer (multiplikativ auf Material-Farbe).
 ## Color.WHITE = keine Tönung (Default).
 @export var debris_color_tint: Color = Color.WHITE

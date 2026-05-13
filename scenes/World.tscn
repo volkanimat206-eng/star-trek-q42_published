@@ -11,7 +11,10 @@
 [ext_resource type="Script" uid="uid://o1ayuafep8yd" path="res://scripts/ships/input_component.gd" id="6_ygioq"]
 [ext_resource type="PackedScene" uid="uid://j3ukrq2w1n7y" path="res://scenes/ui/debug_control_panel.tscn" id="11_7c4bj"]
 [ext_resource type="PackedScene" uid="uid://dedqlnhcxprge" path="res://scenes/ships/klingon_kvek.tscn" id="12_7c4bj"]
+[ext_resource type="PackedScene" uid="uid://ba2kgx0xuybdg" path="res://scenes/ships/klingon_birdofprey.tscn" id="13_i4b1j"]
 [ext_resource type="AudioStream" uid="uid://bp2sd4wtk3joe" path="res://assets/audio/Star Trek The Next Generation Ambient Music.mp3" id="13_nrtoj"]
+[ext_resource type="PackedScene" uid="uid://cuf275xog3sot" path="res://scenes/planets/planet_test.tscn" id="14_i4b1j"]
+[ext_resource type="Script" uid="uid://bm4wp2w1wy5y2" path="res://scripts/planets/planet_parallax.gd" id="15_c0d7e"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_i4b1j"]
 shader = ExtResource("1_nrtoj")
@@ -47,28 +50,11 @@ environment = SubResource("Environment_2dftf")
 [node name="TopViewCamera" type="Camera3D" parent="WorldEnvironment" unique_id=1074467838]
 transform = Transform3D(1, 0, 0, 0, 0.86844987, 0.495777, 0, -0.495777, 0.86844987, 0, 4.787285, 12.704609)
 script = ExtResource("1_32lhk")
-target_path = NodePath("../../Player")
+target_path = NodePath("../../GameplayLayer/Player")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=985876585]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1000, 0)
 sky_mode = 1
-
-[node name="Player" type="CharacterBody3D" parent="." unique_id=78216234 groups=["player", "ships"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 69.37261, 4.147995, 62.99849)
-collision_layer = 32
-collision_mask = 7
-script = ExtResource("3_7g83o")
-ship_data = ExtResource("6_h1bdy")
-force_cloak_for_player = false
-
-[node name="ShipAnchor" type="Node3D" parent="Player" unique_id=2095272030]
-
-[node name="InputComponent" type="Node" parent="Player" unique_id=1703116516]
-script = ExtResource("6_ygioq")
-
-[node name="Parallax" parent="Player" unique_id=2013279089 instance=ExtResource("6_nrtoj")]
-
-[node name="ShaderDiag" type="Node3D" parent="." unique_id=774716201]
 
 [node name="Background Audio" type="Node" parent="." unique_id=1146980050]
 
@@ -81,9 +67,45 @@ playback_type = 1
 [node name="DebugControlPanel" parent="." unique_id=720723658 instance=ExtResource("11_7c4bj")]
 
 [node name="DebugOverlay" parent="." unique_id=831252337 instance=ExtResource("4_d1c63")]
-player_path = NodePath("../Player")
+player_path = NodePath("../GameplayLayer/Player")
 
 [node name="LayerWatcher" type="Node" parent="." unique_id=1914114291]
 
-[node name="Kvek" parent="." unique_id=1353460963 instance=ExtResource("12_7c4bj")]
+[node name="GameplayLayer" type="Node3D" parent="." unique_id=409434113]
+
+[node name="BirdOfPrey" parent="GameplayLayer" unique_id=647811740 instance=ExtResource("13_i4b1j")]
+transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, 76.91785, 18.288563, 0)
+
+[node name="Kvek" parent="GameplayLayer" unique_id=1353460963 instance=ExtResource("12_7c4bj")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -90.42099)
+
+[node name="Player" type="CharacterBody3D" parent="GameplayLayer" unique_id=78216234 groups=["player", "ships"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 69.37261, 4.147995, 62.99849)
+collision_layer = 32
+collision_mask = 7
+script = ExtResource("3_7g83o")
+ship_data = ExtResource("6_h1bdy")
+force_cloak_for_player = false
+
+[node name="ShipAnchor" type="Node3D" parent="GameplayLayer/Player" unique_id=2095272030]
+
+[node name="InputComponent" type="Node" parent="GameplayLayer/Player" unique_id=1703116516]
+script = ExtResource("6_ygioq")
+
+[node name="Parallax" parent="GameplayLayer/Player" unique_id=2013279089 instance=ExtResource("6_nrtoj")]
+
+[node name="Backgrounds" type="Node3D" parent="." unique_id=303381162]
+
+[node name="Planets" type="Node3D" parent="Backgrounds" unique_id=1391270635]
+
+[node name="BackgroundLayerNear" type="Node3D" parent="Backgrounds/Planets" unique_id=140833088]
+
+[node name="PlanetTest" parent="Backgrounds/Planets/BackgroundLayerNear" unique_id=903887353 instance=ExtResource("14_i4b1j")]
+transform = Transform3D(3.8002856, -4.6430416, 0, -3.6286318, -2.9700007, -3.7432775, 2.896699, 2.370921, -4.6891227, 977.766, -800, 67.922)
+script = ExtResource("15_c0d7e")
+horizontal_factor = 0.03
+vertical_factor = 0.01
+
+[node name="BackgroundLayerMid" type="Node3D" parent="Backgrounds/Planets" unique_id=1058316079]
+
+[node name="BackgroundLayerFar" type="Node3D" parent="Backgrounds/Planets" unique_id=1143690739]
