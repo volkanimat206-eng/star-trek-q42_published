@@ -165,7 +165,13 @@ func _ready() -> void:
 	set_visuals_active(false)
 	beam_container.visible = false
 	use_local_target = (local_target_marker != null)
-	_build_exclude_rids()
+	# WICHTIG: call_deferred – WeaponMount fügt diese Instanz via add_child() ein,
+	# d.h. zum Zeitpunkt von _ready() ist der Szenenbaum noch nicht vollständig
+	# eingehängt. _find_ship_root() würde dann ggf. keinen ShipController finden
+	# und _exclude_rids bliebe leer → eigene HullCollision nicht ausgeschlossen
+	# → Selbstkollision im ersten Raycast-Frame.
+	# call_deferred wartet einen Frame ab bis der Baum stabil ist.
+	call_deferred("_build_exclude_rids")
 
 	# Prüfen ob diese Waffe zum Spieler gehört – einmalig cachen.
 	# Spieler-Schiff hat KEINEN AIController im Elternbaum.
@@ -276,11 +282,29 @@ func is_self_occluded(target_pos: Vector3) -> bool:
 	return false
 
 
+## Sucht den geometrischen Root-Node des eigenen Schiffs.
+##
+## BUG-URSACHE (alte Version, nur bis ShipController):
+##   Die HullCollision (StaticBody3D) liegt typischerweise ÜBER dem
+##   ShipController, direkt am CharacterBody3D / Ship-Root:
+##     SovereignRoot (CharacterBody3D)
+##       ├─ HullCollision  ← HIER, nicht unter ShipController!
+##       └─ AIController
+##            └─ ShipController  ← alte Funktion stoppte hier
+##   _collect_rids_recursive(ShipController) fand HullCollision nie →
+##   _exclude_rids unvollständig → erster Raycast traf eigene Hülle.
+##
+## FIX: Einen Level über ShipController hinausgehen (= CharacterBody3D).
 func _find_ship_root(node: Node) -> Node:
 	var temp := node.get_parent()
 	while temp:
 		if temp is ShipController:
-			return temp
+			# Einen Level höher: CharacterBody3D / Ship-Root-Node
+			# der die HullCollision und alle Collision-Shapes trägt.
+			var ship_root := temp.get_parent()
+			if ship_root and ship_root != get_tree().current_scene:
+				return ship_root
+			return temp  # Fallback: kein sinnvoller Parent → ShipController selbst
 		temp = temp.get_parent()
 	return get_tree().current_scene
 
@@ -290,6 +314,17 @@ func _collect_rids_recursive(node: Node) -> void:
 		_exclude_rids.append(node.get_rid())
 	for child in node.get_children():
 		_collect_rids_recursive(child)
+
+
+## Findet den ShipController dieser Waffe im Elternbaum.
+## Wird in _apply_damage_tick() für den Self-Hit-Guard genutzt.
+func _find_my_ship_controller() -> ShipController:
+	var temp: Node = get_parent()
+	while temp:
+		if temp is ShipController:
+			return temp as ShipController
+		temp = temp.get_parent()
+	return null
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -731,6 +766,18 @@ func _find_damageable_node(hit_body: Node3D) -> Node3D:
 
 
 func _apply_damage_tick(hit_pos: Vector3, hit_node: Node3D) -> void:
+	# ── Selbstschutz: letzter Fallback gegen Race-Condition im ersten Frame ──
+	# _exclude_rids schützt normalerweise davor, aber falls _build_exclude_rids()
+	# noch nicht ausgeführt wurde (deferred), könnte ein früher Raycast das
+	# eigene Schiff treffen. Deshalb hier explizit prüfen.
+	if hit_node != null and is_instance_valid(hit_node):
+		var my_sc := _find_my_ship_controller()
+		var hit_sc := DamageDealer.get_ship_controller(hit_node)
+		if my_sc != null and hit_sc != null and my_sc == hit_sc:
+			if debug_damage:
+				push_warning("[BeamWeapon] SELF-HIT verhindert! hit='%s' – _exclude_rids war noch leer?" % hit_node.name)
+			return
+
 	var dps:     float  = weapon_data.damage_per_second if weapon_data else 80.0
 	var dmg_iv:  float  = weapon_data.damage_interval   if weapon_data else 0.08
 	var d_type:  String = weapon_data.damage_type        if weapon_data else "phaser"

@@ -129,6 +129,12 @@ func _connect_weapon_node():
 
 	weapon_instance = weapon_scene.instantiate()
 	attach_parent.add_child(weapon_instance)
+	# Sicherstellen dass _build_exclude_rids() NACH dem Einhängen in den Baum läuft.
+	# weapon_instance._ready() hat call_deferred("_build_exclude_rids") bereits –
+	# dieser zweite Aufruf ist eine Absicherung für den Fall dass _ready() vor
+	# add_child() gefeuert hat (Godot-Verhalten bei deferred instantiation).
+	if weapon_instance.has_method("_build_exclude_rids"):
+		weapon_instance.call_deferred("_build_exclude_rids")
 
 	if debug_arc:
 		_dbg("  → '%s' instanziiert unter '%s'" % [weapon_instance.name, attach_parent.name])
