@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ExplosionDebrisData" format=3 uid="uid://bq376dh6fgu8w"]
+
+[ext_resource type="Resource" uid="uid://b36w01bmr03ly" path="res://resources/ship_debris/params_federation.tres" id="1_miu0t"]
+[ext_resource type="Script" uid="uid://bsu6lxsg62fsd" path="res://resources/data/explosion_debris_data.gd" id="1_mqhvo"]
+[ext_resource type="PackedScene" uid="uid://cmt10o4h25w8f" path="res://scenes/ships_explode/galaxy_debris.tscn" id="2_4lu4q"]
+
+[resource]
+script = ExtResource("1_mqhvo")
+fragment_scene = ExtResource("2_4lu4q")
+debris_params = ExtResource("1_miu0t")
+metadata/_custom_type_script = "uid://bsu6lxsg62fsd"

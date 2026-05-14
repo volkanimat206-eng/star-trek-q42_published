@@ -1,6 +1,6 @@
 [gd_scene format=3]
 
-[ext_resource type="Script" uid="uid://daobgdw5ye02w" path="res://scripts/vfx/navigation_light.gd" id="1_s2l7x"]
+[ext_resource type="Script" uid="uid://daobgdw5ye02w" path="res://scripts/effects/navigation_light.gd" id="1_s2l7x"]
 
 [sub_resource type="SphereMesh" id="SphereMesh_d5dhw"]
 radius = 0.1

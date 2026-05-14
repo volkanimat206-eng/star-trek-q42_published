@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://bgvvs83cnka02"]
 
-[ext_resource type="Script" uid="uid://5pjlso6glkaq" path="res://scripts/vfx/effect_explosion_torpedo.gd" id="1_xj7om"]
+[ext_resource type="Script" uid="uid://5pjlso6glkaq" path="res://scripts/effects/effect_explosion_torpedo.gd" id="1_xj7om"]
 [ext_resource type="Texture2D" uid="uid://d1rctn1j77xsw" path="res://assets/effects/brackeys/fire_01_a.png" id="2_xj7om"]
 [ext_resource type="Texture2D" uid="uid://cetr7l0fam2cn" path="res://assets/effects/brackeys/scorch_03_a.png" id="3_2cpn1"]
 [ext_resource type="Texture2D" uid="uid://cx8c3n5ugpk3f" path="res://assets/effects/kenny/star_05.png" id="4_3e8rd"]

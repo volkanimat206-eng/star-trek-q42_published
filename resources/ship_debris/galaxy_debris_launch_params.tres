@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="DebrisLaunchParams" format=3 uid="uid://bb5866siiokvq"]
+
+[ext_resource type="Script" uid="uid://bjirsg0lbqctt" path="res://scripts/effects/debris_launch_params.gd" id="1_5fet1"]
+
+[resource]
+script = ExtResource("1_5fet1")
+metadata/_custom_type_script = "uid://bjirsg0lbqctt"

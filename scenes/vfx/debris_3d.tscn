@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://c5cvegii78i07"]
 
-[ext_resource type="Script" uid="uid://csaoso2qgeedy" path="res://scripts/vfx/debris_3d.gd" id="1_debris"]
+[ext_resource type="Script" uid="uid://csaoso2qgeedy" path="res://scripts/effects/debris_3d.gd" id="1_debris"]
 
 [sub_resource type="PrismMesh" id="PrismMesh_swphe"]
 size = Vector3(2, 2, 2)

@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="ShipDebrisParams" format=3 uid="uid://b36w01bmr03ly"]
+
+[ext_resource type="Script" uid="uid://qbumbsnmjev3" path="res://scripts/effects/ship_debris_params.gd" id="1_sfp4i"]
+
+[resource]
+script = ExtResource("1_sfp4i")
+glow_color = Color(0.548397, 0.5948384, 0.61146396, 1)
+collision_disable_after = 0.0
+metadata/_custom_type_script = "uid://qbumbsnmjev3"

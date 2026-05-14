@@ -7,7 +7,7 @@
 [ext_resource type="Resource" uid="uid://bv6jm8vtgu2ix" path="res://resources/debris_klingon.tres" id="4_fgw20"]
 [ext_resource type="PackedScene" uid="uid://b0ps2n8bkhaie" path="res://scenes/weapon/Weapon_BeamDisruptor.tscn" id="4_q2cv4"]
 [ext_resource type="Script" uid="uid://btc2tuwctdkls" path="res://scripts/hull/hull_damage_visualizer.gd" id="5_pbqju"]
-[ext_resource type="Script" uid="uid://b167rajxfkg5w" path="res://scripts/vfx/thruster_glow.gd" id="6_11ubb"]
+[ext_resource type="Script" uid="uid://b167rajxfkg5w" path="res://scripts/effects/thruster_glow.gd" id="6_11ubb"]
 [ext_resource type="Shader" uid="uid://du5dkyik5wt31" path="res://shaders/shield.gdshader" id="10_1cjmt"]
 [ext_resource type="Script" uid="uid://bb2df4t0jrl2e" path="res://scripts/combat/cloak_component.gd" id="11_1tyua"]
 [ext_resource type="Script" uid="uid://drfo5i81fkhuc" path="res://scripts/combat/shield_system.gd" id="11_lu58k"]

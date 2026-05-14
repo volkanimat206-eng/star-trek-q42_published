@@ -2,7 +2,7 @@
 
 [ext_resource type="Texture2D" uid="uid://y5xh05g2twy5" path="res://assets/textures/hull_damage/burn_small1.png" id="1_28hgc"]
 [ext_resource type="Texture2D" uid="uid://lpdygbv4mhjs" path="res://assets/effects/brackeys/spark_03_a.png" id="2_ip7du"]
-[ext_resource type="Script" uid="uid://cv8ssjphhqg23" path="res://scripts/vfx/damage_decal.gd" id="3_32wxl"]
+[ext_resource type="Script" uid="uid://cv8ssjphhqg23" path="res://scripts/effects/damage_decal.gd" id="3_32wxl"]
 
 [node name="DamageDecal" type="Decal" unique_id=531655209]
 size = Vector3(2, 1, 2)

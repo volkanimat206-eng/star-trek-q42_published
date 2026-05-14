@@ -537,6 +537,20 @@ func _destroy_sequence() -> void:
 	if is_instance_valid(self):
 		queue_free()
 
+# ─────────────────────────────────────────────────────────────────────────────
+# PATCH für ship_controller.gd  →  Funktion _spawn_explosion()
+#
+# ÄNDERE NUR DIESEN BLOCK. Alles andere in ship_controller.gd bleibt unverändert.
+#
+# WAS SICH ÄNDERT:
+#   • ship_transform kommt IMMER von global_transform (= ShipController selbst).
+#     Der explosion_origin-Marker bestimmt nur noch die visuelle Spawn-Position
+#     der Explosionspartikel — NICHT mehr die Transform für die Debris-Rotation.
+#   • Begründung: explosion_origin.global_transform enthält die Rotation des
+#     Markers, nicht die des Schiffs. Bei einem falsch ausgerichteten Marker
+#     führt das zu Debris-Fragmenten in der falschen Orientation.
+# ─────────────────────────────────────────────────────────────────────────────
+
 func _spawn_explosion() -> void:
 	if not explosion_scene:
 		return
@@ -544,22 +558,40 @@ func _spawn_explosion() -> void:
 	var e := explosion_scene.instantiate() as Node3D
 	get_parent().add_child(e)
 
-	# Spawn-Position: Marker3D wenn gesetzt, sonst ShipController-Origin
+	# ── Visuelle Spawn-Position der Explosion ─────────────────────────────────
+	# Der Marker3D steuert NUR wohin die Partikel spawnen (z.B. Schiffsmitte).
+	# Hat keinen Einfluss auf die Debris-Rotation.
 	if explosion_origin and is_instance_valid(explosion_origin):
 		e.global_position = explosion_origin.global_position
-		_dbg("🚀 Explosion an Marker3D-Position gespawnt")
+		_dbg("🚀 Explosion an Marker3D-Position gespawnt: %s" % explosion_origin.global_position)
 	else:
 		e.global_position = global_position
 
-	# initialize() übernimmt Skalierung, Partikel-Scaling, Shockwave-Delay
-	# und Debris-Burst — kein manuelles e.scale mehr nötig.
+	# ── Schiff-Transform für Debris ──────────────────────────────────────────
+	# IMMER global_transform des ShipControllers verwenden.
+	# Nie explosion_origin.global_transform — der Marker hat evtl. andere Rotation!
+	#
+	# Diese Transform wird in ShipDebrisBurst.launch_at() genutzt:
+	#   fragment_world = ship_transform * fragment_local
+	var ship_transform: Transform3D = global_transform
+	_dbg("🚀 Debris-Transform: pos=%s | basis.z=%s" % [
+		ship_transform.origin, ship_transform.basis.z
+	])
+
+	# ── initialize() aufrufen ────────────────────────────────────────────────
 	if e.has_method("initialize"):
-		e.initialize(explosion_size, shockwave_delay, debris_data, debris_color_tint)
-		_dbg("🚀 Explosion.initialize(size=%.1f, sw_delay=%.2fs)" % [explosion_size, shockwave_delay])
+		e.initialize(
+			explosion_size,
+			shockwave_delay,
+			debris_data,
+			debris_color_tint,
+			ship_transform     # ← Position+Rotation des Schiffs, nicht des Markers
+		)
+		_dbg("🚀 Explosion.initialize() mit Schiff-Transform aufgerufen")
 	else:
-		# Fallback: Explosion-Scene hat kein initialize() (altes Format)
+		# Fallback für alte Explosion-Scenes ohne initialize()
 		e.scale = Vector3.ONE * explosion_size
-		push_warning("[ShipController|%s] ExplosionEffect hat kein initialize() — nur Node-Scale gesetzt." % ship_name)
+		push_warning("[ShipController|%s] ExplosionEffect hat kein initialize() — nur Scale gesetzt." % ship_name)
 
 	_start_explosion_animation(e)
 

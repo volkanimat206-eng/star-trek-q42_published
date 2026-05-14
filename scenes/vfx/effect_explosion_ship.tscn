@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://cy3q4vd3ojfu1"]
 
 [ext_resource type="Texture2D" uid="uid://ds2dmqxy56fro" path="res://assets/effects/brackeys/flame_01_a.png" id="1_f71q1"]
-[ext_resource type="Script" uid="uid://b51ted7eh123" path="res://scripts/vfx/effect_explosion_ship.gd" id="1_xlu0u"]
+[ext_resource type="Script" uid="uid://b51ted7eh123" path="res://scripts/effects/effect_explosion_ship.gd" id="1_xlu0u"]
 [ext_resource type="Texture2D" uid="uid://ch14bywprkufy" path="res://assets/effects/brackeys/smoke_01_a.png" id="2_hd7i2"]
 [ext_resource type="Resource" uid="uid://bxh1g1lxr6o5r" path="res://data/audio/explosion_audio_data.tres" id="2_kkhwf"]
 [ext_resource type="Texture2D" uid="uid://brg4e3riwvykl" path="res://assets/effects/brackeys/spotlight_01_a.png" id="4_0vo88"]
